@@ -1,0 +1,39 @@
+services:
+  anduril:
+    build: .
+    container_name: anduril
+    ports:
+      - "8080:8080"
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Production
+      - AI__Ollama__Endpoint=http://ollama:11434
+      - AI__Ollama__Model=qwen2.5:7b
+    volumes:
+      - ./skills:/app/skills:ro
+      - anduril-data:/app/data
+    depends_on:
+      ollama:
+        condition: service_started
+    restart: unless-stopped
+
+  ollama:
+    image: ollama/ollama:latest
+    container_name: ollama
+    ports:
+      - "11434:11434"
+    volumes:
+      - ollama-models:/root/.ollama
+    restart: unless-stopped
+    # Uncomment below for GPU support (NVIDIA):
+    # deploy:
+    #   resources:
+    #     reservations:
+    #       devices:
+    #         - driver: nvidia
+    #           count: all
+    #           capabilities: [gpu]
+
+volumes:
+  anduril-data:
+  ollama-models:
+

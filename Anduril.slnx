@@ -1,0 +1,16 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/Anduril.AI/Anduril.AI.csproj" />
+    <Project Path="src/Anduril.Communication/Anduril.Communication.csproj" />
+    <Project Path="src/Anduril.Core/Anduril.Core.csproj" />
+    <Project Path="src/Anduril.Host/Anduril.Host.csproj" />
+    <Project Path="src/Anduril.Integrations/Anduril.Integrations.csproj" />
+    <Project Path="src/Anduril.Skills/Anduril.Skills.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/Anduril.AI.Tests/Anduril.AI.Tests.csproj" />
+    <Project Path="tests/Anduril.Communication.Tests/Anduril.Communication.Tests.csproj" />
+    <Project Path="tests/Anduril.Core.Tests/Anduril.Core.Tests.csproj" />
+    <Project Path="tests/Anduril.Skills.Tests/Anduril.Skills.Tests.csproj" />
+  </Folder>
+</Solution>
