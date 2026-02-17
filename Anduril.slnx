@@ -11,6 +11,7 @@
     <Project Path="tests/Anduril.AI.Tests/Anduril.AI.Tests.csproj" />
     <Project Path="tests/Anduril.Communication.Tests/Anduril.Communication.Tests.csproj" />
     <Project Path="tests/Anduril.Core.Tests/Anduril.Core.Tests.csproj" />
+    <Project Path="tests/Anduril.Host.Tests/Anduril.Host.Tests.csproj" />
     <Project Path="tests/Anduril.Skills.Tests/Anduril.Skills.Tests.csproj" />
   </Folder>
 </Solution>

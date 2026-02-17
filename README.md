@@ -8,7 +8,7 @@ A personal AI assistant built from scratch in C#. Andúril connects to Slack (an
 - **Dual-mode skill system** — write skills as simple Markdown prompt files or as compiled C# plugins
 - **Slack integration** — real-time messaging via Socket Mode with threaded replies ([setup guide](docs/slack-setup.md))
 - **Tool augmentation** — Augment Code MCP provider exposes codebase-aware tools that chat providers can call
-- **Integration hooks** — GitHub, Sentry, and Microsoft Calendar adapters for pulling context into conversations
+- **Integration hooks** — GitHub, Sentry, and Office 365 Calendar adapters for pulling context into conversations ([GitHub setup](docs/github.md) · [Office 365 setup](docs/office365-calendar.md))
 - **Best-effort startup** — providers and adapters initialise independently; failures are logged, never fatal
 
 ## Architecture
@@ -54,7 +54,7 @@ A personal AI assistant built from scratch in C#. Andúril connects to Slack (an
 |---|---|---|
 | Code Reviewer | "review this PR" | Analyses pull requests and provides actionable feedback |
 | Sentry Triage | "triage this error" | Summarises and suggests fixes for production errors |
-| Standup Helper | "standup" | Generates a daily status update from GitHub and calendar activity |
+| Standup Helper | "standup" | Generates a daily status update from GitHub and calendar activity ([docs](docs/standup-helper.md)) |
 | Meeting Summary | "summarize this meeting" | Produces structured notes and action items from a transcript |
 
 ## Prerequisites

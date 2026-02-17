@@ -8,22 +8,6 @@ using SlackNet.WebApi;
 namespace Anduril.Communication;
 
 /// <summary>
-/// Configuration options for the Slack communication adapter.
-/// </summary>
-public class SlackAdapterOptions
-{
-    /// <summary>
-    /// Gets or sets the Slack Bot OAuth token (xoxb-...).
-    /// </summary>
-    public string? BotToken { get; set; }
-
-    /// <summary>
-    /// Gets or sets the Slack App-Level token for Socket Mode (xapp-...).
-    /// </summary>
-    public string? AppToken { get; set; }
-}
-
-/// <summary>
 /// Communication adapter for Slack using Socket Mode for real-time messaging.
 /// Normalizes Slack events into <see cref="IncomingMessage"/> and sends responses
 /// via the Slack Web API.

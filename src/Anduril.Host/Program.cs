@@ -6,8 +6,10 @@ using Anduril.Core.Communication;
 using Anduril.Core.Integrations;
 using Anduril.Core.Skills;
 using Anduril.Host;
+using Anduril.Host.Services;
 using Anduril.Integrations;
 using Anduril.Skills;
+using Anduril.Skills.Compiled;
 using Microsoft.Extensions.Options;
 using Serilog;
 
@@ -86,11 +88,11 @@ try
     // ------------------------------------------------------------------
     builder.Services.Configure<GitHubToolOptions>(config.GetSection("Integrations:GitHub"));
     builder.Services.Configure<SentryToolOptions>(config.GetSection("Integrations:Sentry"));
-    builder.Services.Configure<CalendarToolOptions>(config.GetSection("Integrations:Calendar"));
+    builder.Services.Configure<Office365CalendarToolOptions>(config.GetSection("Integrations:Office365Calendar"));
 
     builder.Services.AddSingleton<IIntegrationTool, GitHubTool>();
     builder.Services.AddSingleton<IIntegrationTool, SentryTool>();
-    builder.Services.AddSingleton<IIntegrationTool, CalendarTool>();
+    builder.Services.AddSingleton<IIntegrationTool, Office365CalendarTool>();
 
     // ------------------------------------------------------------------
     // Skill System
@@ -99,12 +101,19 @@ try
     builder.Services.AddSingleton<PromptSkillRunner>();
     builder.Services.AddSingleton<CompiledSkillRunner>();
     builder.Services.AddSingleton<ISkillRouter, SkillRouter>();
+    builder.Services.AddSingleton<ISkill, StandupHelperSkill>();
+
+    // ------------------------------------------------------------------
+    // Standup Scheduler
+    // ------------------------------------------------------------------
+    builder.Services.Configure<StandupSchedulerOptions>(config.GetSection("StandupScheduler"));
 
     // ------------------------------------------------------------------
     // Background Services
     // ------------------------------------------------------------------
     builder.Services.AddHostedService<UpdateService>();
     builder.Services.AddHostedService<MessageProcessingService>();
+    builder.Services.AddHostedService<StandupSchedulerService>();
 
     // ------------------------------------------------------------------
     // Build & Configure Pipeline

@@ -7,27 +7,6 @@ using Octokit;
 namespace Anduril.Integrations;
 
 /// <summary>
-/// Configuration options for the GitHub integration.
-/// </summary>
-public class GitHubToolOptions
-{
-    /// <summary>
-    /// Gets or sets the GitHub personal access token.
-    /// </summary>
-    public string? Token { get; set; }
-
-    /// <summary>
-    /// Gets or sets the default repository owner.
-    /// </summary>
-    public string? DefaultOwner { get; set; }
-
-    /// <summary>
-    /// Gets or sets the default repository name.
-    /// </summary>
-    public string? DefaultRepo { get; set; }
-}
-
-/// <summary>
 /// Integration tool for GitHub, powered by Octokit.
 /// Exposes AI-callable functions for listing issues, creating PRs, reviewing code, etc.
 /// </summary>
@@ -70,6 +49,10 @@ public class GitHubTool(IOptions<GitHubToolOptions> options, ILogger<GitHubTool>
                 "List open pull requests for a GitHub repository."),
             AIFunctionFactory.Create(GetPullRequestFilesAsync, "github_get_pr_files",
                 "Get the list of changed files in a pull request."),
+            AIFunctionFactory.Create(ListPullRequestsSinceAsync, "github_list_pull_requests_since",
+                "List pull requests updated since a given date/time for a GitHub repository."),
+            AIFunctionFactory.Create(ListIssuesSinceAsync, "github_list_issues_since",
+                "List issues updated since a given date/time for a GitHub repository."),
         ];
     }
 
@@ -113,6 +96,65 @@ public class GitHubTool(IOptions<GitHubToolOptions> options, ILogger<GitHubTool>
 
         var files = await client.PullRequest.Files(o, r, number);
         return string.Join("\n", files.Select(f => $"{f.Status}: {f.FileName} (+{f.Additions} -{f.Deletions})"));
+    }
+
+    private async Task<string> ListPullRequestsSinceAsync(DateTime since, string? owner = null, string? repo = null)
+    {
+        var client = GetClient();
+        string o = owner ?? _options.DefaultOwner ?? throw new ArgumentException("Repository owner is required.");
+        string r = repo ?? _options.DefaultRepo ?? throw new ArgumentException("Repository name is required.");
+
+        var request = new PullRequestRequest
+        {
+            State = ItemStateFilter.All,
+            SortProperty = PullRequestSort.Updated,
+            SortDirection = SortDirection.Descending
+        };
+
+        var apiOptions = new ApiOptions { PageSize = 100, PageCount = 10 };
+        var allPrs = await client.PullRequest.GetAllForRepository(o, r, request, apiOptions);
+        var sinceUtc = since.ToUniversalTime();
+        var filtered = allPrs.Where(p => p.UpdatedAt >= new DateTimeOffset(sinceUtc, TimeSpan.Zero)).ToList();
+
+        if (filtered.Count == 0)
+            return $"No pull requests updated since {since:yyyy-MM-dd HH:mm}.";
+
+        return string.Join("\n", filtered.Select(p =>
+        {
+            string state = p.Merged
+                ? "merged"
+                : p.State == ItemState.Open ? "open" : "closed";
+            return $"#{p.Number}: {p.Title} ({state}, updated {p.UpdatedAt:yyyy-MM-dd HH:mm})";
+        }));
+    }
+
+    private async Task<string> ListIssuesSinceAsync(DateTime since, string? owner = null, string? repo = null)
+    {
+        var client = GetClient();
+        string o = owner ?? _options.DefaultOwner ?? throw new ArgumentException("Repository owner is required.");
+        string r = repo ?? _options.DefaultRepo ?? throw new ArgumentException("Repository name is required.");
+
+        var sinceUtc = since.ToUniversalTime();
+        var request = new RepositoryIssueRequest
+        {
+            State = ItemStateFilter.All,
+            Since = new DateTimeOffset(sinceUtc, TimeSpan.Zero),
+            SortProperty = IssueSort.Updated,
+            SortDirection = SortDirection.Descending
+        };
+
+        var issues = await client.Issue.GetAllForRepository(o, r, request);
+        // Octokit returns PRs as issues too — filter them out
+        var filtered = issues.Where(i => i.PullRequest is null).ToList();
+
+        if (filtered.Count == 0)
+            return $"No issues updated since {since:yyyy-MM-dd HH:mm}.";
+
+        return string.Join("\n", filtered.Select(i =>
+        {
+            string state = i.State == ItemState.Open ? "open" : "closed";
+            return $"#{i.Number}: {i.Title} ({state}, by {i.User.Login}, updated {i.UpdatedAt:yyyy-MM-dd HH:mm})";
+        }));
     }
 
     private GitHubClient GetClient() =>

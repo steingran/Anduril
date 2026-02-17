@@ -1,5 +1,6 @@
 using Anduril.Core.AI;
 using Anduril.Core.Communication;
+using Anduril.Core.Integrations;
 using Anduril.Core.Skills;
 using Anduril.Skills;
 using Microsoft.Extensions.AI;
@@ -8,15 +9,17 @@ namespace Anduril.Host;
 
 /// <summary>
 /// Background service that orchestrates the full message-processing pipeline:
-/// initializes AI providers, wires up skill routing, starts communication
+/// initializes AI providers and integration tools, wires up skill routing, starts communication
 /// adapters, and handles incoming messages end-to-end.
 /// </summary>
 public sealed class MessageProcessingService(
     IEnumerable<IAiProvider> aiProviders,
+    IEnumerable<IIntegrationTool> integrationTools,
     IEnumerable<ICommunicationAdapter> adapters,
     ISkillRouter router,
     PromptSkillRunner promptRunner,
     CompiledSkillRunner compiledRunner,
+    IEnumerable<ISkill> compiledSkills,
     ILogger<MessageProcessingService> logger)
     : IHostedService, IAsyncDisposable
 {
@@ -57,13 +60,38 @@ public sealed class MessageProcessingService(
                 "Fallback AI chat will not work. Configure OpenAI, Anthropic, Augment Chat, Ollama, or LLamaSharp with valid credentials.");
         }
 
-        // 2. Register skill runners with the router and build the skill index
+        // 2. Initialize integration tools (best-effort — log failures, keep going)
+        int toolsInitialized = 0;
+        foreach (var tool in integrationTools)
+        {
+            try
+            {
+                await tool.InitializeAsync(cancellationToken);
+                if (tool.IsAvailable)
+                {
+                    toolsInitialized++;
+                    logger.LogInformation("Integration tool '{Name}' initialized successfully", tool.Name);
+                }
+            }
+            catch (Exception ex)
+            {
+                logger.LogWarning(ex, "Integration tool '{Name}' failed to initialize — skipping", tool.Name);
+            }
+        }
+
+        logger.LogInformation("{Count} integration tool(s) available", toolsInitialized);
+
+        // 3. Register skill runners with the router and build the skill index
         compiledRunner.LoadFromDirectory();
+        foreach (var skill in compiledSkills)
+        {
+            compiledRunner.Register(skill);
+        }
         router.RegisterRunner(promptRunner);
         router.RegisterRunner(compiledRunner);
         await router.RefreshAsync(cancellationToken);
 
-        // 3. Start communication adapters and subscribe to incoming messages
+        // 4. Start communication adapters and subscribe to incoming messages
         foreach (var adapter in adapters)
         {
             try
@@ -239,6 +267,22 @@ public sealed class MessageProcessingService(
                 catch (Exception ex)
                 {
                     logger.LogWarning(ex, "Error disposing adapter '{Platform}'", adapter.Platform);
+                }
+            }
+        }
+
+        // Dispose integration tools
+        foreach (var tool in integrationTools)
+        {
+            if (tool is IAsyncDisposable asyncDisposable)
+            {
+                try
+                {
+                    await asyncDisposable.DisposeAsync();
+                }
+                catch (Exception ex)
+                {
+                    logger.LogWarning(ex, "Error disposing integration tool '{Name}'", tool.Name);
                 }
             }
         }
