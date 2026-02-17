@@ -34,12 +34,15 @@ public sealed class AnthropicProvider(IOptions<AiProviderOptions> options, ILogg
             return Task.CompletedTask;
         }
 
-        // The Anthropic.SDK AnthropicClient.Messages already implements IChatClient
-        // Note: The model is specified per-request via ChatOptions, not at client initialization
-        var client = new AnthropicClient(apiKey);
-        _chatClient = client.Messages;
+        string model = _options.Model ?? "claude-sonnet-4-5";
 
-        string model = _options.Model ?? "claude-sonnet-4-20250514";
+        // The Anthropic.SDK AnthropicClient.Messages implements IChatClient,
+        // but requires the model to be specified per-request via ChatOptions.
+        // We wrap it to automatically inject the model on every call.
+        var client = new AnthropicClient(apiKey);
+        var baseClient = client.Messages;
+        _chatClient = new AnthropicChatClientWrapper(baseClient, model);
+
         logger.LogInformation("Anthropic provider initialized. Default model: {Model}", model);
         return Task.CompletedTask;
     }
@@ -58,6 +61,56 @@ public sealed class AnthropicProvider(IOptions<AiProviderOptions> options, ILogg
         }
         _chatClient = null;
         return ValueTask.CompletedTask;
+    }
+}
+
+/// <summary>
+/// Wrapper around Anthropic's IChatClient that automatically injects the model name
+/// into ChatOptions for every request, since Anthropic requires model per-request.
+/// </summary>
+internal sealed class AnthropicChatClientWrapper(IChatClient innerClient, string model) : IChatClient
+{
+    public ChatClientMetadata Metadata => new("anthropic", providerUri: null, model);
+
+    public Task<ChatResponse> GetResponseAsync(
+        IEnumerable<ChatMessage> messages,
+        ChatOptions? options = null,
+        CancellationToken cancellationToken = default)
+    {
+        var mergedOptions = MergeOptions(options);
+        return innerClient.GetResponseAsync(messages, mergedOptions, cancellationToken);
+    }
+
+    public IAsyncEnumerable<ChatResponseUpdate> GetStreamingResponseAsync(
+        IEnumerable<ChatMessage> messages,
+        ChatOptions? options = null,
+        CancellationToken cancellationToken = default)
+    {
+        var mergedOptions = MergeOptions(options);
+        return innerClient.GetStreamingResponseAsync(messages, mergedOptions, cancellationToken);
+    }
+
+    public object? GetService(Type serviceType, object? serviceKey = null)
+    {
+        if (serviceType == typeof(AnthropicChatClientWrapper)) return this;
+        return innerClient.GetService(serviceType, serviceKey);
+    }
+
+    public void Dispose()
+    {
+        if (innerClient is IDisposable disposable)
+        {
+            disposable.Dispose();
+        }
+    }
+
+    private ChatOptions MergeOptions(ChatOptions? options)
+    {
+        // Clone to avoid mutating the caller's instance
+        var merged = options?.Clone() ?? new ChatOptions();
+        // Only set model if not already specified by caller
+        merged.ModelId ??= model;
+        return merged;
     }
 }
 

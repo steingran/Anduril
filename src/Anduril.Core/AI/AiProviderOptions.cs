@@ -11,7 +11,7 @@ public class AiProviderOptions
     public string Provider { get; set; } = string.Empty;
 
     /// <summary>
-    /// Gets or sets the model identifier (e.g., "gpt-4o", "claude-sonnet-4-20250514", "qwen2.5:7b").
+    /// Gets or sets the model identifier (e.g., "gpt-4o", "claude-sonnet-4-5", "qwen2.5:7b").
     /// </summary>
     public string Model { get; set; } = string.Empty;
 
