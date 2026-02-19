@@ -34,5 +34,12 @@ public class AiProviderOptions
     /// Gets or sets the path to the Augment CLI executable (for the MCP provider).
     /// </summary>
     public string? AugmentCliPath { get; set; }
+
+    /// <summary>
+    /// Gets or sets whether prompt caching is enabled for this provider.
+    /// When enabled, the provider will use the API's caching features to reduce latency and cost
+    /// for repeated system prompts and tool definitions. Currently supported by Anthropic.
+    /// </summary>
+    public bool EnablePromptCaching { get; set; }
 }
 
