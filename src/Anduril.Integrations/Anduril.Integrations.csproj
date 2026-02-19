@@ -1,17 +1,17 @@
-﻿<Project Sdk="Microsoft.NET.Sdk">
+<Project Sdk="Microsoft.NET.Sdk">
 
   <ItemGroup>
     <ProjectReference Include="..\Anduril.Core\Anduril.Core.csproj" />
   </ItemGroup>
 
   <ItemGroup>
-    <PackageReference Include="Azure.Identity" Version="1.17.1" />
-    <PackageReference Include="Google.Apis.Gmail.v1" Version="1.73.0.4029" />
-    <PackageReference Include="Microsoft.Extensions.AI" Version="10.3.0" />
-    <PackageReference Include="Microsoft.Extensions.Options" Version="10.0.3" />
-    <PackageReference Include="Microsoft.Graph" Version="5.102.0" />
-    <PackageReference Include="Octokit" Version="14.0.0" />
-    <PackageReference Include="Sentry" Version="6.1.0" />
+    <PackageReference Include="Azure.Identity" />
+    <PackageReference Include="Google.Apis.Gmail.v1" />
+    <PackageReference Include="Microsoft.Extensions.AI" />
+    <PackageReference Include="Microsoft.Extensions.Options" />
+    <PackageReference Include="Microsoft.Graph" />
+    <PackageReference Include="Octokit" />
+    <PackageReference Include="Sentry" />
   </ItemGroup>
 
   <PropertyGroup>
