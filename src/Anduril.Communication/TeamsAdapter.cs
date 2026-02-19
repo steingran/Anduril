@@ -58,10 +58,37 @@ public sealed class TeamsAdapter(IOptions<TeamsAdapterOptions> options, ILogger<
             return null;
         }
 
-        var activity = MessageFactory.Text(message.Text);
+        // Convert standard Markdown to Teams-compatible format
+        string teamsText = TeamsMarkdownConverter.ConvertToTeamsMarkdown(message.Text);
+
+        var activity = MessageFactory.Text(teamsText);
+
+        // Keep the reply in the correct thread so Teams shows it as a thread reply
+        if (!string.IsNullOrEmpty(message.ThreadId))
+            activity.ReplyToId = message.ThreadId;
+
         var response = await turnContext.SendActivityAsync(activity, cancellationToken);
         logger.LogDebug("Sent Teams message to conversation {ConversationId}", message.ChannelId);
         return response?.Id;
+    }
+
+    public async Task UpdateMessageAsync(string messageId, OutgoingMessage message, CancellationToken cancellationToken = default)
+    {
+        if (!_turnContexts.TryGetValue(message.ChannelId, out var turnContext))
+            throw new InvalidOperationException(
+                $"No turn context found for conversation '{message.ChannelId}'. Cannot update message.");
+
+        string teamsText = TeamsMarkdownConverter.ConvertToTeamsMarkdown(message.Text);
+
+        var activity = MessageFactory.Text(teamsText);
+        activity.Id = messageId;
+
+        // Preserve thread association for threaded messages (Teams uses ReplyToId semantics)
+        if (!string.IsNullOrEmpty(message.ThreadId))
+            activity.ReplyToId = message.ThreadId;
+
+        await turnContext.UpdateActivityAsync(activity, cancellationToken);
+        logger.LogDebug("Updated Teams message {MessageId} in conversation {ConversationId}", messageId, message.ChannelId);
     }
 
     /// <summary>

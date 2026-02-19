@@ -11,6 +11,7 @@ using Anduril.Host.Services;
 using Anduril.Integrations;
 using Anduril.Skills;
 using Anduril.Skills.Compiled;
+using Microsoft.Bot.Builder.Integration.AspNet.Core;
 using Microsoft.Extensions.Options;
 using Serilog;
 
@@ -83,6 +84,15 @@ try
     builder.Services.AddSingleton<ICommunicationAdapter, CliAdapter>();
     builder.Services.AddSingleton<ICommunicationAdapter, SlackAdapter>();
     builder.Services.AddSingleton<ICommunicationAdapter, TeamsAdapter>();
+
+    // Bot Framework adapter for Teams webhook integration.
+    // ConfigurationBotFrameworkAuthentication reads MicrosoftAppId/Password from the
+    // provided IConfiguration section — we pass the Communication:Teams subsection so
+    // it picks up our credentials rather than looking at the root config.
+    builder.Services.AddSingleton<IBotFrameworkHttpAdapter>(sp =>
+        new CloudAdapter(
+            new ConfigurationBotFrameworkAuthentication(config.GetSection("Communication:Teams")),
+            sp.GetRequiredService<ILogger<CloudAdapter>>()));
 
     // ------------------------------------------------------------------
     // Integration Tools
@@ -217,6 +227,24 @@ try
             endpointLogger.LogError(ex, "Error processing Gmail push notification");
             return Results.Ok(); // ACK to Pub/Sub even on error to prevent infinite redelivery
         }
+    });
+
+    // ------------------------------------------------------------------
+    // Teams Bot Framework Webhook Endpoint (Teams → Anduril)
+    // ------------------------------------------------------------------
+    app.MapPost("/api/teams/messages", async (
+        HttpContext httpContext,
+        IBotFrameworkHttpAdapter adapter,
+        IEnumerable<ICommunicationAdapter> adapters) =>
+    {
+        var teamsAdapter = adapters.OfType<TeamsAdapter>().FirstOrDefault();
+        if (teamsAdapter is null)
+        {
+            return Results.StatusCode(500);
+        }
+
+        await adapter.ProcessAsync(httpContext.Request, httpContext.Response, new TeamsBot(teamsAdapter));
+        return Results.Empty;
     });
 
     Log.Information("Anduril AI Assistant starting...");
