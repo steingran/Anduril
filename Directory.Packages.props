@@ -1,0 +1,30 @@
+<Project>
+  <PropertyGroup>
+    <ManagePackageVersionsCentrally>true</ManagePackageVersionsCentrally>
+    <CentralPackageTransitivePinningEnabled>false</CentralPackageTransitivePinningEnabled>
+  </PropertyGroup>
+  <ItemGroup>
+    <PackageVersion Include="Anthropic.SDK" Version="5.9.0" />
+    <PackageVersion Include="Azure.Identity" Version="1.17.1" />
+    <PackageVersion Include="Google.Apis.Gmail.v1" Version="1.73.0.4029" />
+    <PackageVersion Include="LLamaSharp" Version="0.26.0" />
+    <PackageVersion Include="Microsoft.Bot.Builder.Integration.AspNet.Core" Version="4.23.1" />
+    <PackageVersion Include="Microsoft.EntityFrameworkCore.Sqlite" Version="10.0.3" />
+    <PackageVersion Include="Microsoft.Extensions.AI" Version="10.3.0" />
+    <PackageVersion Include="Microsoft.Extensions.AI.Abstractions" Version="10.3.0" />
+    <PackageVersion Include="Microsoft.Extensions.AI.OpenAI" Version="10.3.0" />
+    <PackageVersion Include="Microsoft.Extensions.DependencyInjection.Abstractions" Version="10.0.3" />
+    <PackageVersion Include="Microsoft.Extensions.Options" Version="10.0.3" />
+    <PackageVersion Include="Microsoft.Graph" Version="5.102.0" />
+    <PackageVersion Include="ModelContextProtocol" Version="0.8.0-preview.1" />
+    <PackageVersion Include="Octokit" Version="14.0.0" />
+    <PackageVersion Include="OllamaSharp" Version="5.4.16" />
+    <PackageVersion Include="Sentry" Version="6.1.0" />
+    <PackageVersion Include="Serilog.AspNetCore" Version="10.0.0" />
+    <PackageVersion Include="SlackNet" Version="0.17.9" />
+    <PackageVersion Include="SlackNet.Extensions.DependencyInjection" Version="0.17.9" />
+    <PackageVersion Include="TUnit" Version="1.16.4" />
+    <PackageVersion Include="TUnit.Engine" Version="1.16.4" />
+    <PackageVersion Include="Velopack" Version="0.0.1298" />
+  </ItemGroup>
+</Project>
