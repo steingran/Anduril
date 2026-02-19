@@ -50,17 +50,18 @@ public sealed class TeamsAdapter(IOptions<TeamsAdapterOptions> options, ILogger<
         return Task.CompletedTask;
     }
 
-    public async Task SendMessageAsync(OutgoingMessage message, CancellationToken cancellationToken = default)
+    public async Task<string?> SendMessageAsync(OutgoingMessage message, CancellationToken cancellationToken = default)
     {
         if (!_turnContexts.TryGetValue(message.ChannelId, out var turnContext))
         {
             logger.LogWarning("No turn context found for conversation {ConversationId}. Cannot send message.", message.ChannelId);
-            return;
+            return null;
         }
 
         var activity = MessageFactory.Text(message.Text);
-        await turnContext.SendActivityAsync(activity, cancellationToken);
+        var response = await turnContext.SendActivityAsync(activity, cancellationToken);
         logger.LogDebug("Sent Teams message to conversation {ConversationId}", message.ChannelId);
+        return response?.Id;
     }
 
     /// <summary>

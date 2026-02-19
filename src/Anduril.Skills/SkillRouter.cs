@@ -7,10 +7,17 @@ namespace Anduril.Skills;
 
 /// <summary>
 /// Routes incoming messages to the most appropriate skill by matching trigger phrases.
-/// Falls back to null (general AI conversation) when no skill matches.
+/// Uses a minimum match ratio to ensure only confident matches are routed — messages
+/// with weak/vague trigger overlap fall through to AI-based conversation with tools.
 /// </summary>
 public class SkillRouter(ILogger<SkillRouter> logger) : ISkillRouter
 {
+    /// <summary>
+    /// Minimum ratio of matched trigger length to message length required to route
+    /// to a skill. Below this threshold the message falls through to the AI with tools.
+    /// A value of 0.3 means triggers must cover at least 30% of the message text.
+    /// </summary>
+    internal const double MinimumMatchRatio = 0.3;
     private readonly List<ISkillRunner> _runners = [];
     private ImmutableList<SkillInfo> _skillIndex = ImmutableList<SkillInfo>.Empty;
 
@@ -54,11 +61,26 @@ public class SkillRouter(ILogger<SkillRouter> logger) : ISkillRouter
             }
         }
 
+        // Hybrid routing: only route if the match covers a meaningful portion of the message.
+        // This ensures specific commands like "check my email" route to skills, while
+        // conversational requests like "summarize my gmail emails for the last 24 hours"
+        // fall through to the AI which can invoke the same tools more naturally.
         if (bestMatch is not null)
         {
-            logger.LogDebug(
-                "Routed message to skill '{Skill}' (score: {Score})",
-                bestMatch.Name, bestScore);
+            double ratio = (double)bestScore / text.Length;
+            if (ratio < MinimumMatchRatio)
+            {
+                logger.LogDebug(
+                    "Skill '{Skill}' matched with low confidence (score: {Score}, ratio: {Ratio:P0}) — falling through to AI",
+                    bestMatch.Name, bestScore, ratio);
+                bestMatch = null;
+            }
+            else
+            {
+                logger.LogDebug(
+                    "Routed message to skill '{Skill}' (score: {Score}, ratio: {Ratio:P0})",
+                    bestMatch.Name, bestScore, ratio);
+            }
         }
         else
         {

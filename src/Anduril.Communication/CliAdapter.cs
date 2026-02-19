@@ -52,7 +52,7 @@ public sealed class CliAdapter(ILogger<CliAdapter> logger) : ICommunicationAdapt
         logger.LogInformation("CLI adapter stopped.");
     }
 
-    public Task SendMessageAsync(OutgoingMessage message, CancellationToken cancellationToken = default)
+    public Task<string?> SendMessageAsync(OutgoingMessage message, CancellationToken cancellationToken = default)
     {
         Console.WriteLine();
         Console.ForegroundColor = ConsoleColor.Cyan;
@@ -60,7 +60,7 @@ public sealed class CliAdapter(ILogger<CliAdapter> logger) : ICommunicationAdapt
         Console.ResetColor();
         Console.WriteLine(message.Text);
         Console.WriteLine();
-        return Task.CompletedTask;
+        return Task.FromResult<string?>(null);
     }
 
     private async Task ReadLoopAsync(CancellationToken cancellationToken)

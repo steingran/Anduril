@@ -1,3 +1,4 @@
+using System.Text.Json;
 using Anduril.AI.Detection;
 using Anduril.AI.Providers;
 using Anduril.Communication;
@@ -89,10 +90,13 @@ try
     builder.Services.Configure<GitHubToolOptions>(config.GetSection("Integrations:GitHub"));
     builder.Services.Configure<SentryToolOptions>(config.GetSection("Integrations:Sentry"));
     builder.Services.Configure<Office365CalendarToolOptions>(config.GetSection("Integrations:Office365Calendar"));
+    builder.Services.Configure<GmailToolOptions>(config.GetSection("Integrations:Gmail"));
 
     builder.Services.AddSingleton<IIntegrationTool, GitHubTool>();
     builder.Services.AddSingleton<IIntegrationTool, SentryTool>();
     builder.Services.AddSingleton<IIntegrationTool, Office365CalendarTool>();
+    builder.Services.AddSingleton<GmailTool>();
+    builder.Services.AddSingleton<IIntegrationTool>(sp => sp.GetRequiredService<GmailTool>());
 
     // ------------------------------------------------------------------
     // Skill System
@@ -102,6 +106,7 @@ try
     builder.Services.AddSingleton<CompiledSkillRunner>();
     builder.Services.AddSingleton<ISkillRouter, SkillRouter>();
     builder.Services.AddSingleton<ISkill, StandupHelperSkill>();
+    builder.Services.AddSingleton<ISkill, GmailSkill>();
 
     // ------------------------------------------------------------------
     // Standup Scheduler
@@ -109,11 +114,18 @@ try
     builder.Services.Configure<StandupSchedulerOptions>(config.GetSection("StandupScheduler"));
 
     // ------------------------------------------------------------------
+    // Gmail Scheduler
+    // ------------------------------------------------------------------
+    builder.Services.Configure<GmailSchedulerOptions>(config.GetSection("GmailScheduler"));
+
+    // ------------------------------------------------------------------
     // Background Services
     // ------------------------------------------------------------------
     builder.Services.AddHostedService<UpdateService>();
     builder.Services.AddHostedService<MessageProcessingService>();
     builder.Services.AddHostedService<StandupSchedulerService>();
+    builder.Services.AddHostedService<GmailSchedulerService>();
+    builder.Services.AddHostedService<GmailWatchRenewalService>();
 
     // ------------------------------------------------------------------
     // Build & Configure Pipeline
@@ -132,6 +144,80 @@ try
         version = "0.1.0",
         status = "running"
     }));
+
+    // ------------------------------------------------------------------
+    // Gmail Push Notification Endpoint (Pub/Sub → Anduril)
+    // ------------------------------------------------------------------
+    app.MapPost("/api/gmail/push", async (
+        HttpContext context,
+        GmailTool gmailTool,
+        IEnumerable<ICommunicationAdapter> adapters,
+        ILogger<Program> endpointLogger) =>
+    {
+        try
+        {
+            using var reader = new StreamReader(context.Request.Body);
+            var body = await reader.ReadToEndAsync();
+
+            // Pub/Sub sends: { "message": { "data": "<base64>", "messageId": "..." }, "subscription": "..." }
+            using var doc = JsonDocument.Parse(body);
+            var dataBase64 = doc.RootElement
+                .GetProperty("message")
+                .GetProperty("data")
+                .GetString();
+
+            if (string.IsNullOrEmpty(dataBase64))
+            {
+                endpointLogger.LogWarning("Gmail push notification received with empty data.");
+                return Results.Ok(); // ACK to avoid redelivery
+            }
+
+            var dataJson = System.Text.Encoding.UTF8.GetString(Convert.FromBase64String(dataBase64));
+            using var dataDoc = JsonDocument.Parse(dataJson);
+
+            // Gmail notification payload: { "emailAddress": "...", "historyId": 12345 }
+            var historyId = dataDoc.RootElement.GetProperty("historyId").GetUInt64();
+
+            endpointLogger.LogInformation(
+                "Gmail push notification received. History ID: {HistoryId}", historyId);
+
+            if (!gmailTool.IsAvailable)
+            {
+                endpointLogger.LogWarning("Gmail tool not available. Ignoring push notification.");
+                return Results.Ok();
+            }
+
+            var notifications = await gmailTool.ProcessPushNotificationAsync(historyId);
+
+            // Send any rule-triggered notifications to connected adapters
+            foreach (var notification in notifications)
+            {
+                var adapter = adapters.FirstOrDefault(a => a.IsConnected);
+                if (adapter is null) break;
+
+                try
+                {
+                    await adapter.SendMessageAsync(new OutgoingMessage
+                    {
+                        Text = notification,
+                        ChannelId = app.Configuration["GmailScheduler:TargetChannel"] ?? ""
+                    });
+                }
+                catch (Exception ex)
+                {
+                    endpointLogger.LogError(ex,
+                        "Failed to send Gmail notification through {Platform}", adapter.Platform);
+                }
+            }
+
+            return Results.Ok();
+        }
+        catch (Exception ex)
+        {
+            endpointLogger.LogError(ex, "Error processing Gmail push notification");
+            return Results.Ok(); // ACK to Pub/Sub even on error to prevent infinite redelivery
+        }
+    });
 
     Log.Information("Anduril AI Assistant starting...");
     app.Run();
