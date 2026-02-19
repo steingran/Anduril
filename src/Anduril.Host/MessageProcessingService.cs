@@ -1,9 +1,11 @@
+using System.Text.Json;
 using Anduril.Core.AI;
 using Anduril.Core.Communication;
 using Anduril.Core.Integrations;
 using Anduril.Core.Skills;
 using Anduril.Skills;
 using Microsoft.Extensions.AI;
+using Microsoft.Extensions.Options;
 
 namespace Anduril.Host;
 
@@ -20,6 +22,8 @@ public sealed class MessageProcessingService(
     PromptSkillRunner promptRunner,
     CompiledSkillRunner compiledRunner,
     IEnumerable<ISkill> compiledSkills,
+    IConversationSessionStore sessionStore,
+    IOptions<ConversationSessionOptions> sessionOptions,
     ILogger<MessageProcessingService> logger)
     : IHostedService, IAsyncDisposable
 {
@@ -305,6 +309,9 @@ public sealed class MessageProcessingService(
                 : "No AI provider is available right now. Please check the configuration.";
         }
 
+        // Session key = platform:userId — gives each user a persistent conversation
+        string sessionKey = $"{message.Platform}:{message.UserId}";
+
         try
         {
             var chatClient = provider.ChatClient;
@@ -336,6 +343,16 @@ public sealed class MessageProcessingService(
 
             logger.LogDebug("Fallback AI chat with {ToolCount} tool(s) available", tools.Count);
 
+            // Load conversation history from the session store
+            var history = await sessionStore.LoadAsync(sessionKey);
+            logger.LogDebug(
+                "Loaded {Count} message(s) from session '{SessionKey}'",
+                history.Count, sessionKey);
+
+            // Compact the session if it exceeds the token limit
+            history = await CompactSessionAsync(sessionKey, history, chatClient);
+
+            // Build the message list: system prompt + history + current user message
             var messages = new List<ChatMessage>
             {
                 new(ChatRole.System,
@@ -351,10 +368,25 @@ public sealed class MessageProcessingService(
                     "Use `code` for inline code and ``` for code blocks. " +
                     "Use ~strikethrough~ sparingly. " +
                     "Use [text](url) for links. " +
-                    "Keep responses scannable with short paragraphs and clear section breaks."),
-                new(ChatRole.User, message.Text)
+                    "Keep responses scannable with short paragraphs and clear section breaks.")
             };
 
+            // Replay conversation history
+            foreach (var entry in history)
+            {
+                var role = entry.Role switch
+                {
+                    "assistant" => ChatRole.Assistant,
+                    "system" => ChatRole.System,
+                    _ => ChatRole.User
+                };
+                messages.Add(new ChatMessage(role, entry.Content));
+            }
+
+            // Add the current user message
+            messages.Add(new ChatMessage(ChatRole.User, message.Text));
+
+            string responseText;
             if (tools.Count > 0)
             {
                 // Wrap in FunctionInvokingChatClient to automatically handle tool call loops:
@@ -362,13 +394,21 @@ public sealed class MessageProcessingService(
                 var functionCallingClient = new FunctionInvokingChatClient(chatClient);
                 var options = new ChatOptions { Tools = tools };
                 var response = await functionCallingClient.GetResponseAsync(messages, options);
-                return response.Text ?? "I received an empty response from the AI provider.";
+                responseText = response.Text ?? "I received an empty response from the AI provider.";
             }
             else
             {
                 var response = await chatClient.GetResponseAsync(messages);
-                return response.Text ?? "I received an empty response from the AI provider.";
+                responseText = response.Text ?? "I received an empty response from the AI provider.";
             }
+
+            // Persist both user and assistant messages only after a successful AI response
+            await sessionStore.AppendAsync(sessionKey,
+                new SessionMessage("user", message.Text, message.Timestamp));
+            await sessionStore.AppendAsync(sessionKey,
+                new SessionMessage("assistant", responseText, DateTimeOffset.UtcNow));
+
+            return responseText;
         }
         catch (Exception ex)
         {
@@ -376,6 +416,89 @@ public sealed class MessageProcessingService(
             return "I had trouble getting a response from the AI. Please try again.";
         }
     }
+
+    /// <summary>
+    /// Estimates the total token count for a list of session messages.
+    /// Uses the ~4 characters per token heuristic (matching OpenClaw).
+    /// Each message is serialized to JSON for a consistent size estimate.
+    /// </summary>
+    internal static int EstimateTokens(IReadOnlyList<SessionMessage> messages)
+    {
+        int totalChars = 0;
+        foreach (var msg in messages)
+            totalChars += JsonSerializer.Serialize(msg).Length;
+
+        return totalChars / 4;
+    }
+
+    /// <summary>
+    /// Compacts the session if the estimated token count exceeds the configured threshold.
+    /// Splits messages in half, summarizes the older half via AI, and replaces them
+    /// with a single summary message. Preserves key facts about the user.
+    /// </summary>
+    private async Task<IReadOnlyList<SessionMessage>> CompactSessionAsync(
+        string sessionKey,
+        IReadOnlyList<SessionMessage> messages,
+        IChatClient chatClient)
+    {
+        int maxTokens = sessionOptions.Value.MaxTokens;
+
+        // Treat non-positive MaxTokens as "compaction disabled" to avoid unnecessary AI calls
+        if (maxTokens <= 0)
+            return messages;
+
+        if (EstimateTokens(messages) < maxTokens)
+            return messages;
+
+        int split = messages.Count / 2;
+        var oldMessages = messages.Take(split).ToList();
+        var recentMessages = messages.Skip(split).ToList();
+
+        logger.LogInformation(
+            "Compacting session '{SessionKey}': {Total} messages, splitting at {Split}",
+            sessionKey, messages.Count, split);
+
+        try
+        {
+            var summaryPrompt = new List<ChatMessage>
+            {
+                new(ChatRole.User,
+                    "Summarize this conversation concisely. Preserve:\n" +
+                    "- Key facts about the user (name, preferences)\n" +
+                    "- Important decisions made\n" +
+                    "- Open tasks or TODOs\n\n" +
+                    JsonSerializer.Serialize(oldMessages, new JsonSerializerOptions { WriteIndented = true }))
+            };
+
+            var summaryResponse = await chatClient.GetResponseAsync(summaryPrompt, new ChatOptions
+            {
+                MaxOutputTokens = 2000
+            });
+
+            string summaryText = summaryResponse.Text
+                ?? "Previous conversation context (summary unavailable).";
+
+            var compacted = new List<SessionMessage>(recentMessages.Count + 1)
+            {
+                new("system", $"[Previous conversation summary]\n{summaryText}", recentMessages[0].Timestamp)
+            };
+            compacted.AddRange(recentMessages);
+
+            await sessionStore.ReplaceAllAsync(sessionKey, compacted);
+
+            logger.LogInformation(
+                "Session '{SessionKey}' compacted from {OldCount} to {NewCount} messages",
+                sessionKey, messages.Count, compacted.Count);
+
+            return compacted;
+        }
+        catch (Exception ex)
+        {
+            logger.LogWarning(ex, "Failed to compact session '{SessionKey}' — using uncompacted history", sessionKey);
+            return messages;
+        }
+    }
+
 
     public async ValueTask DisposeAsync()
     {

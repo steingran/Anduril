@@ -109,6 +109,12 @@ try
     builder.Services.AddSingleton<IIntegrationTool>(sp => sp.GetRequiredService<GmailTool>());
 
     // ------------------------------------------------------------------
+    // Conversation Session Store
+    // ------------------------------------------------------------------
+    builder.Services.Configure<ConversationSessionOptions>(config.GetSection("ConversationSessions"));
+    builder.Services.AddSingleton<IConversationSessionStore, JsonlConversationSessionStore>();
+
+    // ------------------------------------------------------------------
     // Skill System
     // ------------------------------------------------------------------
     builder.Services.AddSingleton<PromptSkillLoader>();

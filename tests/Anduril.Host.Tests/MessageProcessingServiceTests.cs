@@ -5,6 +5,7 @@ using Anduril.Core.Skills;
 using Anduril.Skills;
 using Microsoft.Extensions.AI;
 using Microsoft.Extensions.Logging.Abstractions;
+using Microsoft.Extensions.Options;
 
 namespace Anduril.Host.Tests;
 
@@ -180,9 +181,12 @@ public class MessageProcessingServiceTests
         var loader = new PromptSkillLoader(NullLogger<PromptSkillLoader>.Instance);
         var promptRunner = new PromptSkillRunner(loader, [], NullLogger<PromptSkillRunner>.Instance, "nonexistent_skills");
         var compiledRunner = new CompiledSkillRunner(NullLogger<CompiledSkillRunner>.Instance, "nonexistent_plugins");
+        var sessionStore = new FakeSessionStore();
+        var sessionOptions = Options.Create(new ConversationSessionOptions());
         var service = new MessageProcessingService(
             [provider], Array.Empty<IIntegrationTool>(), [adapter], router,
             promptRunner, compiledRunner, Array.Empty<ISkill>(),
+            sessionStore, sessionOptions,
             NullLogger<MessageProcessingService>.Instance);
         return (service, adapter, provider);
     }
@@ -247,6 +251,23 @@ public class MessageProcessingServiceTests
             => throw new NotSupportedException();
         public object? GetService(Type serviceType, object? serviceKey = null) => null;
         public void Dispose() { }
+    }
+
+    private sealed class FakeSessionStore : IConversationSessionStore
+    {
+        public List<(string Key, SessionMessage Message)> AppendedMessages { get; } = [];
+
+        public Task<IReadOnlyList<SessionMessage>> LoadAsync(string sessionKey, CancellationToken cancellationToken = default)
+            => Task.FromResult<IReadOnlyList<SessionMessage>>([]);
+
+        public Task AppendAsync(string sessionKey, SessionMessage message, CancellationToken cancellationToken = default)
+        {
+            AppendedMessages.Add((sessionKey, message));
+            return Task.CompletedTask;
+        }
+
+        public Task ReplaceAllAsync(string sessionKey, IReadOnlyList<SessionMessage> messages, CancellationToken cancellationToken = default)
+            => Task.CompletedTask;
     }
 
     private sealed class ThrowingRouter : ISkillRouter
