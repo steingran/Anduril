@@ -1,5 +1,6 @@
 using Anduril.Core.AI;
 using Anthropic.SDK;
+using Anthropic.SDK.Messaging;
 using Microsoft.Extensions.AI;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
@@ -35,15 +36,18 @@ public sealed class AnthropicProvider(IOptions<AiProviderOptions> options, ILogg
         }
 
         string model = _options.Model ?? "claude-sonnet-4-5";
+        bool enablePromptCaching = _options.EnablePromptCaching;
 
         // The Anthropic.SDK AnthropicClient.Messages implements IChatClient,
         // but requires the model to be specified per-request via ChatOptions.
         // We wrap it to automatically inject the model on every call.
         var client = new AnthropicClient(apiKey);
         var baseClient = client.Messages;
-        _chatClient = new AnthropicChatClientWrapper(baseClient, model);
+        _chatClient = new AnthropicChatClientWrapper(baseClient, model, enablePromptCaching);
 
-        logger.LogInformation("Anthropic provider initialized. Default model: {Model}", model);
+        logger.LogInformation(
+            "Anthropic provider initialized. Default model: {Model}, prompt caching: {PromptCaching}",
+            model, enablePromptCaching);
         return Task.CompletedTask;
     }
 
@@ -66,9 +70,13 @@ public sealed class AnthropicProvider(IOptions<AiProviderOptions> options, ILogg
 
 /// <summary>
 /// Wrapper around Anthropic's IChatClient that automatically injects the model name
-/// into ChatOptions for every request, since Anthropic requires model per-request.
+/// and prompt caching configuration into ChatOptions for every request,
+/// since Anthropic requires model per-request.
 /// </summary>
-internal sealed class AnthropicChatClientWrapper(IChatClient innerClient, string model) : IChatClient
+internal sealed class AnthropicChatClientWrapper(
+    IChatClient innerClient,
+    string model,
+    bool enablePromptCaching = false) : IChatClient
 {
     public ChatClientMetadata Metadata => new("anthropic", providerUri: null, model);
 
@@ -110,6 +118,22 @@ internal sealed class AnthropicChatClientWrapper(IChatClient innerClient, string
         var merged = options?.Clone() ?? new ChatOptions();
         // Only set model if not already specified by caller
         merged.ModelId ??= model;
+
+        if (enablePromptCaching)
+        {
+            // Inject RawRepresentationFactory to configure Anthropic's prompt caching.
+            // The SDK uses this factory to create the base MessageParameters, which lets us
+            // set PromptCaching = AutomaticToolsAndSystem so the API automatically caches
+            // system prompts and tool definitions — reducing latency and cost for repeated calls.
+            var existingFactory = merged.RawRepresentationFactory;
+            merged.RawRepresentationFactory = client =>
+            {
+                var parameters = existingFactory?.Invoke(client) as MessageParameters ?? new MessageParameters();
+                parameters.PromptCaching = PromptCacheType.AutomaticToolsAndSystem;
+                return parameters;
+            };
+        }
+
         return merged;
     }
 }

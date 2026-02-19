@@ -386,21 +386,22 @@ public sealed class MessageProcessingService(
             // Add the current user message
             messages.Add(new ChatMessage(ChatRole.User, message.Text));
 
-            string responseText;
+            ChatResponse response;
             if (tools.Count > 0)
             {
                 // Wrap in FunctionInvokingChatClient to automatically handle tool call loops:
                 // AI requests a tool call → function is executed → result sent back → AI responds
                 var functionCallingClient = new FunctionInvokingChatClient(chatClient);
                 var options = new ChatOptions { Tools = tools };
-                var response = await functionCallingClient.GetResponseAsync(messages, options);
-                responseText = response.Text ?? "I received an empty response from the AI provider.";
+                response = await functionCallingClient.GetResponseAsync(messages, options);
             }
             else
             {
-                var response = await chatClient.GetResponseAsync(messages);
-                responseText = response.Text ?? "I received an empty response from the AI provider.";
+                response = await chatClient.GetResponseAsync(messages);
             }
+
+            string responseText = response.Text ?? "I received an empty response from the AI provider.";
+            LogUsageDetails(provider.Name, response);
 
             // Persist both user and assistant messages only after a successful AI response
             await sessionStore.AppendAsync(sessionKey,
@@ -414,6 +415,34 @@ public sealed class MessageProcessingService(
         {
             logger.LogError(ex, "Fallback AI chat failed using provider '{Name}'", provider.Name);
             return "I had trouble getting a response from the AI. Please try again.";
+        }
+    }
+
+    /// <summary>
+    /// Logs token usage details from the AI response, including prompt cache metrics when available.
+    /// Cache metrics (CacheCreationInputTokens, CacheReadInputTokens) are provided by Anthropic
+    /// when prompt caching is enabled, allowing monitoring of cache effectiveness.
+    /// </summary>
+    private void LogUsageDetails(string providerName, ChatResponse response)
+    {
+        if (response.Usage is not { } usage)
+            return;
+
+        logger.LogDebug(
+            "AI usage for '{Provider}': input={InputTokens}, output={OutputTokens}",
+            providerName, usage.InputTokenCount, usage.OutputTokenCount);
+
+        if (usage.AdditionalCounts is { Count: > 0 } counts)
+        {
+            if (counts.TryGetValue("CacheCreationInputTokens", out long cacheCreation) && cacheCreation > 0)
+                logger.LogInformation(
+                    "Prompt cache write for '{Provider}': {CacheCreationTokens} tokens written to cache",
+                    providerName, cacheCreation);
+
+            if (counts.TryGetValue("CacheReadInputTokens", out long cacheRead) && cacheRead > 0)
+                logger.LogInformation(
+                    "Prompt cache hit for '{Provider}': {CacheReadTokens} tokens read from cache",
+                    providerName, cacheRead);
         }
     }
 
