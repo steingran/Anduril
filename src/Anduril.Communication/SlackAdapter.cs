@@ -75,19 +75,40 @@ public sealed class SlackAdapter(IOptions<SlackAdapterOptions> options, ILogger<
         logger.LogInformation("Slack adapter stopped.");
     }
 
-    public async Task SendMessageAsync(OutgoingMessage message, CancellationToken cancellationToken = default)
+    public async Task<string?> SendMessageAsync(OutgoingMessage message, CancellationToken cancellationToken = default)
     {
         if (_apiClient is null)
             throw new InvalidOperationException("Slack adapter is not connected.");
 
-        await _apiClient.Chat.PostMessage(new Message
+        // Convert standard Markdown (from skills and AI providers) to Slack mrkdwn
+        string slackText = SlackMarkdownConverter.ConvertToSlackMarkdown(message.Text);
+
+        var response = await _apiClient.Chat.PostMessage(new Message
         {
             Channel = message.ChannelId,
-            Text = message.Text,
+            Text = slackText,
             ThreadTs = message.ThreadId
         });
 
         logger.LogDebug("Sent Slack message to channel {Channel}", message.ChannelId);
+        return response.Ts;
+    }
+
+    public async Task UpdateMessageAsync(string messageId, OutgoingMessage message, CancellationToken cancellationToken = default)
+    {
+        if (_apiClient is null)
+            throw new InvalidOperationException("Slack adapter is not connected.");
+
+        string slackText = SlackMarkdownConverter.ConvertToSlackMarkdown(message.Text);
+
+        await _apiClient.Chat.Update(new MessageUpdate
+        {
+            Ts = messageId,
+            ChannelId = message.ChannelId,
+            Text = slackText
+        });
+
+        logger.LogDebug("Updated Slack message {MessageId} in channel {Channel}", messageId, message.ChannelId);
     }
 
     /// <summary>

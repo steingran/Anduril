@@ -32,8 +32,24 @@ public interface ICommunicationAdapter : IAsyncDisposable
     Task StopAsync(CancellationToken cancellationToken = default);
 
     /// <summary>
-    /// Sends a message to the platform.
+    /// Sends a message to the platform and returns a platform-specific message identifier
+    /// that can be used with <see cref="UpdateMessageAsync"/> (e.g., Slack's message timestamp).
+    /// Returns <c>null</c> if the platform does not support message identification.
     /// </summary>
-    Task SendMessageAsync(OutgoingMessage message, CancellationToken cancellationToken = default);
+    Task<string?> SendMessageAsync(OutgoingMessage message, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Updates an existing message on the platform.
+    /// Platforms that do not support message updates should silently ignore the call.
+    /// </summary>
+    /// <param name="messageId">The platform-specific message identifier returned by <see cref="SendMessageAsync"/>.</param>
+    /// <param name="message">The updated message content. <see cref="OutgoingMessage.ChannelId"/> and
+    /// <see cref="OutgoingMessage.ThreadId"/> must match the original message.</param>
+    /// <param name="cancellationToken">Cancellation token.</param>
+    Task UpdateMessageAsync(string messageId, OutgoingMessage message, CancellationToken cancellationToken = default)
+    {
+        // Default: no-op for platforms that don't support message updates (CLI, etc.)
+        return Task.CompletedTask;
+    }
 }
 

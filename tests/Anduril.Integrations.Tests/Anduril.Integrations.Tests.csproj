@@ -1,0 +1,21 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <IsPackable>false</IsPackable>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="TUnit" Version="1.15.0" />
+    <PackageReference Include="TUnit.Engine" Version="1.15.0" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\src\Anduril.Integrations\Anduril.Integrations.csproj" />
+    <ProjectReference Include="..\..\src\Anduril.Core\Anduril.Core.csproj" />
+  </ItemGroup>
+
+</Project>
+

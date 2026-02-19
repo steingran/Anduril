@@ -146,12 +146,30 @@ public sealed class MessageProcessingService(
 
     private async Task OnMessageReceivedAsync(ICommunicationAdapter sourceAdapter, IncomingMessage message)
     {
+        string threadId = message.ThreadId ?? message.Id; // always reply in thread
+        string? placeholderMessageId = null;
+
         try
         {
             logger.LogDebug(
                 "Received message from {User} on {Platform}/{Channel}: {Text}",
                 message.UserId, message.Platform, message.ChannelId,
                 message.Text.Length > 80 ? message.Text[..80] + "…" : message.Text);
+
+            // Post a placeholder message immediately so the user knows we're working on it
+            try
+            {
+                placeholderMessageId = await sourceAdapter.SendMessageAsync(new OutgoingMessage
+                {
+                    Text = "_⏳ Working on it…_",
+                    ChannelId = message.ChannelId,
+                    ThreadId = threadId
+                });
+            }
+            catch (Exception placeholderEx)
+            {
+                logger.LogWarning(placeholderEx, "Failed to send placeholder message — continuing without it");
+            }
 
             // Route the message to a skill (or null for general conversation)
             var skill = await router.RouteAsync(message);
@@ -166,13 +184,39 @@ public sealed class MessageProcessingService(
                 responseText = await FallbackAiChatAsync(message);
             }
 
-            // Send the response back through the same adapter
-            await sourceAdapter.SendMessageAsync(new OutgoingMessage
+            // Update the placeholder with the real response, or send a new message if no placeholder
+            if (placeholderMessageId is not null)
             {
-                Text = responseText,
-                ChannelId = message.ChannelId,
-                ThreadId = message.ThreadId ?? message.Id // reply in thread
-            });
+                try
+                {
+                    await sourceAdapter.UpdateMessageAsync(placeholderMessageId, new OutgoingMessage
+                    {
+                        Text = responseText,
+                        ChannelId = message.ChannelId,
+                        ThreadId = threadId
+                    });
+                }
+                catch (Exception updateEx)
+                {
+                    // Update failed — fall back to sending a new message
+                    logger.LogWarning(updateEx, "Failed to update placeholder message — sending new message instead");
+                    await sourceAdapter.SendMessageAsync(new OutgoingMessage
+                    {
+                        Text = responseText,
+                        ChannelId = message.ChannelId,
+                        ThreadId = threadId
+                    });
+                }
+            }
+            else
+            {
+                await sourceAdapter.SendMessageAsync(new OutgoingMessage
+                {
+                    Text = responseText,
+                    ChannelId = message.ChannelId,
+                    ThreadId = threadId
+                });
+            }
         }
         catch (Exception ex)
         {
@@ -180,11 +224,32 @@ public sealed class MessageProcessingService(
 
             try
             {
+                string errorText = "Sorry, something went wrong while processing your message.";
+
+                // Try to update the placeholder with the error, otherwise send a new message
+                if (placeholderMessageId is not null)
+                {
+                    try
+                    {
+                        await sourceAdapter.UpdateMessageAsync(placeholderMessageId, new OutgoingMessage
+                        {
+                            Text = errorText,
+                            ChannelId = message.ChannelId,
+                            ThreadId = threadId
+                        });
+                        return;
+                    }
+                    catch (Exception updateEx)
+                    {
+                        logger.LogWarning(updateEx, "Failed to update placeholder error message for message {MessageId}", message.Id);
+                    }
+                }
+
                 await sourceAdapter.SendMessageAsync(new OutgoingMessage
                 {
-                    Text = "Sorry, something went wrong while processing your message.",
+                    Text = errorText,
                     ChannelId = message.ChannelId,
-                    ThreadId = message.ThreadId ?? message.Id
+                    ThreadId = threadId
                 });
             }
             catch (Exception sendEx)
@@ -243,8 +308,67 @@ public sealed class MessageProcessingService(
         try
         {
             var chatClient = provider.ChatClient;
-            var response = await chatClient.GetResponseAsync(message.Text);
-            return response.Text ?? "I received an empty response from the AI provider.";
+
+            // Collect all available integration tool functions (Gmail, GitHub, Sentry, Calendar, etc.)
+            var tools = new List<AITool>();
+            foreach (var tool in integrationTools.Where(t => t.IsAvailable))
+            {
+                tools.AddRange(tool.GetFunctions());
+            }
+
+            // Also collect tools from AI providers (e.g., MCP server tools)
+            foreach (var p in aiProviders.Where(p => p.IsAvailable))
+            {
+                try
+                {
+                    var providerTools = await p.GetToolsAsync();
+                    tools.AddRange(providerTools);
+                }
+                catch (NotSupportedException)
+                {
+                    // Some providers don't expose tools — that's fine
+                }
+                catch (NotImplementedException)
+                {
+                    // Some providers don't expose tools — that's fine
+                }
+            }
+
+            logger.LogDebug("Fallback AI chat with {ToolCount} tool(s) available", tools.Count);
+
+            var messages = new List<ChatMessage>
+            {
+                new(ChatRole.System,
+                    "You are Andúril, a personal AI assistant. " +
+                    "You have access to integration tools that let you interact with external services " +
+                    "like Gmail, GitHub, Sentry, and Calendar on behalf of the user. " +
+                    "When the user asks about their emails, calendar, code, or errors, " +
+                    "use the available tools to fulfill their request. " +
+                    "Always be helpful and concise.\n\n" +
+                    "Formatting: Use clear structure in your responses. " +
+                    "Use **bold** for emphasis and section headings. " +
+                    "Use bullet points (- item) for lists. " +
+                    "Use `code` for inline code and ``` for code blocks. " +
+                    "Use ~strikethrough~ sparingly. " +
+                    "Use [text](url) for links. " +
+                    "Keep responses scannable with short paragraphs and clear section breaks."),
+                new(ChatRole.User, message.Text)
+            };
+
+            if (tools.Count > 0)
+            {
+                // Wrap in FunctionInvokingChatClient to automatically handle tool call loops:
+                // AI requests a tool call → function is executed → result sent back → AI responds
+                var functionCallingClient = new FunctionInvokingChatClient(chatClient);
+                var options = new ChatOptions { Tools = tools };
+                var response = await functionCallingClient.GetResponseAsync(messages, options);
+                return response.Text ?? "I received an empty response from the AI provider.";
+            }
+            else
+            {
+                var response = await chatClient.GetResponseAsync(messages);
+                return response.Text ?? "I received an empty response from the AI provider.";
+            }
         }
         catch (Exception ex)
         {
