@@ -8,11 +8,15 @@ services:
       - ASPNETCORE_ENVIRONMENT=Production
       - AI__Ollama__Endpoint=http://ollama:11434
       - AI__Ollama__Model=qwen2.5:7b
+      - Communication__Signal__ApiUrl=http://signal-cli:8080
+      # - Communication__Signal__PhoneNumber=+1234567890
     volumes:
       - ./skills:/app/skills:ro
       - anduril-data:/app/data
     depends_on:
       ollama:
+        condition: service_started
+      signal-cli:
         condition: service_started
     restart: unless-stopped
 
@@ -33,7 +37,19 @@ services:
     #           count: all
     #           capabilities: [gpu]
 
+  signal-cli:
+    image: bbernhard/signal-cli-rest-api:0.97
+    container_name: signal-cli
+    ports:
+      - "9080:8080"
+    volumes:
+      - signal-cli-config:/home/.local/share/signal-cli
+    environment:
+      - MODE=normal
+    restart: unless-stopped
+
 volumes:
   anduril-data:
   ollama-models:
+  signal-cli-config:
 
