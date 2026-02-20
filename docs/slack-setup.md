@@ -47,13 +47,27 @@ Andúril connects to Slack using **Socket Mode**, which means it opens a WebSock
    - `channels:history` — read public channel messages
    - `groups:history` — read private channel messages
    - `im:history` — read DM messages
+   - `im:read` — view DM channel metadata
+   - `im:write` — open/initiate DM conversations (required for users to message the bot)
    - `mpim:history` — read group DM messages
    - `users:read` — look up user info (needed to resolve the bot's own user ID)
 3. Scroll up and click **Install to Workspace** (or **Reinstall** if already installed).
 4. Approve the permissions.
 5. Copy the **Bot User OAuth Token** (`xoxb-...`). This is your **Bot Token**.
 
-## Step 5 — Configure Andúril
+## Step 5 — Enable Direct Messages
+
+To allow users to send DMs to the bot, you need to enable the Messages Tab:
+
+1. In the left sidebar, go to **App Home**.
+2. Under **Show Tabs**, toggle on **Messages Tab**.
+3. Check the box **"Allow users to send Slash commands and messages from the messages tab"**.
+
+Without this, users will see _"Sending messages to this app has been turned off"_ when trying to DM the bot.
+
+> **Note:** If you've already installed the app, you may need to **reinstall it** after changing scopes (Step 4). Go to **OAuth & Permissions** and click **Reinstall to Workspace** at the top.
+
+## Step 6 — Configure Andúril
 
 Store both tokens using .NET user secrets (recommended) or in `appsettings.json`.
 
@@ -80,7 +94,7 @@ dotnet user-secrets set "Communication:Slack:AppToken" "xapp-your-app-token"
 
 > **Note:** Both tokens are required. Andúril will throw an `InvalidOperationException` at startup if either is missing.
 
-## Step 6 — Invite the Bot
+## Step 7 — Invite the Bot
 
 In Slack, invite the bot to any channel you want it to listen in:
 
@@ -90,7 +104,7 @@ In Slack, invite the bot to any channel you want it to listen in:
 
 Or simply send the bot a direct message — it will respond in a thread.
 
-## Step 7 — Run Andúril
+## Step 8 — Run Andúril
 
 ```bash
 dotnet run --project src/Anduril.Host
@@ -113,6 +127,7 @@ Send a message in a channel the bot is in (or DM it directly) and it will respon
 | Bot connects but never responds | Bot not invited to the channel | Run `/invite @Andúril` in the channel |
 | "No chat-capable AI provider" reply | No chat AI provider is configured | Configure at least one chat provider (see [README](../README.md#configuration)) |
 | Bot replies to its own messages | Bot user ID filtering failed | Ensure the `users:read` scope is granted |
+| "Sending messages to this app has been turned off" | Messages Tab not enabled or missing `im:write` scope | Enable **Messages Tab** in App Home (Step 5) and add `im:write` scope (Step 4), then reinstall the app |
 | Duplicate replies | Bot subscribed to overlapping event types | Check **Event Subscriptions** — each event type should appear only once |
 
 ## How It Works
