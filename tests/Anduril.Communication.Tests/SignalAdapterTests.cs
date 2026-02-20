@@ -6,9 +6,13 @@ using static Anduril.Communication.SignalAdapter;
 
 namespace Anduril.Communication.Tests;
 
-public class SignalAdapterTests
+public class SignalAdapterTests : IAsyncDisposable
 {
-    private static SignalAdapter CreateAdapter(
+    // Shared HttpClient for tests that don't make real HTTP calls.
+    // Most tests only exercise HandleSignalMessageAsync which never uses HttpClient.
+    private readonly HttpClient _sharedHttpClient = new();
+
+    private SignalAdapter CreateAdapter(
         string? phoneNumber = null,
         string? apiUrl = null,
         HttpClient? httpClient = null)
@@ -18,7 +22,13 @@ public class SignalAdapterTests
             PhoneNumber = phoneNumber,
             ApiUrl = apiUrl
         });
-        return new SignalAdapter(options, NullLogger<SignalAdapter>.Instance, httpClient ?? new HttpClient());
+        return new SignalAdapter(options, NullLogger<SignalAdapter>.Instance, httpClient ?? _sharedHttpClient);
+    }
+
+    public ValueTask DisposeAsync()
+    {
+        _sharedHttpClient.Dispose();
+        return ValueTask.CompletedTask;
     }
 
     [Test]
