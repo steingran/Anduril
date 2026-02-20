@@ -17,6 +17,12 @@ using Anduril.Skills.Compiled;
 using Microsoft.Bot.Builder.Integration.AspNet.Core;
 using Microsoft.Extensions.Options;
 using Serilog;
+using Velopack;
+
+// ---------------------------------------------------------------------------
+// Velopack update hooks — must run before anything else
+// ---------------------------------------------------------------------------
+VelopackApp.Build().Run();
 
 // ---------------------------------------------------------------------------
 // Bootstrap Serilog before anything else
