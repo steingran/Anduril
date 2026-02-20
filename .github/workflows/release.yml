@@ -55,6 +55,7 @@ jobs:
           --packId Anduril
           --packVersion ${{ env.VERSION }}
           --packDir ./publish/${{ matrix.rid }}
+          --mainExe Anduril.Host
           --outputDir ./releases/${{ matrix.rid }}
 
       - name: Upload release artifacts
