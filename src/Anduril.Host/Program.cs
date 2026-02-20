@@ -1,3 +1,5 @@
+using System.Security.Cryptography;
+using System.Text;
 using System.Text.Json;
 using Anduril.AI.Detection;
 using Anduril.AI.Providers;
@@ -6,6 +8,7 @@ using Anduril.Core.AI;
 using Anduril.Core.Communication;
 using Anduril.Core.Integrations;
 using Anduril.Core.Skills;
+using Anduril.Core.Webhooks;
 using Anduril.Host;
 using Anduril.Host.Services;
 using Anduril.Integrations;
@@ -138,6 +141,15 @@ try
     builder.Services.Configure<GmailSchedulerOptions>(config.GetSection("GmailScheduler"));
 
     // ------------------------------------------------------------------
+    // Sentry Bugfix Automation
+    // ------------------------------------------------------------------
+    builder.Services.Configure<SentryBugfixOptions>(config.GetSection("SentryBugfix"));
+    builder.Services.AddSingleton<IGitCommandRunner, GitCommandRunner>();
+    builder.Services.AddSingleton<IAuggieCliRunner, AuggieCliRunner>();
+    builder.Services.AddSingleton<IPullRequestCreator, OctokitPullRequestCreator>();
+    builder.Services.AddSingleton<SentryBugfixService>();
+
+    // ------------------------------------------------------------------
     // Background Services
     // ------------------------------------------------------------------
     builder.Services.AddHostedService<UpdateService>();
@@ -235,6 +247,110 @@ try
         {
             endpointLogger.LogError(ex, "Error processing Gmail push notification");
             return Results.Ok(); // ACK to Pub/Sub even on error to prevent infinite redelivery
+        }
+    });
+
+    // ------------------------------------------------------------------
+    // Sentry Webhook Endpoint (Sentry → Anduril)
+    // ------------------------------------------------------------------
+    var webhookSemaphore = new SemaphoreSlim(3);
+    app.MapPost("/webhooks/sentry", async (
+        HttpContext context,
+        SentryBugfixService bugfixService,
+        IOptions<SentryBugfixOptions> bugfixOptions,
+        IHostApplicationLifetime lifetime,
+        ILogger<Program> endpointLogger) =>
+    {
+        try
+        {
+            // Read the raw body bytes for HMAC validation and deserialization
+            using var ms = new MemoryStream();
+            await context.Request.Body.CopyToAsync(ms);
+            var bodyBytes = ms.ToArray();
+
+            // Require webhook secret when the feature is enabled to prevent unauthenticated requests
+            var secret = bugfixOptions.Value.WebhookSecret;
+            if (string.IsNullOrEmpty(secret))
+            {
+                if (bugfixOptions.Value.Enabled)
+                {
+                    endpointLogger.LogError("Sentry bugfix is enabled but WebhookSecret is not configured. Rejecting request.");
+                    return Results.StatusCode(403);
+                }
+            }
+            else
+            {
+                var signature = context.Request.Headers["sentry-hook-signature"].FirstOrDefault();
+                if (string.IsNullOrEmpty(signature))
+                {
+                    endpointLogger.LogWarning("Sentry webhook missing sentry-hook-signature header.");
+                    return Results.Unauthorized();
+                }
+
+                var keyBytes = Encoding.UTF8.GetBytes(secret);
+                var computedHash = HMACSHA256.HashData(keyBytes, bodyBytes);
+
+                byte[] signatureBytes;
+                try
+                {
+                    signatureBytes = Convert.FromHexString(signature);
+                }
+                catch (FormatException)
+                {
+                    endpointLogger.LogWarning("Sentry webhook signature is not valid hex.");
+                    return Results.Unauthorized();
+                }
+
+                if (!CryptographicOperations.FixedTimeEquals(computedHash, signatureBytes))
+                {
+                    endpointLogger.LogWarning("Sentry webhook signature mismatch.");
+                    return Results.Unauthorized();
+                }
+            }
+
+            var payload = JsonSerializer.Deserialize<SentryWebhookPayload>(bodyBytes);
+            if (payload is null)
+            {
+                endpointLogger.LogWarning("Received null Sentry webhook payload.");
+                return Results.BadRequest("Invalid payload.");
+            }
+
+            endpointLogger.LogInformation(
+                "Sentry webhook received: action={Action}, issue={IssueId}",
+                payload.Action, payload.Data.Issue.Id);
+
+            // Limit concurrent pipeline executions to prevent resource exhaustion
+            if (!webhookSemaphore.Wait(0))
+            {
+                endpointLogger.LogWarning("Sentry webhook rejected: max concurrent bugfix pipelines reached.");
+                return Results.StatusCode(429);
+            }
+
+            // Fire-and-forget with failure logging and semaphore release
+            _ = Task.Run(async () =>
+            {
+                try
+                {
+                    await bugfixService.HandleWebhookAsync(payload, lifetime.ApplicationStopping);
+                }
+                catch (Exception ex)
+                {
+                    endpointLogger.LogError(ex,
+                        "Unhandled exception in Sentry bugfix pipeline for issue {IssueId}",
+                        payload.Data.Issue.Id);
+                }
+                finally
+                {
+                    webhookSemaphore.Release();
+                }
+            }, CancellationToken.None);
+
+            return Results.Ok(new { status = "accepted" });
+        }
+        catch (Exception ex)
+        {
+            endpointLogger.LogError(ex, "Error processing Sentry webhook");
+            return Results.StatusCode(500);
         }
     });
 
