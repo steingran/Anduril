@@ -31,13 +31,16 @@ This starts the `signal-cli` service on **host port 9080** (mapped to container 
 If you prefer to run signal-cli standalone (outside docker-compose):
 
 ```bash
+# Bind to localhost only to avoid exposing the unauthenticated API on the network
 docker run -d \
   --name signal-cli-rest-api \
-  -p 9080:8080 \
+  -p 127.0.0.1:9080:8080 \
   -v signal-cli-config:/home/.local/share/signal-cli \
   -e MODE=normal \
   bbernhard/signal-cli-rest-api:0.97
 ```
+
+> **Security note:** The signal-cli REST API has no built-in authentication. Anyone who can reach port 9080 can send messages and inspect accounts. Always bind to `127.0.0.1` (or use a firewall) when running outside of Docker Compose.
 
 Verify the container is running:
 

@@ -247,7 +247,7 @@ public sealed class SignalAdapter : ICommunicationAdapter
         await StopAsync();
 
         _cts?.Dispose();
-        _httpClient.Dispose();
+        // Do not dispose _httpClient — it is managed by IHttpClientFactory
         IsConnected = false;
     }
 
