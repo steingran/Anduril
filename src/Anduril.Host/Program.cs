@@ -80,10 +80,13 @@ try
     // ------------------------------------------------------------------
     builder.Services.Configure<SlackAdapterOptions>(config.GetSection("Communication:Slack"));
     builder.Services.Configure<TeamsAdapterOptions>(config.GetSection("Communication:Teams"));
+    builder.Services.Configure<SignalAdapterOptions>(config.GetSection("Communication:Signal"));
+    builder.Services.AddHttpClient(nameof(SignalAdapter));
 
     builder.Services.AddSingleton<ICommunicationAdapter, CliAdapter>();
     builder.Services.AddSingleton<ICommunicationAdapter, SlackAdapter>();
     builder.Services.AddSingleton<ICommunicationAdapter, TeamsAdapter>();
+    builder.Services.AddSingleton<ICommunicationAdapter, SignalAdapter>();
 
     // Bot Framework adapter for Teams webhook integration.
     // ConfigurationBotFrameworkAuthentication reads MicrosoftAppId/Password from the
