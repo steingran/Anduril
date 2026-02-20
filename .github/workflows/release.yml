@@ -15,12 +15,16 @@ jobs:
         include:
           - os: windows-latest
             rid: win-x64
+            exe: Anduril.Host.exe
           - os: ubuntu-latest
             rid: linux-x64
+            exe: Anduril.Host
           - os: macos-latest
             rid: osx-x64
+            exe: Anduril.Host
           - os: macos-latest
             rid: osx-arm64
+            exe: Anduril.Host
 
     runs-on: ${{ matrix.os }}
 
@@ -55,7 +59,7 @@ jobs:
           --packId Anduril
           --packVersion ${{ env.VERSION }}
           --packDir ./publish/${{ matrix.rid }}
-          --mainExe Anduril.Host
+          --mainExe ${{ matrix.exe }}
           --outputDir ./releases/${{ matrix.rid }}
 
       - name: Upload release artifacts
