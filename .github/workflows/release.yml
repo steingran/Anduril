@@ -16,15 +16,19 @@ jobs:
           - os: windows-latest
             rid: win-x64
             exe: Anduril.Host.exe
+            channel: win
           - os: ubuntu-latest
             rid: linux-x64
             exe: Anduril.Host
+            channel: linux
           - os: macos-latest
             rid: osx-x64
             exe: Anduril.Host
+            channel: osx-x64
           - os: macos-latest
             rid: osx-arm64
             exe: Anduril.Host
+            channel: osx-arm64
 
     runs-on: ${{ matrix.os }}
 
@@ -60,6 +64,7 @@ jobs:
           --packVersion ${{ env.VERSION }}
           --packDir ./publish/${{ matrix.rid }}
           --mainExe ${{ matrix.exe }}
+          --channel ${{ matrix.channel }}
           --outputDir ./releases/${{ matrix.rid }}
 
       - name: Upload release artifacts
