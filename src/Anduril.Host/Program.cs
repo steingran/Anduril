@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
@@ -15,6 +16,7 @@ using Anduril.Integrations;
 using Anduril.Skills;
 using Anduril.Skills.Compiled;
 using Microsoft.Bot.Builder.Integration.AspNet.Core;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Options;
 using Serilog;
 using Velopack;
@@ -41,6 +43,95 @@ try
         .WriteTo.Console());
 
     var config = builder.Configuration;
+
+    // ---------------------------------------------------------------------------
+    // Check if unconfigured or missing local dependencies
+    // ---------------------------------------------------------------------------
+    var ollamaModel = config["AI:Ollama:Model"];
+    bool ollamaMissing = false;
+    if (!string.IsNullOrEmpty(ollamaModel))
+    {
+        // Use detector to see if ollama is actually installed or running
+        var detector = new OllamaDetector(Microsoft.Extensions.Logging.Abstractions.NullLogger<OllamaDetector>.Instance);
+        using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(2));
+        try
+        {
+            if (!await detector.IsInstalledAsync(cts.Token) &&
+                !await detector.IsRunningAsync(config["AI:Ollama:Endpoint"] ?? "http://localhost:11434", cts.Token))
+            {
+                ollamaMissing = true;
+            }
+        }
+        catch
+        {
+            // Ignore detection errors
+        }
+        await detector.DisposeAsync();
+    }
+
+    var anyRemoteProviderConfigured =
+        !string.IsNullOrEmpty(config["AI:OpenAI:ApiKey"]) ||
+        !string.IsNullOrEmpty(config["AI:Anthropic:ApiKey"]);
+
+    var noProviderConfigured =
+        !anyRemoteProviderConfigured &&
+        string.IsNullOrEmpty(ollamaModel);
+
+    if (noProviderConfigured || (!anyRemoteProviderConfigured && ollamaMissing))
+    {
+        if (ollamaMissing && !noProviderConfigured)
+            Log.Information("AI provider configured but required dependency is missing (Ollama). Starting setup...");
+        else if (noProviderConfigured)
+            Log.Information("No AI provider configured. Starting setup...");
+        else
+            Log.Information("AI configuration is incomplete or provider dependency is missing. Starting setup...");
+
+        string setupExe = OperatingSystem.IsWindows() ? "Anduril.Setup.exe" : "Anduril.Setup";
+        var setupPath = Path.Combine(AppContext.BaseDirectory, setupExe);
+
+        if (!File.Exists(setupPath))
+        {
+            // Fallback for development
+            setupPath = Path.Combine(AppContext.BaseDirectory, "..", "..", "..", "..", "src", "Anduril.Setup", "bin", "Debug", "net10.0", setupExe);
+        }
+
+        if (File.Exists(setupPath))
+        {
+            try
+            {
+                var configPath = Path.Combine(AppContext.BaseDirectory, "appsettings.json");
+                if (!File.Exists(configPath))
+                {
+                    // Fallback for development: host project root
+                    configPath = Path.Combine(AppContext.BaseDirectory, "..", "..", "..", "appsettings.json");
+                }
+
+                var psi = new ProcessStartInfo
+                {
+                    FileName = setupPath,
+                    Arguments = $"\"{configPath}\"",
+                    UseShellExecute = true,
+                    WorkingDirectory = AppContext.BaseDirectory
+                };
+                var process = Process.Start(psi);
+                process?.WaitForExit();
+
+                // Reload configuration after setup
+                if (config is IConfigurationRoot root)
+                {
+                    root.Reload();
+                }
+            }
+            catch (Exception ex)
+            {
+                Log.Error(ex, "Failed to launch setup tool at {Path}", setupPath);
+            }
+        }
+        else
+        {
+            Log.Warning("Setup tool not found at {Path}", setupPath);
+        }
+    }
 
     // ------------------------------------------------------------------
     // AI Providers

@@ -32,10 +32,16 @@ public class OllamaDetector(ILogger<OllamaDetector> logger, HttpClient? httpClie
     }
 
     /// <summary>
-    /// Checks if Ollama is installed on the system (in PATH).
+    /// Checks if Ollama is installed on the system (in PATH or already running).
     /// </summary>
     public async Task<bool> IsInstalledAsync(CancellationToken cancellationToken = default)
     {
+        // First, check if it's already running on the default port
+        if (await IsRunningAsync(cancellationToken: cancellationToken))
+        {
+            return true;
+        }
+
         try
         {
             var process = System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo

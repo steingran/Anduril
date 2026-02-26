@@ -19,6 +19,9 @@ public sealed class OpenAiProvider(IOptions<AiProviderOptions> options, ILogger<
 
     public bool IsAvailable => !string.IsNullOrWhiteSpace(_options.ApiKey) && _chatClient is not null;
 
+    // Exposes the resolved model name for diagnostics and testing
+    public string? ResolvedModel { get; private set; }
+
     public bool SupportsChatCompletion => true;
 
     public IChatClient ChatClient =>
@@ -36,6 +39,7 @@ public sealed class OpenAiProvider(IOptions<AiProviderOptions> options, ILogger<
         var client = new OpenAIClient(apiKey);
         string model = _options.Model ?? "gpt-4o";
 
+        ResolvedModel = model;
         _chatClient = client.GetChatClient(model).AsIChatClient();
 
         logger.LogInformation("OpenAI provider initialized with model {Model}", model);
