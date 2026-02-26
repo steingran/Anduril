@@ -23,6 +23,7 @@
     <PackageVersion Include="Serilog.AspNetCore" Version="10.0.0" />
     <PackageVersion Include="SlackNet" Version="0.17.9" />
     <PackageVersion Include="SlackNet.Extensions.DependencyInjection" Version="0.17.9" />
+    <PackageVersion Include="Spectre.Console" Version="0.49.1" />
     <PackageVersion Include="TUnit" Version="1.17.4" />
     <PackageVersion Include="TUnit.Engine" Version="1.17.4" />
     <PackageVersion Include="Velopack" Version="0.0.1298" />
