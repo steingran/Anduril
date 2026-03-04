@@ -18,7 +18,7 @@
     <PackageVersion Include="Microsoft.Graph" Version="5.103.0" />
     <PackageVersion Include="ModelContextProtocol" Version="0.8.0-preview.1" />
     <PackageVersion Include="Octokit" Version="14.0.0" />
-    <PackageVersion Include="OllamaSharp" Version="5.4.16" />
+    <PackageVersion Include="OllamaSharp" Version="5.4.23" />
     <PackageVersion Include="Sentry" Version="6.1.0" />
     <PackageVersion Include="Serilog.AspNetCore" Version="10.0.0" />
     <PackageVersion Include="SlackNet" Version="0.17.9" />
