@@ -39,17 +39,37 @@ try
 
     // Serilog integration
     builder.Host.UseSerilog((ctx, lc) => lc
-        .ReadFrom.Configuration(ctx.Configuration)
-        .WriteTo.Console());
+        .ReadFrom.Configuration(ctx.Configuration));
 
     var config = builder.Configuration;
+    var openAiSection = config.GetSection("AI:OpenAI");
+    var anthropicSection = config.GetSection("AI:Anthropic");
+    var augmentSection = config.GetSection("AI:Augment");
+    var augmentChatSection = config.GetSection("AI:AugmentChat");
+    var ollamaSection = config.GetSection("AI:Ollama");
+    var llamaSharpSection = config.GetSection("AI:LLamaSharp");
+    var cliSection = config.GetSection("Communication:Cli");
+    var slackSection = config.GetSection("Communication:Slack");
+    var teamsSection = config.GetSection("Communication:Teams");
+    var signalSection = config.GetSection("Communication:Signal");
+
+    bool openAiEnabled = openAiSection.GetValue<bool?>("Enabled") ?? true;
+    bool anthropicEnabled = anthropicSection.GetValue<bool?>("Enabled") ?? true;
+    bool augmentEnabled = augmentSection.GetValue<bool?>("Enabled") ?? true;
+    bool augmentChatEnabled = augmentChatSection.GetValue<bool?>("Enabled") ?? true;
+    bool ollamaEnabled = ollamaSection.GetValue<bool?>("Enabled") ?? true;
+    bool llamaSharpEnabled = llamaSharpSection.GetValue<bool?>("Enabled") ?? true;
+    bool cliEnabled = cliSection.GetValue<bool?>("Enabled") ?? true;
+    bool slackEnabled = slackSection.GetValue<bool?>("Enabled") ?? true;
+    bool teamsEnabled = teamsSection.GetValue<bool?>("Enabled") ?? true;
+    bool signalEnabled = signalSection.GetValue<bool?>("Enabled") ?? true;
 
     // ---------------------------------------------------------------------------
     // Check if unconfigured or missing local dependencies
     // ---------------------------------------------------------------------------
-    var ollamaModel = config["AI:Ollama:Model"];
+    var ollamaModel = ollamaSection["Model"];
     bool ollamaMissing = false;
-    if (!string.IsNullOrEmpty(ollamaModel))
+    if (!string.IsNullOrEmpty(ollamaModel) && ollamaEnabled)
     {
         // Use detector to see if ollama is actually installed or running
         var detector = new OllamaDetector(Microsoft.Extensions.Logging.Abstractions.NullLogger<OllamaDetector>.Instance);
@@ -57,7 +77,7 @@ try
         try
         {
             if (!await detector.IsInstalledAsync(cts.Token) &&
-                !await detector.IsRunningAsync(config["AI:Ollama:Endpoint"] ?? "http://localhost:11434", cts.Token))
+                !await detector.IsRunningAsync(ollamaSection["Endpoint"] ?? "http://localhost:11434", cts.Token))
             {
                 ollamaMissing = true;
             }
@@ -69,133 +89,180 @@ try
         await detector.DisposeAsync();
     }
 
-    var anyRemoteProviderConfigured =
-        !string.IsNullOrEmpty(config["AI:OpenAI:ApiKey"]) ||
-        !string.IsNullOrEmpty(config["AI:Anthropic:ApiKey"]);
+    var (requiresSetup, shouldLaunchSetup, reasonMessage, skipMessage) = StartupSetupPolicy.Evaluate(
+        openAiSection["ApiKey"],
+        anthropicSection["ApiKey"],
+        augmentChatSection["ApiKey"],
+        ollamaModel,
+        llamaSharpSection["ModelPath"],
+        ollamaMissing,
+        StartupSetupPolicy.IsRunningInContainer(Environment.GetEnvironmentVariable, File.Exists),
+        Environment.UserInteractive,
+        Console.IsInputRedirected,
+        openAiEnabled: openAiEnabled,
+        anthropicEnabled: anthropicEnabled,
+        augmentChatEnabled: augmentChatEnabled,
+        ollamaEnabled: ollamaEnabled,
+        llamaSharpEnabled: llamaSharpEnabled);
 
-    var noProviderConfigured =
-        !anyRemoteProviderConfigured &&
-        string.IsNullOrEmpty(ollamaModel);
-
-    if (noProviderConfigured || (!anyRemoteProviderConfigured && ollamaMissing))
+    if (requiresSetup)
     {
-        if (ollamaMissing && !noProviderConfigured)
-            Log.Information("AI provider configured but required dependency is missing (Ollama). Starting setup...");
-        else if (noProviderConfigured)
-            Log.Information("No AI provider configured. Starting setup...");
-        else
-            Log.Information("AI configuration is incomplete or provider dependency is missing. Starting setup...");
-
-        string setupExe = OperatingSystem.IsWindows() ? "Anduril.Setup.exe" : "Anduril.Setup";
-        var setupPath = Path.Combine(AppContext.BaseDirectory, setupExe);
-
-        if (!File.Exists(setupPath))
+        if (!shouldLaunchSetup)
         {
-            // Fallback for development
-            setupPath = Path.Combine(AppContext.BaseDirectory, "..", "..", "..", "..", "src", "Anduril.Setup", "bin", "Debug", "net10.0", setupExe);
-        }
-
-        if (File.Exists(setupPath))
-        {
-            try
-            {
-                var configPath = Path.Combine(AppContext.BaseDirectory, "appsettings.json");
-                if (!File.Exists(configPath))
-                {
-                    // Fallback for development: host project root
-                    configPath = Path.Combine(AppContext.BaseDirectory, "..", "..", "..", "appsettings.json");
-                }
-
-                var psi = new ProcessStartInfo
-                {
-                    FileName = setupPath,
-                    Arguments = $"\"{configPath}\"",
-                    UseShellExecute = true,
-                    WorkingDirectory = AppContext.BaseDirectory
-                };
-                var process = Process.Start(psi);
-                process?.WaitForExit();
-
-                // Reload configuration after setup
-                if (config is IConfigurationRoot root)
-                {
-                    root.Reload();
-                }
-            }
-            catch (Exception ex)
-            {
-                Log.Error(ex, "Failed to launch setup tool at {Path}", setupPath);
-            }
+            Log.Warning("{Message}", skipMessage);
         }
         else
         {
-            Log.Warning("Setup tool not found at {Path}", setupPath);
+            Log.Information("{Message} Starting setup...", reasonMessage);
+
+            string setupExe = OperatingSystem.IsWindows() ? "Anduril.Setup.exe" : "Anduril.Setup";
+            var setupPath = Path.Combine(AppContext.BaseDirectory, setupExe);
+
+            if (!File.Exists(setupPath))
+            {
+                // Fallback for development
+                setupPath = Path.Combine(AppContext.BaseDirectory, "..", "..", "..", "..", "src", "Anduril.Setup", "bin", "Debug", "net10.0", setupExe);
+            }
+
+            if (File.Exists(setupPath))
+            {
+                try
+                {
+                    var configPath = Path.Combine(AppContext.BaseDirectory, "appsettings.json");
+                    if (!File.Exists(configPath))
+                    {
+                        // Fallback for development: host project root
+                        configPath = Path.Combine(AppContext.BaseDirectory, "..", "..", "..", "appsettings.json");
+                    }
+
+                    var psi = new ProcessStartInfo
+                    {
+                        FileName = setupPath,
+                        Arguments = $"\"{configPath}\"",
+                        UseShellExecute = true,
+                        WorkingDirectory = AppContext.BaseDirectory
+                    };
+                    var process = Process.Start(psi);
+                    process?.WaitForExit();
+
+                    // Reload configuration after setup
+                    if (config is IConfigurationRoot root)
+                    {
+                        root.Reload();
+                    }
+                }
+                catch (Exception ex)
+                {
+                    Log.Error(ex, "Failed to launch setup tool at {Path}", setupPath);
+                }
+            }
+            else
+            {
+                Log.Warning("Setup tool not found at {Path}", setupPath);
+            }
         }
     }
 
     // ------------------------------------------------------------------
     // AI Providers
     // ------------------------------------------------------------------
-    builder.Services.Configure<AiProviderOptions>("openai", config.GetSection("AI:OpenAI"));
-    builder.Services.Configure<AiProviderOptions>("anthropic", config.GetSection("AI:Anthropic"));
-    builder.Services.Configure<AiProviderOptions>("augment", config.GetSection("AI:Augment"));
-    builder.Services.Configure<AiProviderOptions>("augmentchat", config.GetSection("AI:AugmentChat"));
-    builder.Services.Configure<AiProviderOptions>("ollama", config.GetSection("AI:Ollama"));
-    builder.Services.Configure<AiProviderOptions>("llamasharp", config.GetSection("AI:LLamaSharp"));
+    builder.Services.Configure<AiProviderOptions>("openai", openAiSection);
+    builder.Services.Configure<AiProviderOptions>("anthropic", anthropicSection);
+    builder.Services.Configure<AiProviderOptions>("augment", augmentSection);
+    builder.Services.Configure<AiProviderOptions>("augmentchat", augmentChatSection);
+    builder.Services.Configure<AiProviderOptions>("ollama", ollamaSection);
+    builder.Services.Configure<AiProviderOptions>("llamasharp", llamaSharpSection);
 
-    builder.Services.AddSingleton<IAiProvider>(sp =>
-        new OpenAiProvider(
-            Options.Create(sp.GetRequiredService<IOptionsMonitor<AiProviderOptions>>().Get("openai")),
-            sp.GetRequiredService<ILogger<OpenAiProvider>>()));
+    if (openAiEnabled)
+    {
+        builder.Services.AddSingleton<IAiProvider>(sp =>
+            new OpenAiProvider(
+                Options.Create(sp.GetRequiredService<IOptionsMonitor<AiProviderOptions>>().Get("openai")),
+                sp.GetRequiredService<ILogger<OpenAiProvider>>()));
+    }
 
-    builder.Services.AddSingleton<IAiProvider>(sp =>
-        new AnthropicProvider(
-            Options.Create(sp.GetRequiredService<IOptionsMonitor<AiProviderOptions>>().Get("anthropic")),
-            sp.GetRequiredService<ILogger<AnthropicProvider>>()));
+    if (anthropicEnabled)
+    {
+        builder.Services.AddSingleton<IAiProvider>(sp =>
+            new AnthropicProvider(
+                Options.Create(sp.GetRequiredService<IOptionsMonitor<AiProviderOptions>>().Get("anthropic")),
+                sp.GetRequiredService<ILogger<AnthropicProvider>>()));
+    }
 
-    builder.Services.AddSingleton<IAiProvider>(sp =>
-        new AugmentMcpProvider(
-            Options.Create(sp.GetRequiredService<IOptionsMonitor<AiProviderOptions>>().Get("augment")),
-            sp.GetRequiredService<ILogger<AugmentMcpProvider>>()));
+    if (augmentEnabled)
+    {
+        builder.Services.AddSingleton<IAiProvider>(sp =>
+            new AugmentMcpProvider(
+                Options.Create(sp.GetRequiredService<IOptionsMonitor<AiProviderOptions>>().Get("augment")),
+                sp.GetRequiredService<ILogger<AugmentMcpProvider>>()));
+    }
 
-    builder.Services.AddSingleton<IAiProvider>(sp =>
-        new AugmentChatProvider(
-            Options.Create(sp.GetRequiredService<IOptionsMonitor<AiProviderOptions>>().Get("augmentchat")),
-            sp.GetRequiredService<ILogger<AugmentChatProvider>>()));
+    if (augmentChatEnabled)
+    {
+        builder.Services.AddSingleton<IAiProvider>(sp =>
+            new AugmentChatProvider(
+                Options.Create(sp.GetRequiredService<IOptionsMonitor<AiProviderOptions>>().Get("augmentchat")),
+                sp.GetRequiredService<ILogger<AugmentChatProvider>>()));
+    }
 
-    builder.Services.AddSingleton<IAiProvider>(sp =>
-        new OllamaProvider(
-            Options.Create(sp.GetRequiredService<IOptionsMonitor<AiProviderOptions>>().Get("ollama")),
-            sp.GetRequiredService<ILogger<OllamaProvider>>()));
+    if (ollamaEnabled)
+    {
+        builder.Services.AddSingleton<IAiProvider>(sp =>
+            new OllamaProvider(
+                Options.Create(sp.GetRequiredService<IOptionsMonitor<AiProviderOptions>>().Get("ollama")),
+                sp.GetRequiredService<ILogger<OllamaProvider>>()));
+    }
 
-    builder.Services.AddSingleton<IAiProvider>(sp =>
-        new LLamaSharpProvider(
-            Options.Create(sp.GetRequiredService<IOptionsMonitor<AiProviderOptions>>().Get("llamasharp")),
-            sp.GetRequiredService<ILogger<LLamaSharpProvider>>()));
+    if (llamaSharpEnabled)
+    {
+        builder.Services.AddSingleton<IAiProvider>(sp =>
+            new LLamaSharpProvider(
+                Options.Create(sp.GetRequiredService<IOptionsMonitor<AiProviderOptions>>().Get("llamasharp")),
+                sp.GetRequiredService<ILogger<LLamaSharpProvider>>()));
+    }
 
     builder.Services.AddSingleton<OllamaDetector>();
 
     // ------------------------------------------------------------------
     // Communication Adapters
     // ------------------------------------------------------------------
-    builder.Services.Configure<SlackAdapterOptions>(config.GetSection("Communication:Slack"));
-    builder.Services.Configure<TeamsAdapterOptions>(config.GetSection("Communication:Teams"));
-    builder.Services.Configure<SignalAdapterOptions>(config.GetSection("Communication:Signal"));
-    builder.Services.AddHttpClient(nameof(SignalAdapter));
+    builder.Services.Configure<SlackAdapterOptions>(slackSection);
+    builder.Services.Configure<TeamsAdapterOptions>(teamsSection);
+    builder.Services.Configure<SignalAdapterOptions>(signalSection);
 
-    builder.Services.AddSingleton<ICommunicationAdapter, CliAdapter>();
-    builder.Services.AddSingleton<ICommunicationAdapter, SlackAdapter>();
-    builder.Services.AddSingleton<ICommunicationAdapter, TeamsAdapter>();
-    builder.Services.AddSingleton<ICommunicationAdapter, SignalAdapter>();
+    if (signalEnabled)
+    {
+        builder.Services.AddHttpClient(nameof(SignalAdapter));
+    }
 
-    // Bot Framework adapter for Teams webhook integration.
-    // ConfigurationBotFrameworkAuthentication reads MicrosoftAppId/Password from the
-    // provided IConfiguration section — we pass the Communication:Teams subsection so
-    // it picks up our credentials rather than looking at the root config.
-    builder.Services.AddSingleton<IBotFrameworkHttpAdapter>(sp =>
-        new CloudAdapter(
-            new ConfigurationBotFrameworkAuthentication(config.GetSection("Communication:Teams")),
-            sp.GetRequiredService<ILogger<CloudAdapter>>()));
+    if (cliEnabled)
+    {
+        builder.Services.AddSingleton<ICommunicationAdapter, CliAdapter>();
+    }
+
+    if (slackEnabled)
+    {
+        builder.Services.AddSingleton<ICommunicationAdapter, SlackAdapter>();
+    }
+
+    if (teamsEnabled)
+    {
+        builder.Services.AddSingleton<ICommunicationAdapter, TeamsAdapter>();
+
+        // Bot Framework adapter for Teams webhook integration.
+        // ConfigurationBotFrameworkAuthentication reads MicrosoftAppId/Password from the
+        // provided IConfiguration section — we pass the Communication:Teams subsection so
+        // it picks up our credentials rather than looking at the root config.
+        builder.Services.AddSingleton<IBotFrameworkHttpAdapter>(sp =>
+            new CloudAdapter(
+                new ConfigurationBotFrameworkAuthentication(teamsSection),
+                sp.GetRequiredService<ILogger<CloudAdapter>>()));
+    }
+
+    if (signalEnabled)
+    {
+        builder.Services.AddSingleton<ICommunicationAdapter, SignalAdapter>();
+    }
 
     // ------------------------------------------------------------------
     // Integration Tools
@@ -451,23 +518,26 @@ try
         }
     });
 
-    // ------------------------------------------------------------------
-    // Teams Bot Framework Webhook Endpoint (Teams → Anduril)
-    // ------------------------------------------------------------------
-    app.MapPost("/api/teams/messages", async (
-        HttpContext httpContext,
-        IBotFrameworkHttpAdapter adapter,
-        IEnumerable<ICommunicationAdapter> adapters) =>
+    if (teamsEnabled)
     {
-        var teamsAdapter = adapters.OfType<TeamsAdapter>().FirstOrDefault();
-        if (teamsAdapter is null)
+        // ------------------------------------------------------------------
+        // Teams Bot Framework Webhook Endpoint (Teams → Anduril)
+        // ------------------------------------------------------------------
+        app.MapPost("/api/teams/messages", async (
+            HttpContext httpContext,
+            IBotFrameworkHttpAdapter adapter,
+            IEnumerable<ICommunicationAdapter> adapters) =>
         {
-            return Results.StatusCode(500);
-        }
+            var teamsAdapter = adapters.OfType<TeamsAdapter>().FirstOrDefault();
+            if (teamsAdapter is null)
+            {
+                return Results.StatusCode(500);
+            }
 
-        await adapter.ProcessAsync(httpContext.Request, httpContext.Response, new TeamsBot(teamsAdapter));
-        return Results.Empty;
-    });
+            await adapter.ProcessAsync(httpContext.Request, httpContext.Response, new TeamsBot(teamsAdapter));
+            return Results.Empty;
+        });
+    }
 
     Log.Information("Anduril AI Assistant starting...");
     app.Run();

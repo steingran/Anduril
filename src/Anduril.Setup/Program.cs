@@ -1,289 +1,380 @@
 ﻿using System.Diagnostics;
 using System.Text.Json;
 using Spectre.Console;
-using Anduril.Setup;
 
-AnsiConsole.Write(
-    new FigletText("Anduril")
-        .Color(Color.Green));
+namespace Anduril.Setup;
 
-AnsiConsole.MarkupLine("[bold]Welcome to Anduril AI Assistant Setup![/]");
-AnsiConsole.WriteLine();
-
-var providerDisplay = AnsiConsole.Prompt(
-    new SelectionPrompt<string>()
-        .Title("Which [green]AI provider[/] would you like to use?")
-        .PageSize(10)
-        .AddChoices(new[] {
-            "Local model via Ollama",
-            "Anthropic",
-            "OpenAI"
-        }));
-
-// Map the user-facing display name to a stable provider ID used in config patching
-var provider = providerDisplay switch
+internal static class Program
 {
-    "Local model via Ollama" => "ollama",
-    "Anthropic"              => "anthropic",
-    "OpenAI"                 => "openai",
-    _                        => providerDisplay.ToLowerInvariant()
-};
+    private const string UsageText = """
+        Usage:
+          Anduril.Setup [config-path]
+          Anduril.Setup --help
+          Anduril.Setup --non-interactive --provider <ollama|anthropic|openai> [options]
 
-string model = "";
-string apiKey = "";
-string endpoint = "http://localhost:11434";
-bool setupSucceeded = true;
+        Options:
+          --config, --config-path <path>   Path to appsettings.json
+          --provider <name>                openai, anthropic, or ollama
+          --model <name>                   Optional; provider default is used when omitted
+          --api-key <key>                  Required for OpenAI and Anthropic
+          --endpoint <url>                 Optional; defaults to http://localhost:11434 for Ollama
 
-if (provider == "ollama")
-{
-    model = AnsiConsole.Prompt(
-        new SelectionPrompt<string>()
-            .Title("Select a [green]local model[/]:")
-            .PageSize(10)
-            .AddChoices(new[] {
-                "Llama 3.1 8B (Meta)",
-                "Mistral 7B (Mistral)",
-                "GPT-OSS 20B (OpenAI)",
-                "Gemma 2 9B (Google)"
-            }));
+        Environment variables:
+          ANDURIL_SETUP_NON_INTERACTIVE
+          ANDURIL_SETUP_PROVIDER
+          ANDURIL_SETUP_MODEL
+          ANDURIL_SETUP_API_KEY
+          ANDURIL_SETUP_ENDPOINT
+          ANDURIL_SETUP_CONFIG_PATH
 
-    // Map to Ollama tags
-    model = SetupService.MapOllamaModelTag(model);
+        Command-line arguments override environment variables.
+        """;
 
-    var runtime = AnsiConsole.Prompt(
-        new SelectionPrompt<string>()
-            .Title("How would you like to run Ollama?")
-            .AddChoices(new[] { "Native executable", "Docker" }));
-
-    if (runtime == "Native executable")
+    public static int Main(string[] args)
     {
-        if (!SetupService.IsOllamaInstalled() && AnsiConsole.Confirm("Ollama is not installed. Would you like to install it now?", defaultValue: false))
+        if (!SetupCliParser.TryParse(args, Environment.GetEnvironmentVariable, out var options, out var errorMessage))
         {
-            InstallOllama();
+            WriteError(errorMessage ?? "Failed to parse command-line arguments.");
+            WriteUsage();
+            return 1;
+        }
+
+        if (options is null)
+        {
+            WriteError("Failed to parse command-line arguments.");
+            return 1;
+        }
+
+        if (options.ShowHelp)
+        {
+            WriteUsage();
+            return 0;
+        }
+
+        return options.NonInteractive
+            ? RunNonInteractive(options)
+            : RunInteractive(options.ConfigPath);
+    }
+
+    private static int RunNonInteractive(SetupCliOptions options)
+    {
+        if (!SetupCliValidator.TryCreateRequest(options, Directory.GetCurrentDirectory(), out var request, out var errorMessage))
+        {
+            WriteError(errorMessage ?? "Invalid non-interactive setup options.");
+            WriteUsage();
+            return 1;
+        }
+
+        try
+        {
+            ApplyConfiguration(request!.ConfigPath, request.Provider, request.Model, request.ApiKey, request.Endpoint);
+            AnsiConsole.MarkupLine($"[green]Configuration saved successfully to {Markup.Escape(request.ConfigPath)}.[/]");
+            return 0;
+        }
+        catch (Exception ex)
+        {
+            WriteError($"Error saving configuration: {ex.Message}");
+            return 1;
         }
     }
 
-    AnsiConsole.Status()
-        .Start("Ensuring Ollama is running and model is pulled...", ctx =>
+    private static int RunInteractive(string? explicitConfigPath)
+    {
+        WriteBanner();
+
+        var providerDisplay = AnsiConsole.Prompt(
+            new SelectionPrompt<string>()
+                .Title("Which [green]AI provider[/] would you like to use?")
+                .PageSize(10)
+                .AddChoices(["Local model via Ollama", "Anthropic", "OpenAI"]));
+
+        var provider = SetupService.NormalizeProvider(providerDisplay);
+        var model = string.Empty;
+        var apiKey = string.Empty;
+        var endpoint = SetupService.DefaultOllamaEndpoint;
+        var setupSucceeded = true;
+
+        if (provider == "ollama")
         {
-            try
+            model = SetupService.MapOllamaModelTag(AnsiConsole.Prompt(
+                new SelectionPrompt<string>()
+                    .Title("Select a [green]local model[/]:")
+                    .PageSize(10)
+                    .AddChoices([
+                        "Llama 3.1 8B (Meta)",
+                        "Mistral 7B (Mistral)",
+                        "GPT-OSS 20B (OpenAI)",
+                        "Gemma 2 9B (Google)"
+                    ])));
+
+            var runtime = AnsiConsole.Prompt(
+                new SelectionPrompt<string>()
+                    .Title("How would you like to run Ollama?")
+                    .AddChoices(["Native executable", "Docker"]));
+
+            if (runtime == "Native executable" &&
+                !SetupService.IsOllamaInstalled() &&
+                AnsiConsole.Confirm("Ollama is not installed. Would you like to install it now?", defaultValue: false))
             {
-                using var client = new HttpClient();
-                bool running = false;
+                InstallOllama();
+            }
+
+            AnsiConsole.Status().Start("Ensuring Ollama is running and model is pulled...", ctx =>
+            {
                 try
                 {
-                    var response = client.GetAsync($"{endpoint}/api/tags").Result;
-                    running = response.IsSuccessStatusCode;
-                }
-                catch
-                {
-                    // Not running
-                }
+                    using var client = new HttpClient();
+                    var running = false;
 
-                if (!running)
-                {
-                    if (runtime == "Native executable")
+                    try
                     {
-                        ctx.Status("Ollama is not running. Attempting to start [green]ollama serve[/]...");
-                        try
-                        {
-                            Process.Start(new ProcessStartInfo
-                            {
-                                FileName = "ollama",
-                                Arguments = "serve",
-                                UseShellExecute = false,
-                                CreateNoWindow = true
-                            });
-                        }
-                        catch { }
+                        var response = client.GetAsync($"{endpoint}/api/tags").Result;
+                        running = response.IsSuccessStatusCode;
                     }
-                    else // Docker
+                    catch
                     {
-                        ctx.Status("Ollama is not running in Docker. Attempting to start container...");
-                        try
-                        {
-                            // Try docker start first
-                            var startProc = Process.Start(new ProcessStartInfo
-                            {
-                                FileName = "docker",
-                                Arguments = "start ollama",
-                                UseShellExecute = false,
-                                CreateNoWindow = true
-                            });
-                            startProc?.WaitForExit();
+                        // Not running.
+                    }
 
-                            if (startProc is null || startProc.ExitCode != 0)
+                    if (!running)
+                    {
+                        StartOllama(runtime, ctx);
+
+                        for (var i = 0; i < 15; i++)
+                        {
+                            Thread.Sleep(2000);
+                            try
                             {
-                                // Try docker run
-                                Process.Start(new ProcessStartInfo
+                                var response = client.GetAsync($"{endpoint}/api/tags").Result;
+                                if (response.IsSuccessStatusCode)
                                 {
-                                    FileName = "docker",
-                                    Arguments = "run -d -v ollama:/root/.ollama -p 11434:11434 --name ollama ollama/ollama",
-                                    UseShellExecute = false,
-                                    CreateNoWindow = true
-                                });
+                                    running = true;
+                                    break;
+                                }
                             }
-                        }
-                        catch { }
-                    }
-
-                    // Poll for a few seconds
-                    for (int i = 0; i < 15; i++)
-                    {
-                        Thread.Sleep(2000);
-                        try
-                        {
-                            var response = client.GetAsync($"{endpoint}/api/tags").Result;
-                            if (response.IsSuccessStatusCode)
+                            catch
                             {
-                                running = true;
-                                break;
+                                // Keep polling.
                             }
                         }
-                        catch { }
+                    }
+
+                    if (!running)
+                    {
+                        throw new Exception("Ollama is not running and could not be started automatically. Please ensure it is installed and running.");
+                    }
+
+                    ctx.Status($"Pulling model [green]{model}[/]... This may take a while.");
+                    var pullResponse = client.PostAsync(
+                        $"{endpoint}/api/pull",
+                        new StringContent(JsonSerializer.Serialize(new { name = model }))).Result;
+
+                    if (!pullResponse.IsSuccessStatusCode)
+                    {
+                        throw new Exception($"Failed to pull model {model}.");
                     }
                 }
-
-                if (!running)
+                catch (Exception ex)
                 {
-                    throw new Exception("Ollama is not running and could not be started automatically. Please ensure it is installed and running.");
+                    WriteError($"Error: {ex.Message}");
+                    setupSucceeded = false;
                 }
-
-                ctx.Status($"Pulling model [green]{model}[/]... This may take a while.");
-                var pullResponse = client.PostAsync($"{endpoint}/api/pull",
-                    new StringContent(JsonSerializer.Serialize(new { name = model }))).Result;
-
-                if (!pullResponse.IsSuccessStatusCode)
-                {
-                    throw new Exception($"Failed to pull model {model}.");
-                }
-            }
-            catch (Exception ex)
-            {
-                AnsiConsole.MarkupLine($"[red]Error:[/] {ex.Message}");
-                setupSucceeded = false;
-            }
-        });
-}
-else if (provider == "anthropic")
-{
-    apiKey = AnsiConsole.Prompt(
-        new TextPrompt<string>("Enter your [green]Anthropic API Key[/]:")
-            .Secret()
-            .Validate(v => !string.IsNullOrWhiteSpace(v), "API key cannot be empty."));
-    model = "claude-3-5-sonnet-20241022";
-}
-else if (provider == "openai")
-{
-    apiKey = AnsiConsole.Prompt(
-        new TextPrompt<string>("Enter your [green]OpenAI API Key[/]:")
-            .Secret()
-            .Validate(v => !string.IsNullOrWhiteSpace(v), "API key cannot be empty."));
-    model = "gpt-4o-mini";
-}
-
-// Save to appsettings.json
-if (setupSucceeded)
-{
-    AnsiConsole.Status()
-        .Start("Saving configuration...", ctx =>
+            });
+        }
+        else if (provider == "anthropic")
         {
-            try
+            apiKey = AnsiConsole.Prompt(
+                new TextPrompt<string>("Enter your [green]Anthropic API Key[/]:")
+                    .Secret()
+                    .Validate(v => !string.IsNullOrWhiteSpace(v), "API key cannot be empty."));
+            model = SetupService.GetDefaultModel(provider);
+        }
+        else if (provider == "openai")
+        {
+            apiKey = AnsiConsole.Prompt(
+                new TextPrompt<string>("Enter your [green]OpenAI API Key[/]:")
+                    .Secret()
+                    .Validate(v => !string.IsNullOrWhiteSpace(v), "API key cannot be empty."));
+            model = SetupService.GetDefaultModel(provider);
+        }
+
+        if (setupSucceeded)
+        {
+            AnsiConsole.Status().Start("Saving configuration...", _ =>
             {
-                string configPath =
-                    SetupService.FindConfigPath(args.Length > 0 ? args[0] : null, Directory.GetCurrentDirectory())
-                    ?? "appsettings.json";
+                try
+                {
+                    ApplyConfiguration(ResolveConfigPath(explicitConfigPath), provider, model, apiKey, endpoint);
+                    AnsiConsole.MarkupLine("[green]Configuration saved successfully![/]");
+                }
+                catch (Exception ex)
+                {
+                    WriteError($"Error saving configuration: {ex.Message}");
+                    setupSucceeded = false;
+                }
+            });
+        }
 
-                if (!File.Exists(configPath))
-                    throw new FileNotFoundException($"Could not find 'appsettings.json'. Looked in {Path.GetFullPath(configPath)} and typical development locations.");
+        AnsiConsole.MarkupLine(setupSucceeded
+            ? "\n[bold green]Setup complete![/] You can now start Anduril."
+            : "\n[bold red]Setup failed![/] Please fix the errors above and try again.");
 
-                string json = File.ReadAllText(configPath);
-                string patched = SetupService.PatchConfigJson(json, provider, model, apiKey, endpoint);
-                File.WriteAllText(configPath, patched);
-                AnsiConsole.MarkupLine("[green]Configuration saved successfully![/]");
-            }
-            catch (Exception ex)
-            {
-                AnsiConsole.MarkupLine($"[red]Error saving configuration:[/] {ex.Message}");
-                setupSucceeded = false;
-            }
-        });
-}
+        if (ShouldPauseBeforeExit())
+        {
+            AnsiConsole.MarkupLine("Press any key to exit...");
+            Console.ReadKey();
+        }
 
-if (setupSucceeded)
-{
-    AnsiConsole.MarkupLine("\n[bold green]Setup complete![/] You can now start Anduril.");
-}
-else
-{
-    AnsiConsole.MarkupLine("\n[bold red]Setup failed![/] Please fix the errors above and try again.");
-}
+        return setupSucceeded ? 0 : 1;
+    }
 
-AnsiConsole.MarkupLine("Press any key to exit...");
-Console.ReadKey();
-
-static void InstallOllama()
-{
-    if (OperatingSystem.IsWindows())
+    private static void WriteBanner()
     {
-        AnsiConsole.MarkupLine("Opening [green]ollama.com[/] to download the Windows installer...");
-        Process.Start(new ProcessStartInfo
-        {
-            FileName = "https://ollama.com/download/windows",
-            UseShellExecute = true
-        });
-        AnsiConsole.MarkupLine("Please complete the installation and then return here.");
-        AnsiConsole.Markup("Press [green]Enter[/] once Ollama is installed...");
-        Console.ReadLine();
+        AnsiConsole.Write(new FigletText("Anduril").Color(Color.Green));
+        AnsiConsole.MarkupLine("[bold]Welcome to Anduril AI Assistant Setup![/]");
         AnsiConsole.WriteLine();
     }
-    else if (OperatingSystem.IsMacOS())
+
+    private static void StartOllama(string runtime, StatusContext ctx)
     {
-        AnsiConsole.Status().Start("Installing Ollama via [green]Homebrew[/]...", ctx =>
+        if (runtime == "Native executable")
         {
+            ctx.Status("Ollama is not running. Attempting to start [green]ollama serve[/]...");
             try
             {
-                var process = Process.Start(new ProcessStartInfo
-                {
-                    FileName = "brew",
-                    Arguments = "install ollama",
-                    UseShellExecute = false
-                });
-                process?.WaitForExit();
-
-                ctx.Status("Starting Ollama service...");
                 Process.Start(new ProcessStartInfo
                 {
-                    FileName = "brew",
-                    Arguments = "services start ollama",
-                    UseShellExecute = false
+                    FileName = "ollama",
+                    Arguments = "serve",
+                    UseShellExecute = false,
+                    CreateNoWindow = true
                 });
             }
-            catch (Exception ex)
+            catch
             {
-                AnsiConsole.MarkupLine($"[red]Error installing Ollama:[/] {ex.Message}");
+                // Ignore and fall through to retry loop.
             }
-        });
-    }
-    else if (OperatingSystem.IsLinux())
-    {
-        AnsiConsole.Status().Start("Installing Ollama via [green]install script[/]...", ctx =>
+
+            return;
+        }
+
+        ctx.Status("Ollama is not running in Docker. Attempting to start container...");
+        try
         {
-            try
+            var startProc = Process.Start(new ProcessStartInfo
             {
-                var psi = new ProcessStartInfo
+                FileName = "docker",
+                Arguments = "start ollama",
+                UseShellExecute = false,
+                CreateNoWindow = true
+            });
+            startProc?.WaitForExit();
+
+            if (startProc is null || startProc.ExitCode != 0)
+            {
+                Process.Start(new ProcessStartInfo
                 {
-                    FileName = "sh",
-                    Arguments = "-c \"curl -fsSL https://ollama.com/install.sh | sh\"",
-                    UseShellExecute = false
-                };
-                var process = Process.Start(psi);
-                process?.WaitForExit();
+                    FileName = "docker",
+                    Arguments = "run -d -v ollama:/root/.ollama -p 11434:11434 --name ollama ollama/ollama",
+                    UseShellExecute = false,
+                    CreateNoWindow = true
+                });
             }
-            catch (Exception ex)
+        }
+        catch
+        {
+            // Ignore and fall through to retry loop.
+        }
+    }
+
+    private static string ResolveConfigPath(string? explicitConfigPath)
+        => SetupService.FindConfigPath(explicitConfigPath, Directory.GetCurrentDirectory()) ?? "appsettings.json";
+
+    private static void ApplyConfiguration(string configPath, string provider, string model, string apiKey, string endpoint)
+    {
+        if (!File.Exists(configPath))
+        {
+            throw new FileNotFoundException($"Could not find 'appsettings.json'. Looked in {Path.GetFullPath(configPath)} and typical development locations.");
+        }
+
+        var json = File.ReadAllText(configPath);
+        var patched = SetupService.PatchConfigJson(json, provider, model, apiKey, endpoint);
+        File.WriteAllText(configPath, patched);
+    }
+
+    private static bool ShouldPauseBeforeExit() => Environment.UserInteractive && !Console.IsInputRedirected;
+
+    private static void WriteUsage() => Console.WriteLine(UsageText);
+
+    private static void WriteError(string message)
+        => AnsiConsole.MarkupLine($"[red]{Markup.Escape(message)}[/]");
+
+    private static void InstallOllama()
+    {
+        if (OperatingSystem.IsWindows())
+        {
+            AnsiConsole.MarkupLine("Opening [green]ollama.com[/] to download the Windows installer...");
+            Process.Start(new ProcessStartInfo
             {
-                AnsiConsole.MarkupLine($"[red]Error installing Ollama:[/] {ex.Message}");
-            }
-        });
+                FileName = "https://ollama.com/download/windows",
+                UseShellExecute = true
+            });
+            AnsiConsole.MarkupLine("Please complete the installation and then return here.");
+            AnsiConsole.Markup("Press [green]Enter[/] once Ollama is installed...");
+            Console.ReadLine();
+            AnsiConsole.WriteLine();
+            return;
+        }
+
+        if (OperatingSystem.IsMacOS())
+        {
+            AnsiConsole.Status().Start("Installing Ollama via [green]Homebrew[/]...", ctx =>
+            {
+                try
+                {
+                    var process = Process.Start(new ProcessStartInfo
+                    {
+                        FileName = "brew",
+                        Arguments = "install ollama",
+                        UseShellExecute = false
+                    });
+                    process?.WaitForExit();
+
+                    ctx.Status("Starting Ollama service...");
+                    Process.Start(new ProcessStartInfo
+                    {
+                        FileName = "brew",
+                        Arguments = "services start ollama",
+                        UseShellExecute = false
+                    });
+                }
+                catch (Exception ex)
+                {
+                    WriteError($"Error installing Ollama: {ex.Message}");
+                }
+            });
+            return;
+        }
+
+        if (OperatingSystem.IsLinux())
+        {
+            AnsiConsole.Status().Start("Installing Ollama via [green]install script[/]...", _ =>
+            {
+                try
+                {
+                    var process = Process.Start(new ProcessStartInfo
+                    {
+                        FileName = "sh",
+                        Arguments = "-c \"curl -fsSL https://ollama.com/install.sh | sh\"",
+                        UseShellExecute = false
+                    });
+                    process?.WaitForExit();
+                }
+                catch (Exception ex)
+                {
+                    WriteError($"Error installing Ollama: {ex.Message}");
+                }
+            });
+        }
     }
 }

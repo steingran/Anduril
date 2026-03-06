@@ -6,6 +6,12 @@ namespace Anduril.Core.AI;
 public class AiProviderOptions
 {
     /// <summary>
+    /// Gets or sets whether this provider is enabled.
+    /// Disabled providers are not registered by the host.
+    /// </summary>
+    public bool Enabled { get; set; } = true;
+
+    /// <summary>
     /// Gets or sets the provider type (e.g., "openai", "anthropic", "ollama", "augment", "llamasharp").
     /// </summary>
     public string Provider { get; set; } = string.Empty;

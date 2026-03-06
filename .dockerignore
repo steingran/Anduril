@@ -1,0 +1,13 @@
+# Local build outputs
+**/bin/
+**/obj/
+
+# Test and publish artifacts
+**/TestResults/
+publish/
+releases/
+artifacts/
+
+# Local tooling metadata
+.git/
+.vs/

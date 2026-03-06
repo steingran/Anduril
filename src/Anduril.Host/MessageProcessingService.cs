@@ -106,7 +106,10 @@ public sealed class MessageProcessingService(
                 adapter.MessageReceived += handler;
 
                 await adapter.StartAsync(cancellationToken);
-                logger.LogInformation("Communication adapter '{Platform}' started", adapter.Platform);
+                if (adapter.IsConnected)
+                {
+                    logger.LogInformation("Communication adapter '{Platform}' started", adapter.Platform);
+                }
             }
             catch (Exception ex)
             {

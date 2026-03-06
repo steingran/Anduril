@@ -6,6 +6,11 @@ namespace Anduril.Communication;
 public class SlackAdapterOptions
 {
     /// <summary>
+    /// Gets or sets whether the Slack adapter is enabled.
+    /// </summary>
+    public bool Enabled { get; set; } = true;
+
+    /// <summary>
     /// Gets or sets the Slack Bot OAuth token (xoxb-...).
     /// </summary>
     public string? BotToken { get; set; }

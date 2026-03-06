@@ -6,6 +6,8 @@ services:
       - "8080:8080"
     environment:
       - ASPNETCORE_ENVIRONMENT=Production
+      # Enable Ollama explicitly; the Docker image disables providers by default for quieter startup.
+      - AI__Ollama__Enabled=true
       - AI__Ollama__Endpoint=http://ollama:11434
       - AI__Ollama__Model=qwen2.5:7b
       - Communication__Signal__ApiUrl=http://signal-cli:8080
