@@ -27,7 +27,34 @@ public class SetupCliValidatorTests
             await Assert.That(success).IsTrue();
             await Assert.That(errorMessage).IsNull();
             await Assert.That(request).IsNotNull();
-            await Assert.That(request!.Model).IsEqualTo(SetupService.GetDefaultModel("openai"));
+            await Assert.That(request!.Model).IsEqualTo("gpt-4o");
+            await Assert.That(request.Endpoint).IsEqualTo(SetupService.DefaultOllamaEndpoint);
+        }
+        finally
+        {
+            Directory.Delete(root, recursive: true);
+        }
+    }
+
+    [Test]
+    public async Task TryCreateRequest_AnthropicWithoutModel_UsesProviderAlignedDefaultModel()
+    {
+        var root = MakeTempRoot();
+        try
+        {
+            var configPath = Path.Combine(root, "appsettings.json");
+            File.WriteAllText(configPath, "{}");
+
+            var success = SetupCliValidator.TryCreateRequest(
+                new SetupCliOptions { NonInteractive = true, Provider = "anthropic", ApiKey = "sk-test", ConfigPath = configPath },
+                root,
+                out var request,
+                out var errorMessage);
+
+            await Assert.That(success).IsTrue();
+            await Assert.That(errorMessage).IsNull();
+            await Assert.That(request).IsNotNull();
+            await Assert.That(request!.Model).IsEqualTo("claude-sonnet-4-5");
             await Assert.That(request.Endpoint).IsEqualTo(SetupService.DefaultOllamaEndpoint);
         }
         finally

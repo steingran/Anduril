@@ -99,4 +99,18 @@ public class SetupCliParserTests
         await Assert.That(options).IsNull();
         await Assert.That(errorMessage).Contains("Unknown option");
     }
+
+    [Test]
+    public async Task TryParse_MissingOptionValueWhenNextTokenIsAnotherOption_ReturnsMissingValueError()
+    {
+        var success = SetupCliParser.TryParse(
+            ["--provider", "--api-key", "sk-test"],
+            _ => null,
+            out var options,
+            out var errorMessage);
+
+        await Assert.That(success).IsFalse();
+        await Assert.That(options).IsNull();
+        await Assert.That(errorMessage).IsEqualTo("Missing value for --provider.");
+    }
 }

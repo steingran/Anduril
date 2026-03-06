@@ -154,6 +154,13 @@ internal static class SetupCliParser
             return false;
         }
 
+        if (args[index + 1].StartsWith("-", StringComparison.Ordinal))
+        {
+            value = null;
+            errorMessage = $"Missing value for {optionName}.";
+            return false;
+        }
+
         index++;
         value = Normalize(args[index]);
         errorMessage = null;
