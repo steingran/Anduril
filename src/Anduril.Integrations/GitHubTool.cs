@@ -15,6 +15,7 @@ public class GitHubTool(IOptions<GitHubToolOptions> options, ILogger<GitHubTool>
 {
     private readonly GitHubToolOptions _options = options.Value;
     private GitHubClient? _client;
+    private Task<string>? _currentUserLoginTask;
 
     public string Name => "github";
     public string Description => "GitHub integration for issues, pull requests, and code review.";
@@ -53,6 +54,10 @@ public class GitHubTool(IOptions<GitHubToolOptions> options, ILogger<GitHubTool>
                 "List pull requests updated since a given date/time for a GitHub repository."),
             AIFunctionFactory.Create(ListIssuesSinceAsync, "github_list_issues_since",
                 "List issues updated since a given date/time for a GitHub repository."),
+            AIFunctionFactory.Create(SearchOrgPullRequestsSinceAsync, "github_search_org_prs_since",
+                "Search for pull requests involving the authenticated user across all repos in a GitHub organization since a given date."),
+            AIFunctionFactory.Create(SearchOrgIssuesSinceAsync, "github_search_org_issues_since",
+                "Search for issues involving the authenticated user across all repos in a GitHub organization since a given date."),
         ];
     }
 
@@ -155,6 +160,123 @@ public class GitHubTool(IOptions<GitHubToolOptions> options, ILogger<GitHubTool>
             string state = i.State == ItemState.Open ? "open" : "closed";
             return $"#{i.Number}: {i.Title} ({state}, by {i.User.Login}, updated {i.UpdatedAt:yyyy-MM-dd HH:mm})";
         }));
+    }
+
+    private async Task<string> SearchOrgPullRequestsSinceAsync(string organization, DateTime since)
+    {
+        if (string.IsNullOrWhiteSpace(organization))
+            throw new ArgumentException("Organization is required.", nameof(organization));
+
+        var sinceUtc = new DateTimeOffset(since.ToUniversalTime(), TimeSpan.Zero);
+        var currentUserLogin = await GetCurrentUserLoginAsync();
+
+        var request = new SearchIssuesRequest
+        {
+            Type = IssueTypeQualifier.PullRequest,
+            Updated = DateRange.GreaterThanOrEquals(sinceUtc),
+            SortField = IssueSearchSort.Updated,
+            Order = SortDirection.Descending,
+            Involves = currentUserLogin,
+            User = organization
+        };
+
+        var pullRequests = await SearchIssuesAsync(request);
+
+        if (pullRequests.Count == 0)
+            return $"No pull requests found in org '{organization}' since {since:yyyy-MM-dd HH:mm}.";
+
+        return string.Join("\n", pullRequests.Select(i =>
+        {
+            string state = i.State == ItemState.Open ? "open" : "closed";
+            string repo = ExtractRepoName(i.HtmlUrl);
+            return $"{repo}#{i.Number}: {i.Title} ({state}, updated {i.UpdatedAt:yyyy-MM-dd HH:mm})";
+        }));
+    }
+
+    private async Task<string> SearchOrgIssuesSinceAsync(string organization, DateTime since)
+    {
+        if (string.IsNullOrWhiteSpace(organization))
+            throw new ArgumentException("Organization is required.", nameof(organization));
+
+        var sinceUtc = new DateTimeOffset(since.ToUniversalTime(), TimeSpan.Zero);
+        var currentUserLogin = await GetCurrentUserLoginAsync();
+
+        var request = new SearchIssuesRequest
+        {
+            Type = IssueTypeQualifier.Issue,
+            Updated = DateRange.GreaterThanOrEquals(sinceUtc),
+            SortField = IssueSearchSort.Updated,
+            Order = SortDirection.Descending,
+            Involves = currentUserLogin,
+            User = organization
+        };
+
+        var issues = await SearchIssuesAsync(request);
+
+        if (issues.Count == 0)
+            return $"No issues found in org '{organization}' since {since:yyyy-MM-dd HH:mm}.";
+
+        return string.Join("\n", issues.Select(i =>
+        {
+            string state = i.State == ItemState.Open ? "open" : "closed";
+            string repo = ExtractRepoName(i.HtmlUrl);
+            return $"{repo}#{i.Number}: {i.Title} ({state}, by {i.User.Login}, updated {i.UpdatedAt:yyyy-MM-dd HH:mm})";
+        }));
+    }
+
+    private async Task<IReadOnlyList<Issue>> SearchIssuesAsync(SearchIssuesRequest request)
+    {
+        const int pageSize = 100;
+
+        var client = GetClient();
+        var issues = new List<Issue>();
+
+        for (var page = 1; ; page++)
+        {
+            request.Page = page;
+            request.PerPage = pageSize;
+
+            var result = await client.Search.SearchIssues(request);
+            if (result.Items.Count == 0)
+                break;
+
+            issues.AddRange(result.Items);
+
+            if (issues.Count >= result.TotalCount || result.Items.Count < pageSize)
+                break;
+        }
+
+        return issues;
+    }
+
+    private Task<string> GetCurrentUserLoginAsync()
+    {
+        var currentUserLoginTask = _currentUserLoginTask;
+        if (currentUserLoginTask is not null)
+            return currentUserLoginTask;
+
+        currentUserLoginTask = LoadCurrentUserLoginAsync();
+        var cachedTask = Interlocked.CompareExchange(ref _currentUserLoginTask, currentUserLoginTask, null);
+        return cachedTask ?? currentUserLoginTask;
+    }
+
+    private async Task<string> LoadCurrentUserLoginAsync()
+    {
+        var currentUser = await GetClient().User.Current();
+        if (string.IsNullOrWhiteSpace(currentUser.Login))
+            throw new InvalidOperationException("Authenticated GitHub user login was not returned.");
+
+        return currentUser.Login;
+    }
+
+    private static string ExtractRepoName(string? htmlUrl)
+    {
+        if (string.IsNullOrEmpty(htmlUrl) || !Uri.TryCreate(htmlUrl, UriKind.Absolute, out var uri))
+            return "unknown";
+
+        // HtmlUrl is like https://github.com/org/repo/pull/123 or /issues/456
+        var segments = uri.AbsolutePath.Split('/', StringSplitOptions.RemoveEmptyEntries);
+        return segments.Length >= 2 ? segments[1] : "unknown";
     }
 
     private GitHubClient GetClient() =>

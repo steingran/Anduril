@@ -34,10 +34,29 @@ public class StandupHelperSkill(
             "Generating standup summary since {Since:yyyy-MM-dd HH:mm} UTC",
             since);
 
-        var sinceArgs = new Dictionary<string, object?> { ["since"] = since };
-        string prSummary = await InvokeToolFunctionAsync("github", "github_list_pull_requests_since", sinceArgs, cancellationToken);
-        string issueSummary = await InvokeToolFunctionAsync("github", "github_list_issues_since", sinceArgs, cancellationToken);
-        string pastMeetings = await InvokeToolFunctionAsync("office365-calendar", "calendar_events_since", sinceArgs, cancellationToken);
+        string? gitHubOrganization = context.Properties.TryGetValue("GitHubOrganization", out var orgObj)
+            ? orgObj as string
+            : null;
+
+        string prSummary;
+        string issueSummary;
+
+        if (!string.IsNullOrWhiteSpace(gitHubOrganization))
+        {
+            logger.LogInformation("Filtering GitHub activity to organization '{Organization}'", gitHubOrganization);
+            var orgArgs = new Dictionary<string, object?> { ["organization"] = gitHubOrganization, ["since"] = since };
+            prSummary = await InvokeToolFunctionAsync("github", "github_search_org_prs_since", orgArgs, cancellationToken);
+            issueSummary = await InvokeToolFunctionAsync("github", "github_search_org_issues_since", orgArgs, cancellationToken);
+        }
+        else
+        {
+            var sinceArgs = new Dictionary<string, object?> { ["since"] = since };
+            prSummary = await InvokeToolFunctionAsync("github", "github_list_pull_requests_since", sinceArgs, cancellationToken);
+            issueSummary = await InvokeToolFunctionAsync("github", "github_list_issues_since", sinceArgs, cancellationToken);
+        }
+
+        var calendarSinceArgs = new Dictionary<string, object?> { ["since"] = since };
+        string pastMeetings = await InvokeToolFunctionAsync("office365-calendar", "calendar_events_since", calendarSinceArgs, cancellationToken);
         string todayMeetings = await InvokeToolFunctionAsync("office365-calendar", "calendar_today", cancellationToken: cancellationToken);
 
         string standup = FormatStandup(today, prSummary, issueSummary, pastMeetings, todayMeetings);

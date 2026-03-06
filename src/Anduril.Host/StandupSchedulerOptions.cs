@@ -26,5 +26,11 @@ public class StandupSchedulerOptions
     /// Gets or sets whether the standup scheduler is enabled.
     /// </summary>
     public bool Enabled { get; set; }
+
+    /// <summary>
+    /// Gets or sets the GitHub organization to filter activity by.
+    /// When set, the standup will use org-wide search instead of querying a single repo.
+    /// </summary>
+    public string? GitHubOrganization { get; set; }
 }
 

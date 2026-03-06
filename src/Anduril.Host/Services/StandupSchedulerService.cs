@@ -70,6 +70,10 @@ public sealed class StandupSchedulerService(
         {
             logger.LogInformation("Generating scheduled standup...");
 
+            var properties = new Dictionary<string, object>();
+            if (!string.IsNullOrWhiteSpace(_options.GitHubOrganization))
+                properties["GitHubOrganization"] = _options.GitHubOrganization;
+
             var context = new SkillContext
             {
                 Message = new IncomingMessage
@@ -81,7 +85,8 @@ public sealed class StandupSchedulerService(
                     Platform = _options.TargetPlatform
                 },
                 UserId = "scheduler",
-                ChannelId = _options.TargetChannel
+                ChannelId = _options.TargetChannel,
+                Properties = properties
             };
 
             var result = await compiledRunner.ExecuteAsync("standup-helper", context, cancellationToken);
