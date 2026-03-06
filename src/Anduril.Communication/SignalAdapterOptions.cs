@@ -7,6 +7,11 @@ namespace Anduril.Communication;
 public class SignalAdapterOptions
 {
     /// <summary>
+    /// Gets or sets whether the Signal adapter is enabled.
+    /// </summary>
+    public bool Enabled { get; set; } = true;
+
+    /// <summary>
     /// Gets or sets the phone number registered with Signal (e.g., "+1234567890").
     /// This is the bot's identity on the Signal network.
     /// </summary>

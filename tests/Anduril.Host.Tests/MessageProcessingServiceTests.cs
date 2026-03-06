@@ -4,6 +4,7 @@ using Anduril.Core.Integrations;
 using Anduril.Core.Skills;
 using Anduril.Skills;
 using Microsoft.Extensions.AI;
+using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
 
@@ -162,6 +163,19 @@ public class MessageProcessingServiceTests
         await Assert.That(adapter.UpdatedMessages.Count).IsEqualTo(0);
     }
 
+    [Test]
+    public async Task StartAsync_DoesNotLogAdapterStarted_WhenAdapterDidNotConnect()
+    {
+        var logger = new ListLogger<MessageProcessingService>();
+        var (service, _, _) = CreateService(logger: logger, connectAdapterOnStart: false);
+
+        await service.StartAsync(CancellationToken.None);
+
+        int startedLogCount = logger.Messages.Count(message =>
+            message.Contains("Communication adapter 'test' started", StringComparison.Ordinal));
+        await Assert.That(startedLogCount).IsEqualTo(0);
+    }
+
     // ---------------------------------------------------------------
     // Helpers
     // ---------------------------------------------------------------
@@ -173,9 +187,12 @@ public class MessageProcessingServiceTests
     };
 
     private static (MessageProcessingService Service, FakeAdapter Adapter, FakeAiProvider Provider) CreateService(
-        FakeAiProvider? provider = null, ISkillRouter? router = null)
+        FakeAiProvider? provider = null,
+        ISkillRouter? router = null,
+        ILogger<MessageProcessingService>? logger = null,
+        bool connectAdapterOnStart = true)
     {
-        var adapter = new FakeAdapter();
+        var adapter = new FakeAdapter { ConnectOnStart = connectAdapterOnStart };
         provider ??= new FakeAiProvider("Test AI response");
         router ??= new SkillRouter(NullLogger<SkillRouter>.Instance);
         var loader = new PromptSkillLoader(NullLogger<PromptSkillLoader>.Instance);
@@ -187,7 +204,7 @@ public class MessageProcessingServiceTests
             [provider], Array.Empty<IIntegrationTool>(), [adapter], router,
             promptRunner, compiledRunner, Array.Empty<ISkill>(),
             sessionStore, sessionOptions,
-            NullLogger<MessageProcessingService>.Instance);
+            logger ?? NullLogger<MessageProcessingService>.Instance);
         return (service, adapter, provider);
     }
 
@@ -199,6 +216,7 @@ public class MessageProcessingServiceTests
     {
         public string Platform => "test";
         public bool IsConnected { get; private set; }
+        public bool ConnectOnStart { get; set; } = true;
         public event Func<IncomingMessage, Task> MessageReceived = _ => Task.CompletedTask;
         public List<OutgoingMessage> SentMessages { get; } = [];
         public List<(string MessageId, OutgoingMessage Message)> UpdatedMessages { get; } = [];
@@ -206,7 +224,12 @@ public class MessageProcessingServiceTests
         public Func<string, OutgoingMessage, Task>? UpdateOverride { get; set; }
         private int _messageCounter;
 
-        public Task StartAsync(CancellationToken cancellationToken = default) { IsConnected = true; return Task.CompletedTask; }
+        public Task StartAsync(CancellationToken cancellationToken = default)
+        {
+            IsConnected = ConnectOnStart;
+            return Task.CompletedTask;
+        }
+
         public Task StopAsync(CancellationToken cancellationToken = default) { IsConnected = false; return Task.CompletedTask; }
 
         public async Task<string?> SendMessageAsync(OutgoingMessage message, CancellationToken cancellationToken = default)
@@ -275,6 +298,30 @@ public class MessageProcessingServiceTests
         public Task<SkillInfo?> RouteAsync(IncomingMessage message, CancellationToken cancellationToken = default) => throw new InvalidOperationException("Router exploded");
         public void RegisterRunner(ISkillRunner runner) { }
         public Task RefreshAsync(CancellationToken cancellationToken = default) => Task.CompletedTask;
+    }
+
+    private sealed class ListLogger<T> : ILogger<T>
+    {
+        public List<string> Messages { get; } = [];
+
+        public IDisposable BeginScope<TState>(TState state) where TState : notnull => NullScope.Instance;
+
+        public bool IsEnabled(LogLevel logLevel) => true;
+
+        public void Log<TState>(LogLevel logLevel, EventId eventId, TState state, Exception? exception,
+            Func<TState, Exception?, string> formatter)
+        {
+            Messages.Add(formatter(state, exception));
+        }
+
+        private sealed class NullScope : IDisposable
+        {
+            public static readonly NullScope Instance = new();
+
+            public void Dispose()
+            {
+            }
+        }
     }
 }
 

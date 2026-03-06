@@ -6,6 +6,8 @@ namespace Anduril.Setup;
 
 internal sealed class SetupService
 {
+    public const string DefaultOllamaEndpoint = "http://localhost:11434";
+
     // Maps the user-facing display name to the Ollama model tag
     public static string MapOllamaModelTag(string displayName) => displayName switch
     {
@@ -15,6 +17,28 @@ internal sealed class SetupService
         "Gemma 2 9B (Google)"  => "gemma2",
         _                      => "llama3.1:8b"
     };
+
+    public static string NormalizeProvider(string provider)
+        => provider.Trim().ToLowerInvariant() switch
+        {
+            "local model via ollama" => "ollama",
+            "ollama" => "ollama",
+            "anthropic" => "anthropic",
+            "openai" => "openai",
+            var normalized => normalized
+        };
+
+    public static bool IsSupportedProvider(string provider)
+        => NormalizeProvider(provider) is "ollama" or "anthropic" or "openai";
+
+    public static string GetDefaultModel(string provider)
+        => NormalizeProvider(provider) switch
+        {
+            "ollama" => "llama3.1:8b",
+            "anthropic" => "claude-3-5-sonnet-20241022",
+            "openai" => "gpt-4o-mini",
+            _ => string.Empty
+        };
 
     // Resolves the appsettings.json path. Returns null when the file cannot be found.
     // explicitPath: value from command-line args (may be null or point to a non-existent file)
@@ -70,6 +94,7 @@ internal sealed class SetupService
         string apiKey,
         string endpoint)
     {
+        provider = NormalizeProvider(provider);
         var root = JsonNode.Parse(existingJson)!;
         var ai = root["AI"] ??= new JsonObject();
 

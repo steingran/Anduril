@@ -93,6 +93,8 @@ dotnet user-secrets set "Communication:Slack:BotToken" "xoxb-..."
 dotnet user-secrets set "Communication:Slack:AppToken" "xapp-..."
 ```
 
+Most AI providers and communication adapters also support an `Enabled` switch, so you can turn individual components on or off in `appsettings.json` or via environment variables. Examples: `AI:Ollama:Enabled=false`, `Communication:Slack:Enabled=false`, or env vars such as `AI__Ollama__Enabled=false`.
+
 You only need **one** chat-capable AI provider to get started. The quickest options:
 
 | Option | What to configure |
@@ -102,12 +104,66 @@ You only need **one** chat-capable AI provider to get started. The quickest opti
 | **OpenAI** | Set `AI:OpenAI:ApiKey` |
 | **Anthropic** | Set `AI:Anthropic:ApiKey` |
 
+## Non-interactive setup
+
+`Anduril.Setup` can run headlessly in containers or other non-interactive environments.
+
+Supported providers in non-interactive mode:
+
+- `ollama`
+- `anthropic`
+- `openai`
+
+CLI flags:
+
+- `--non-interactive`
+- `--provider`
+- `--model`
+- `--api-key`
+- `--endpoint`
+- `--config` / `--config-path`
+
+Environment variables:
+
+- `ANDURIL_SETUP_NON_INTERACTIVE`
+- `ANDURIL_SETUP_PROVIDER`
+- `ANDURIL_SETUP_MODEL`
+- `ANDURIL_SETUP_API_KEY`
+- `ANDURIL_SETUP_ENDPOINT`
+- `ANDURIL_SETUP_CONFIG_PATH`
+
+Command-line arguments override environment variables.
+
+Example:
+
+```bash
+ANDURIL_SETUP_NON_INTERACTIVE=true \
+ANDURIL_SETUP_PROVIDER=ollama \
+ANDURIL_SETUP_MODEL=llama3.1:8b \
+ANDURIL_SETUP_ENDPOINT=http://ollama:11434 \
+dotnet run --project src/Anduril.Setup -- --config src/Anduril.Host/appsettings.json
+```
+
 ## Docker
 
 ```bash
 # Build and run with Docker Compose (includes Ollama sidecar)
 docker compose up --build
 ```
+
+The Docker image keeps startup quieter by disabling providers/adapters that are usually missing in a fresh container. Re-enable only the components you want via environment variables:
+
+- `AI__OpenAI__Enabled=true` + `AI__OpenAI__ApiKey=...`
+- `AI__Anthropic__Enabled=true` + `AI__Anthropic__ApiKey=...`
+- `AI__AugmentChat__Enabled=true` + `AI__AugmentChat__ApiKey=...`
+- `AI__Augment__Enabled=true` if you have the Augment CLI available in the container
+- `AI__Ollama__Enabled=true` + `AI__Ollama__Endpoint=...` + `AI__Ollama__Model=...`
+- `Communication__Slack__Enabled=true` + Slack tokens
+- `Communication__Signal__Enabled=true` + Signal settings
+- `Communication__Teams__Enabled=true` + Teams app credentials
+- `Communication__Cli__Enabled=true` to enable the console adapter
+
+If you use the included `docker-compose.yml` and want Anduril to talk to the bundled Ollama sidecar, add `AI__Ollama__Enabled=true` under the `anduril` service environment alongside the existing Ollama endpoint/model settings.
 
 ## Running Tests
 
