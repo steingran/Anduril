@@ -14,6 +14,15 @@
     <PackageReference Include="Velopack" />
   </ItemGroup>
 
+  <ItemGroup>
+    <Content Include="..\..\skills\**\*">
+      <Link>skills\%(RecursiveDir)%(Filename)%(Extension)</Link>
+      <TargetPath>skills\%(RecursiveDir)%(Filename)%(Extension)</TargetPath>
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+      <CopyToPublishDirectory>PreserveNewest</CopyToPublishDirectory>
+    </Content>
+  </ItemGroup>
+
   <PropertyGroup>
     <TargetFramework>net10.0</TargetFramework>
     <Nullable>enable</Nullable>
