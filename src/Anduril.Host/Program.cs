@@ -39,7 +39,9 @@ try
 
     // Serilog integration
     builder.Host.UseSerilog((ctx, lc) => lc
-        .ReadFrom.Configuration(ctx.Configuration));
+        .ReadFrom.Configuration(
+            ctx.Configuration,
+            SerilogConfigurationReaderOptionsFactory.Create()));
 
     var config = builder.Configuration;
     var openAiSection = config.GetSection("AI:OpenAI");
