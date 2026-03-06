@@ -44,6 +44,14 @@ Anduril is a personal AI assistant built from scratch in C#. It connects to Slac
   ```
 - **Not xUnit** — Do not add xUnit packages.
 - Run tests: `dotnet test --solution Anduril.slnx`
+- For project-scoped runs, prefer `dotnet test --project <path-to-csproj>` rather than passing the project path positionally.
+
+### Docker & Containers
+- The Docker image must publish and copy both `Anduril.Host` and `Anduril.Setup`; the host may invoke setup on first startup.
+- The runtime image runs as the non-root `anduril` user. Runtime-writable directories must be created and owned during image build.
+- `/app/sessions` is required at runtime and must stay writable for the session store.
+- Container defaults are intentionally quiet: providers/adapters may be disabled by default via `...__Enabled=false` and should be explicitly opted back in.
+- Keep `.dockerignore` aligned with local build outputs (`bin/`, `obj/`, `publish/`, test artifacts, etc.) so Windows/local artifacts do not pollute container builds.
 
 ---
 
@@ -69,6 +77,14 @@ Anduril is a personal AI assistant built from scratch in C#. It connects to Slac
 
 10. **Use `SlackServiceBuilder` for Slack wiring.** Never construct `SlackSocketModeClient` directly. The builder handles token binding, handler registration, and client creation. The interface is `ISlackSocketModeClient` (not `ISocketModeClient`), in the `SlackNet` namespace (not `SlackNet.SocketMode`).
 
+11. **Never launch interactive setup in containers or headless sessions.** Use the startup setup policy to decide whether setup should launch. In Docker, redirected-input, or other non-interactive environments, log actionable guidance instead of prompting.
+
+12. **Respect `Enabled` settings for providers and adapters.** Disabled components do not count as configured, should not be registered in DI, and should not produce startup noise.
+
+13. **Container runtime paths must remain writable by `anduril`.** If you add or move runtime storage paths, ensure they are created and owned in the image build.
+
+14. **Keep startup logging actionable.** Do not double-register console logging sinks, and only log adapters as "started" when they are actually connected.
+
 ---
 
 ## Patterns
@@ -89,6 +105,7 @@ Both runners implement `ISkillRunner` and are registered with `ISkillRouter` via
 
 ### Message Processing Pipeline
 `MessageProcessingService` (an `IHostedService`) orchestrates everything on startup:
+Before normal startup continues, evaluate the startup setup policy; skip interactive setup in containers/non-interactive environments and log configuration guidance instead.
 1. Initialize AI providers (best-effort)
 2. Register skill runners → `ISkillRouter.RefreshAsync()`
 3. Start communication adapters → subscribe to `MessageReceived`
@@ -104,6 +121,16 @@ builder.Services.Configure<SlackAdapterOptions>(config.GetSection("Communication
 builder.Services.Configure<AiProviderOptions>("openai", config.GetSection("AI:OpenAI"));
 ```
 Named options (e.g., `"openai"`) are used for providers since multiple instances share the same options type.
+
+Most providers/adapters also expose an `Enabled` boolean. When adding new ones, default it to `true`, allow environment-variable override, and ensure registration/startup logic honors it.
+
+### Setup Tool
+`Anduril.Setup` supports both interactive desktop setup and headless non-interactive setup.
+
+- Non-interactive setup is driven by CLI args and `ANDURIL_SETUP_*` environment variables
+- Command-line arguments override environment variables
+- Supported non-interactive providers are currently `ollama`, `anthropic`, and `openai`
+- The host should rely on the setup tool for configuration bootstrapping rather than duplicating setup logic
 
 ### DI Registration
 - **AI providers**: `AddSingleton<IAiProvider, ConcreteProvider>()` — multiple implementations of the same interface
@@ -126,4 +153,8 @@ On processing failure, send a user-facing error message ("Sorry, something went 
 
 ### Logging
 Serilog with structured logging throughout. Use `ILogger<T>` via DI. Use message templates with named parameters: `_logger.LogInformation("AI provider '{Name}' initialized", provider.Name)`.
+
+### Docker Verification
+- Prefer in-container or file-based validation when `docker logs` output appears stale, duplicated, or misleading.
+- Validate both image contents and runtime behavior: environment variables, directory ownership, and ability to write required files.
 
