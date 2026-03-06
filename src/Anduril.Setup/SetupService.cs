@@ -35,8 +35,8 @@ internal sealed class SetupService
         => NormalizeProvider(provider) switch
         {
             "ollama" => "llama3.1:8b",
-            "anthropic" => "claude-3-5-sonnet-20241022",
-            "openai" => "gpt-4o-mini",
+            "anthropic" => "claude-sonnet-4-5",
+            "openai" => "gpt-4o",
             _ => string.Empty
         };
 
