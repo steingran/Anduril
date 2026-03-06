@@ -1,3 +1,4 @@
+using System.Text.Json;
 using Anduril.Core.AI;
 using Anduril.Core.Communication;
 using Anduril.Core.Integrations;
@@ -47,6 +48,26 @@ public class MessageProcessingServiceTests
         await adapter.SimulateMessage(CreateMessage("hello"));
 
         await Assert.That(adapter.SentMessages[0].ThreadId).IsEqualTo("msg-1");
+    }
+
+    [Test]
+    public async Task OnSlackMessage_FallbackPromptIncludesSlackConversationContext()
+    {
+        var provider = new FakeAiProvider("Test AI response");
+        var (service, adapter, _) = CreateService(provider: provider);
+        await service.StartAsync(CancellationToken.None);
+        await adapter.SimulateMessage(CreateMessage(
+            text: "find links in this thread",
+            threadId: null,
+            platform: "slack",
+            channelId: "C12345",
+            isDirectMessage: true));
+
+        await Assert.That(provider.CapturedMessagesJson).IsNotNull();
+        await Assert.That(provider.CapturedMessagesJson!).Contains("Current Slack conversation context");
+        await Assert.That(provider.CapturedMessagesJson!).Contains("C12345");
+        await Assert.That(provider.CapturedMessagesJson!).Contains("msg-1");
+        await Assert.That(provider.CapturedMessagesJson!).Contains("Direct message: yes");
     }
 
     [Test]
@@ -180,10 +201,15 @@ public class MessageProcessingServiceTests
     // Helpers
     // ---------------------------------------------------------------
 
-    private static IncomingMessage CreateMessage(string text, string? threadId = null) => new()
+    private static IncomingMessage CreateMessage(
+        string text,
+        string? threadId = null,
+        string platform = "test",
+        string channelId = "ch-1",
+        bool isDirectMessage = false) => new()
     {
         Id = "msg-1", Text = text, UserId = "user-1",
-        ChannelId = "ch-1", Platform = "test", ThreadId = threadId
+        ChannelId = channelId, Platform = platform, ThreadId = threadId, IsDirectMessage = isDirectMessage
     };
 
     private static (MessageProcessingService Service, FakeAdapter Adapter, FakeAiProvider Provider) CreateService(
@@ -256,10 +282,13 @@ public class MessageProcessingServiceTests
 
     private sealed class FakeAiProvider(string responseText) : IAiProvider
     {
+        private readonly FakeChatClient _chatClient = new(responseText);
+
         public string Name => "fake-ai";
         public bool IsAvailable { get; private set; }
         public bool SupportsChatCompletion => true;
-        public IChatClient ChatClient => new FakeChatClient(responseText);
+        public IChatClient ChatClient => _chatClient;
+        public string? CapturedMessagesJson => _chatClient.CapturedMessagesJson;
         public Task InitializeAsync(CancellationToken cancellationToken = default) { IsAvailable = true; return Task.CompletedTask; }
         public Task<IReadOnlyList<AITool>> GetToolsAsync(CancellationToken cancellationToken = default) => Task.FromResult<IReadOnlyList<AITool>>([]);
         public ValueTask DisposeAsync() => ValueTask.CompletedTask;
@@ -267,9 +296,13 @@ public class MessageProcessingServiceTests
 
     private sealed class FakeChatClient(string responseText) : IChatClient
     {
+        public string? CapturedMessagesJson { get; private set; }
         public ChatClientMetadata Metadata => new();
         public Task<ChatResponse> GetResponseAsync(IEnumerable<ChatMessage> chatMessages, ChatOptions? options = null, CancellationToken cancellationToken = default)
-            => Task.FromResult(new ChatResponse(new ChatMessage(ChatRole.Assistant, responseText)));
+        {
+            CapturedMessagesJson = JsonSerializer.Serialize(chatMessages.ToList());
+            return Task.FromResult(new ChatResponse(new ChatMessage(ChatRole.Assistant, responseText)));
+        }
         public IAsyncEnumerable<ChatResponseUpdate> GetStreamingResponseAsync(IEnumerable<ChatMessage> chatMessages, ChatOptions? options = null, CancellationToken cancellationToken = default)
             => throw new NotSupportedException();
         public object? GetService(Type serviceType, object? serviceKey = null) => null;

@@ -359,19 +359,7 @@ public sealed class MessageProcessingService(
             var messages = new List<ChatMessage>
             {
                 new(ChatRole.System,
-                    "You are Andúril, a personal AI assistant. " +
-                    "You have access to integration tools that let you interact with external services " +
-                    "like Gmail, GitHub, Sentry, and Calendar on behalf of the user. " +
-                    "When the user asks about their emails, calendar, code, or errors, " +
-                    "use the available tools to fulfill their request. " +
-                    "Always be helpful and concise.\n\n" +
-                    "Formatting: Use clear structure in your responses. " +
-                    "Use **bold** for emphasis and section headings. " +
-                    "Use bullet points (- item) for lists. " +
-                    "Use `code` for inline code and ``` for code blocks. " +
-                    "Use ~strikethrough~ sparingly. " +
-                    "Use [text](url) for links. " +
-                    "Keep responses scannable with short paragraphs and clear section breaks.")
+                    BuildSystemPrompt(message))
             };
 
             // Replay conversation history
@@ -447,6 +435,38 @@ public sealed class MessageProcessingService(
                     "Prompt cache hit for '{Provider}': {CacheReadTokens} tokens read from cache",
                     providerName, cacheRead);
         }
+    }
+
+    private static string BuildSystemPrompt(IncomingMessage message)
+    {
+        var prompt =
+            "You are Andúril, a personal AI assistant. " +
+            "You have access to integration tools that let you interact with external services " +
+            "like Gmail, GitHub, Sentry, Calendar, Slack, and Medium on behalf of the user. " +
+            "When the user asks about their emails, calendar, code, errors, chat history, or linked articles, " +
+            "use the available tools to fulfill their request. " +
+            "Always be helpful and concise.\n\n" +
+            "Formatting: Use clear structure in your responses. " +
+            "Use **bold** for emphasis and section headings. " +
+            "Use bullet points (- item) for lists. " +
+            "Use `code` for inline code and ``` for code blocks. " +
+            "Use ~strikethrough~ sparingly. " +
+            "Use [text](url) for links. " +
+            "Keep responses scannable with short paragraphs and clear section breaks.";
+
+        if (!message.Platform.Equals("slack", StringComparison.OrdinalIgnoreCase))
+            return prompt;
+
+        var currentThreadId = message.ThreadId ?? message.Id;
+
+        return prompt + "\n\n" +
+               "Current Slack conversation context:\n" +
+               $"- Channel ID: {message.ChannelId}\n" +
+               $"- Current thread timestamp: {currentThreadId}\n" +
+               $"- Direct message: {(message.IsDirectMessage ? "yes" : "no")}\n" +
+               "If the user refers to 'this conversation', 'this thread', nearby Slack messages, or Slack-shared links, " +
+               "prefer the Slack query tools with the current channel and thread before asking the user for IDs. " +
+               "If you find Medium URLs in Slack history, you can fetch them with the Medium article tool.";
     }
 
     /// <summary>

@@ -273,12 +273,17 @@ try
     builder.Services.Configure<SentryToolOptions>(config.GetSection("Integrations:Sentry"));
     builder.Services.Configure<Office365CalendarToolOptions>(config.GetSection("Integrations:Office365Calendar"));
     builder.Services.Configure<GmailToolOptions>(config.GetSection("Integrations:Gmail"));
+    builder.Services.Configure<SlackQueryToolOptions>(config.GetSection("Integrations:SlackQuery"));
+    builder.Services.Configure<MediumArticleToolOptions>(config.GetSection("Integrations:MediumArticle"));
+    builder.Services.AddHttpClient(nameof(MediumArticleTool));
 
     builder.Services.AddSingleton<IIntegrationTool, GitHubTool>();
     builder.Services.AddSingleton<IIntegrationTool, SentryTool>();
     builder.Services.AddSingleton<IIntegrationTool, Office365CalendarTool>();
     builder.Services.AddSingleton<GmailTool>();
     builder.Services.AddSingleton<IIntegrationTool>(sp => sp.GetRequiredService<GmailTool>());
+    builder.Services.AddSingleton<IIntegrationTool, SlackQueryTool>();
+    builder.Services.AddSingleton<IIntegrationTool, MediumArticleTool>();
 
     // ------------------------------------------------------------------
     // Conversation Session Store
