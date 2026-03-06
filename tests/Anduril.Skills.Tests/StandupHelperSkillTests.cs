@@ -15,6 +15,23 @@ public class StandupHelperSkillTests
             NullLogger<StandupHelperSkill>.Instance);
     }
 
+    private static SkillContext CreateContext(string? gitHubOrganization = null) => new()
+    {
+        Message = new IncomingMessage
+        {
+            Id = "test-1",
+            Text = "standup",
+            UserId = "u1",
+            ChannelId = "ch1",
+            Platform = "cli"
+        },
+        UserId = "u1",
+        ChannelId = "ch1",
+        Properties = string.IsNullOrWhiteSpace(gitHubOrganization)
+            ? new Dictionary<string, object>()
+            : new Dictionary<string, object> { ["GitHubOrganization"] = gitHubOrganization }
+    };
+
     // ---------------------------------------------------------------
     // Property tests
     // ---------------------------------------------------------------
@@ -137,22 +154,47 @@ public class StandupHelperSkillTests
     public async Task ExecuteAsync_WithNoTools_ReturnsSuccessWithUnavailableMessages()
     {
         var skill = CreateSkill();
-        var context = new SkillContext
-        {
-            Message = new IncomingMessage
-            {
-                Id = "test-1", Text = "standup", UserId = "u1",
-                ChannelId = "ch1", Platform = "cli"
-            },
-            UserId = "u1",
-            ChannelId = "ch1"
-        };
+        var context = CreateContext();
 
         var result = await skill.ExecuteAsync(context);
 
         await Assert.That(result.Success).IsTrue();
         await Assert.That(result.Response).Contains("github integration unavailable");
         await Assert.That(result.Response).Contains("office365-calendar integration unavailable");
+    }
+
+    [Test]
+    public async Task ExecuteAsync_WithGitHubOrganization_UsesOrgScopedGitHubFunctions()
+    {
+        var gitHubTool = new RecordingStandupIntegrationTool("github");
+        var calendarTool = new RecordingStandupIntegrationTool("office365-calendar");
+        var skill = CreateSkill([gitHubTool, calendarTool]);
+
+        var result = await skill.ExecuteAsync(CreateContext("steingran"));
+
+        await Assert.That(result.Success).IsTrue();
+        await Assert.That(gitHubTool.InvokedFunctionNames).Contains("github_search_org_prs_since");
+        await Assert.That(gitHubTool.InvokedFunctionNames).Contains("github_search_org_issues_since");
+        await Assert.That(gitHubTool.InvokedFunctionNames.Contains("github_list_pull_requests_since")).IsFalse();
+        await Assert.That(gitHubTool.InvokedFunctionNames.Contains("github_list_issues_since")).IsFalse();
+        await Assert.That(gitHubTool.RequestedOrganizations).Contains("steingran");
+    }
+
+    [Test]
+    public async Task ExecuteAsync_WithoutGitHubOrganization_UsesRepositoryScopedGitHubFunctions()
+    {
+        var gitHubTool = new RecordingStandupIntegrationTool("github");
+        var calendarTool = new RecordingStandupIntegrationTool("office365-calendar");
+        var skill = CreateSkill([gitHubTool, calendarTool]);
+
+        var result = await skill.ExecuteAsync(CreateContext());
+
+        await Assert.That(result.Success).IsTrue();
+        await Assert.That(gitHubTool.InvokedFunctionNames).Contains("github_list_pull_requests_since");
+        await Assert.That(gitHubTool.InvokedFunctionNames).Contains("github_list_issues_since");
+        await Assert.That(gitHubTool.InvokedFunctionNames.Contains("github_search_org_prs_since")).IsFalse();
+        await Assert.That(gitHubTool.InvokedFunctionNames.Contains("github_search_org_issues_since")).IsFalse();
+        await Assert.That(gitHubTool.RequestedOrganizations.Count).IsEqualTo(0);
     }
 }
 
