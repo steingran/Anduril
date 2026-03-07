@@ -14,8 +14,7 @@ public sealed class MediumArticleTool : IIntegrationTool
 {
     private readonly ConcurrentDictionary<string, (DateTimeOffset ExpiresAt, MediumArticleContent Article)> _cache =
         new(StringComparer.OrdinalIgnoreCase);
-    private readonly Func<Uri, CancellationToken, Task<string>> _fetchHtmlAsync;
-    private readonly IHttpClientFactory? _httpClientFactory;
+    private readonly IMediumArticleRetriever _retriever;
     private readonly ILogger<MediumArticleTool> _logger;
     private readonly MediumArticleToolOptions _options;
     private readonly TimeProvider _timeProvider;
@@ -24,24 +23,21 @@ public sealed class MediumArticleTool : IIntegrationTool
     public MediumArticleTool(
         IOptions<MediumArticleToolOptions> options,
         ILogger<MediumArticleTool> logger,
+        ILoggerFactory loggerFactory,
         IHttpClientFactory httpClientFactory)
+        : this(options, logger, CreateRetriever(options, loggerFactory, httpClientFactory), TimeProvider.System)
     {
-        _options = options.Value;
-        _logger = logger;
-        _httpClientFactory = httpClientFactory;
-        _fetchHtmlAsync = FetchHtmlAsync;
-        _timeProvider = TimeProvider.System;
     }
 
     internal MediumArticleTool(
         IOptions<MediumArticleToolOptions> options,
         ILogger<MediumArticleTool> logger,
-        Func<Uri, CancellationToken, Task<string>> fetchHtmlAsync,
+        IMediumArticleRetriever retriever,
         TimeProvider? timeProvider = null)
     {
         _options = options.Value;
         _logger = logger;
-        _fetchHtmlAsync = fetchHtmlAsync;
+        _retriever = retriever;
         _timeProvider = timeProvider ?? TimeProvider.System;
     }
 
@@ -51,19 +47,11 @@ public sealed class MediumArticleTool : IIntegrationTool
 
     public bool IsAvailable => _isInitialized;
 
-    public async Task InitializeAsync(CancellationToken cancellationToken = default)
+    public Task InitializeAsync(CancellationToken cancellationToken = default)
     {
         _isInitialized = true;
-
-        if (string.IsNullOrWhiteSpace(_options.CookieHeader))
-        {
-            _logger.LogWarning(
-                "Medium article integration is running without an authenticated Medium cookie header. Subscriber-only articles may return preview content only. Configure Integrations:MediumArticle:CookieHeader, preferably via an environment variable, to use your Medium subscription.");
-            return;
-        }
-
-        _logger.LogInformation("Medium article integration initialized with an authenticated Medium cookie header.");
-        await ValidateAuthenticatedCookieAsync(cancellationToken);
+        WarnIfBrowserRetrievalIsMisconfigured();
+        return Task.CompletedTask;
     }
 
     public IReadOnlyList<AIFunction> GetFunctions() =>
@@ -82,27 +70,25 @@ public sealed class MediumArticleTool : IIntegrationTool
         if (TryGetCachedArticle(uri.AbsoluteUri, out var cachedArticle))
             return FormatArticle(cachedArticle);
 
-        string html;
+        var fetchResult = await _retriever.FetchAsync(uri, CancellationToken.None);
 
-        try
+        if (!fetchResult.Success)
         {
-            html = await _fetchHtmlAsync(uri, CancellationToken.None);
-        }
-        catch (HttpRequestException ex)
-        {
-            _logger.LogWarning(ex, "Failed to fetch Medium article from {Url}", uri);
-            return $"Failed to fetch article '{uri}'. The page may be unavailable or require authentication.";
-        }
-        catch (TaskCanceledException ex)
-        {
-            _logger.LogWarning(ex, "Timed out fetching Medium article from {Url}", uri);
-            return $"Timed out fetching article '{uri}'. The page may be slow or unavailable.";
+            _logger.LogWarning(
+                "Failed to fetch Medium article from {Url}. FinalUrl: {FinalUrl}. Method: {Method}. FailureReason: {FailureReason}. StatusCode: {StatusCode}. Diagnostics: {Diagnostics}",
+                uri,
+                fetchResult.FinalUrl,
+                fetchResult.RetrievalMethod,
+                fetchResult.FailureReason,
+                fetchResult.StatusCode,
+                fetchResult.DiagnosticMessage);
+            return CreateFetchFailureMessage(uri, fetchResult.FailureReason);
         }
 
-        if (!MediumUrlDetector.IsLikelyMediumArticle(uri, html))
+        if (!MediumUrlDetector.IsLikelyMediumArticle(fetchResult.FinalUrl, fetchResult.Html))
             return $"The URL '{uri}' does not appear to be a Medium article or Medium-hosted publication page.";
 
-        var article = MediumArticleParser.Parse(uri, html);
+        var article = MediumArticleParser.Parse(fetchResult.FinalUrl, fetchResult.Html);
         var normalizedArticle = article with
         {
             MarkdownContent = Truncate(article.MarkdownContent, _options.MaximumContentLengthCharacters),
@@ -114,79 +100,43 @@ public sealed class MediumArticleTool : IIntegrationTool
         return FormatArticle(normalizedArticle);
     }
 
-    private async Task<string> FetchHtmlAsync(Uri uri, CancellationToken cancellationToken)
+    private static string CreateFetchFailureMessage(Uri uri, MediumArticleFetchFailureReason failureReason) =>
+        failureReason switch
+        {
+            MediumArticleFetchFailureReason.Timeout => $"Timed out fetching article '{uri}'. The page may be slow or unavailable.",
+            MediumArticleFetchFailureReason.CloudflareChallenge => $"Failed to fetch article '{uri}'. The page appears to be behind a browser challenge on a Medium custom domain. Use browser-backed retrieval with either a dedicated browser profile or an attach-to-existing-Chrome session for pages like this.",
+            MediumArticleFetchFailureReason.AuthenticationRequired => $"Failed to fetch article '{uri}'. The page may require Medium authentication or browser-backed retrieval with an authenticated browser session.",
+            MediumArticleFetchFailureReason.Forbidden => $"Failed to fetch article '{uri}'. Access was forbidden. This custom-domain Medium page may require domain-specific authentication or a real browser session.",
+            MediumArticleFetchFailureReason.BrowserUnavailable => $"Failed to fetch article '{uri}'. Browser-backed retrieval is enabled but unavailable. Configure either a remote debugging URL for an already-running Chrome or Edge session, or a dedicated browser profile directory plus a launchable browser channel or executable path.",
+            MediumArticleFetchFailureReason.NetworkError => $"Failed to fetch article '{uri}'. The page may be unavailable or require authentication.",
+            _ => $"Failed to fetch article '{uri}'. The page may be unavailable or require authentication.",
+        };
+
+    private static IMediumArticleRetriever CreateRetriever(
+        IOptions<MediumArticleToolOptions> options,
+        ILoggerFactory loggerFactory,
+        IHttpClientFactory httpClientFactory) =>
+        new ConfigurableMediumArticleRetriever(
+            options,
+            new HttpMediumArticleRetriever(options, httpClientFactory),
+            new PlaywrightMediumArticleRetriever(options, loggerFactory.CreateLogger<PlaywrightMediumArticleRetriever>()));
+
+    private void WarnIfBrowserRetrievalIsMisconfigured()
     {
-        var httpClientFactory = _httpClientFactory ?? throw new InvalidOperationException("HTTP client factory is not available.");
-        using var request = CreateRequestMessage(uri);
-        using var cts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
-        cts.CancelAfter(TimeSpan.FromSeconds(Math.Max(1, _options.RequestTimeoutSeconds)));
-
-        using var response = await httpClientFactory.CreateClient(nameof(MediumArticleTool)).SendAsync(request, cts.Token);
-        response.EnsureSuccessStatusCode();
-        return await response.Content.ReadAsStringAsync(cts.Token);
-    }
-
-    internal HttpRequestMessage CreateRequestMessage(Uri uri)
-    {
-        var request = new HttpRequestMessage(HttpMethod.Get, uri);
-        request.Headers.TryAddWithoutValidation(
-            "User-Agent",
-            string.IsNullOrWhiteSpace(_options.UserAgent) ? "Anduril/0.1" : _options.UserAgent);
-
-        if (!string.IsNullOrWhiteSpace(_options.CookieHeader))
-            request.Headers.TryAddWithoutValidation("Cookie", _options.CookieHeader.Trim());
-
-        return request;
-    }
-
-    private async Task ValidateAuthenticatedCookieAsync(CancellationToken cancellationToken)
-    {
-        if (string.IsNullOrWhiteSpace(_options.ValidationUrl))
+        if (_options.RetrievalMode == MediumArticleRetrievalMode.HttpOnly)
             return;
 
-        if (!Uri.TryCreate(_options.ValidationUrl, UriKind.Absolute, out var validationUri))
-        {
-            _logger.LogWarning(
-                "Medium article authenticated cookie validation skipped because Integrations:MediumArticle:ValidationUrl is not a valid absolute URL: {ValidationUrl}",
-                _options.ValidationUrl);
+        if (MediumArticleBrowserConfiguration.IsConfigured(_options))
             return;
-        }
 
-        try
-        {
-            var html = await _fetchHtmlAsync(validationUri, cancellationToken);
+        var consequence = _options.RetrievalMode == MediumArticleRetrievalMode.BrowserOnly
+            ? "Browser-only fetches will fail until either a remote debugging URL or a dedicated browser profile path is configured."
+            : "HTTP retrieval will still work, but browser fallback is disabled until either a remote debugging URL or a dedicated browser profile path is configured.";
 
-            if (!MediumUrlDetector.IsLikelyMediumArticle(validationUri, html))
-            {
-                _logger.LogWarning(
-                    "Medium article authenticated cookie validation skipped because the configured validation URL '{ValidationUrl}' did not appear to be a Medium article. Choose a Medium article URL, ideally a subscriber-only article you can access.",
-                    validationUri);
-                return;
-            }
-
-            if (MediumUrlDetector.IsPaywalled(html))
-            {
-                _logger.LogWarning(
-                    "Medium article authenticated cookie validation indicates the configured Medium cookie may be stale, expired, or insufficient. The validation URL '{ValidationUrl}' still appears paywalled.",
-                    validationUri);
-                return;
-            }
-
-            _logger.LogInformation("Medium article authenticated cookie validation succeeded for {ValidationUrl}", validationUri);
-        }
-        catch (OperationCanceledException) when (!cancellationToken.IsCancellationRequested)
-        {
-            _logger.LogWarning(
-                "Medium article authenticated cookie validation timed out for {ValidationUrl}. Continuing without blocking startup.",
-                validationUri);
-        }
-        catch (Exception ex) when (ex is not OperationCanceledException)
-        {
-            _logger.LogWarning(
-                ex,
-                "Medium article authenticated cookie validation could not be completed for {ValidationUrl}. Continuing without blocking startup.",
-                validationUri);
-        }
+        _logger.LogWarning(
+            "Medium article browser-backed retrieval is configured in {RetrievalMode} mode, but neither Integrations:MediumArticle:BrowserRemoteDebuggingUrl nor Integrations:MediumArticle:BrowserUserDataDirectory is configured. {Consequence}",
+            _options.RetrievalMode,
+            consequence);
     }
 
     private void CacheArticle(string cacheKey, MediumArticleContent article)

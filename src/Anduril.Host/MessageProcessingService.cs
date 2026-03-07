@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using System.Text.Json;
 using Anduril.Core.AI;
 using Anduril.Core.Communication;
@@ -27,6 +28,12 @@ public sealed class MessageProcessingService(
     ILogger<MessageProcessingService> logger)
     : IHostedService, IAsyncDisposable
 {
+    private const string MediumArticleIntegrationName = "medium-article";
+    private const string MediumArticleFunctionName = "medium_get_article";
+    private const int SlackSoftMessageCharacterLimit = 30000;
+    private const int SlackPlaceholderUpdateCharacterLimit = 4000;
+    private const string SlackLongResponsePlaceholderText = "_Response is long — posting it below in thread..._";
+
     // Store event handlers for cleanup
     private readonly Dictionary<ICommunicationAdapter, Func<IncomingMessage, Task>> _eventHandlers = new();
 
@@ -196,33 +203,34 @@ public sealed class MessageProcessingService(
             {
                 try
                 {
-                    await sourceAdapter.UpdateMessageAsync(placeholderMessageId, new OutgoingMessage
-                    {
-                        Text = responseText,
-                        ChannelId = message.ChannelId,
-                        ThreadId = threadId
-                    });
+                    await UpdateOrSendChunkedResponseAsync(
+                        sourceAdapter,
+                        placeholderMessageId,
+                        message.ChannelId,
+                        threadId,
+                        responseText,
+                        CancellationToken.None);
                 }
                 catch (Exception updateEx)
                 {
                     // Update failed — fall back to sending a new message
                     logger.LogWarning(updateEx, "Failed to update placeholder message — sending new message instead");
-                    await sourceAdapter.SendMessageAsync(new OutgoingMessage
-                    {
-                        Text = responseText,
-                        ChannelId = message.ChannelId,
-                        ThreadId = threadId
-                    });
+                    await SendChunkedResponseAsync(
+                        sourceAdapter,
+                        message.ChannelId,
+                        threadId,
+                        responseText,
+                        CancellationToken.None);
                 }
             }
             else
             {
-                await sourceAdapter.SendMessageAsync(new OutgoingMessage
-                {
-                    Text = responseText,
-                    ChannelId = message.ChannelId,
-                    ThreadId = threadId
-                });
+                await SendChunkedResponseAsync(
+                    sourceAdapter,
+                    message.ChannelId,
+                    threadId,
+                    responseText,
+                    CancellationToken.None);
             }
         }
         catch (Exception ex)
@@ -252,12 +260,12 @@ public sealed class MessageProcessingService(
                     }
                 }
 
-                await sourceAdapter.SendMessageAsync(new OutgoingMessage
-                {
-                    Text = errorText,
-                    ChannelId = message.ChannelId,
-                    ThreadId = threadId
-                });
+                await SendChunkedResponseAsync(
+                    sourceAdapter,
+                    message.ChannelId,
+                    threadId,
+                    errorText,
+                    CancellationToken.None);
             }
             catch (Exception sendEx)
             {
@@ -265,6 +273,121 @@ public sealed class MessageProcessingService(
             }
         }
     }
+
+    private async Task UpdateOrSendChunkedResponseAsync(
+        ICommunicationAdapter adapter,
+        string messageId,
+        string channelId,
+        string threadId,
+        string responseText,
+        CancellationToken cancellationToken)
+    {
+        if (ShouldPostSlackResponseBelowPlaceholder(adapter.Platform, responseText))
+        {
+            await adapter.UpdateMessageAsync(
+                messageId,
+                CreateOutgoingMessage(SlackLongResponsePlaceholderText, channelId, threadId),
+                cancellationToken);
+            await SendChunkedResponseAsync(adapter, channelId, threadId, responseText, cancellationToken);
+            return;
+        }
+
+        var chunks = SplitResponseForAdapter(adapter.Platform, responseText);
+        await adapter.UpdateMessageAsync(messageId, CreateOutgoingMessage(chunks[0], channelId, threadId), cancellationToken);
+
+        for (var i = 1; i < chunks.Count; i++)
+            await adapter.SendMessageAsync(CreateOutgoingMessage(chunks[i], channelId, threadId), cancellationToken);
+    }
+
+    private async Task SendChunkedResponseAsync(
+        ICommunicationAdapter adapter,
+        string channelId,
+        string threadId,
+        string responseText,
+        CancellationToken cancellationToken)
+    {
+        var chunks = SplitResponseForAdapter(adapter.Platform, responseText);
+        for (var i = 0; i < chunks.Count; i++)
+            await adapter.SendMessageAsync(CreateOutgoingMessage(chunks[i], channelId, threadId), cancellationToken);
+    }
+
+    private IReadOnlyList<string> SplitResponseForAdapter(string platform, string responseText)
+    {
+        var maxLength = platform.Equals("slack", StringComparison.OrdinalIgnoreCase)
+            ? SlackSoftMessageCharacterLimit
+            : int.MaxValue;
+
+        var chunks = SplitMessage(responseText, maxLength);
+
+        if (chunks.Count > 1)
+        {
+            logger.LogInformation(
+                "Splitting {Platform} response into {ChunkCount} threaded messages to stay within platform limits",
+                platform,
+                chunks.Count);
+        }
+
+        return chunks;
+    }
+
+    private static bool ShouldPostSlackResponseBelowPlaceholder(string platform, string responseText) =>
+        platform.Equals("slack", StringComparison.OrdinalIgnoreCase) &&
+        responseText.Length > SlackPlaceholderUpdateCharacterLimit;
+
+    private static IReadOnlyList<string> SplitMessage(string text, int maxLength)
+    {
+        if (maxLength <= 0 || text.Length <= maxLength)
+            return [text];
+
+        List<string> chunks = [];
+        var start = 0;
+
+        while (start < text.Length)
+        {
+            var end = Math.Min(text.Length, start + maxLength);
+            if (end == text.Length)
+            {
+                chunks.Add(text[start..end]);
+                break;
+            }
+
+            var boundary = FindChunkBoundary(text, start, end);
+            chunks.Add(text[start..boundary]);
+            start = boundary;
+        }
+
+        return chunks;
+    }
+
+    private static int FindChunkBoundary(string text, int start, int endExclusive)
+    {
+        var boundary = FindLastBoundary(text, "\n\n", start, endExclusive);
+        if (boundary > start)
+            return boundary;
+
+        boundary = FindLastBoundary(text, "\n", start, endExclusive);
+        if (boundary > start)
+            return boundary;
+
+        boundary = FindLastBoundary(text, " ", start, endExclusive);
+        if (boundary > start)
+            return boundary;
+
+        return endExclusive;
+    }
+
+    private static int FindLastBoundary(string text, string separator, int start, int endExclusive)
+    {
+        var index = text.LastIndexOf(separator, endExclusive - 1, endExclusive - start, StringComparison.Ordinal);
+        return index < start ? -1 : index + separator.Length;
+    }
+
+    private static OutgoingMessage CreateOutgoingMessage(string text, string channelId, string threadId) => new()
+    {
+        Text = text,
+        ChannelId = channelId,
+        ThreadId = threadId
+    };
 
     private async Task<string> ExecuteSkillAsync(SkillInfo skill, IncomingMessage message)
     {
@@ -317,43 +440,91 @@ public sealed class MessageProcessingService(
 
         try
         {
-            var chatClient = provider.ChatClient;
+            logger.LogInformation(
+                "Fallback AI chat started for session '{SessionKey}' using provider '{Provider}'. Platform={Platform}, Channel={Channel}, MessageLength={MessageLength}",
+                sessionKey, provider.Name, message.Platform, message.ChannelId, message.Text.Length);
 
-            // Collect all available integration tool functions (Gmail, GitHub, Sentry, Calendar, etc.)
+            var chatClient = provider.ChatClient;
+            int integrationToolCount = 0;
+            int providerToolCount = 0;
+            var availableIntegrationTools = integrationTools.Where(t => t.IsAvailable).ToList();
+            bool narrowToMediumOnly = ShouldNarrowToMediumArticleTool(message.Text, availableIntegrationTools);
+            IReadOnlyList<IIntegrationTool> selectedIntegrationTools = narrowToMediumOnly
+                ? availableIntegrationTools
+                    .Where(tool => tool.Name.Equals(MediumArticleIntegrationName, StringComparison.OrdinalIgnoreCase))
+                    .ToList()
+                : availableIntegrationTools;
+
+            if (narrowToMediumOnly)
+                logger.LogInformation(
+                    "Detected obvious Medium article request for session '{SessionKey}'. Narrowing tool exposure to integration '{ToolName}' only.",
+                    sessionKey, MediumArticleIntegrationName);
+
+            // Collect available integration tool functions (Gmail, GitHub, Sentry, Calendar, etc.)
             var tools = new List<AITool>();
-            foreach (var tool in integrationTools.Where(t => t.IsAvailable))
+            foreach (var tool in selectedIntegrationTools)
             {
-                tools.AddRange(tool.GetFunctions());
+                IReadOnlyList<AIFunction> functions = tool.GetFunctions();
+                integrationToolCount += functions.Count;
+                tools.AddRange(functions);
+
+                logger.LogInformation(
+                    "Fallback AI chat added {FunctionCount} integration function(s) from tool '{ToolName}'",
+                    functions.Count, tool.Name);
             }
 
             // Also collect tools from AI providers (e.g., MCP server tools)
-            foreach (var p in aiProviders.Where(p => p.IsAvailable))
+            if (!narrowToMediumOnly)
             {
-                try
+                foreach (var p in aiProviders.Where(p => p.IsAvailable))
                 {
-                    var providerTools = await p.GetToolsAsync();
-                    tools.AddRange(providerTools);
-                }
-                catch (NotSupportedException)
-                {
-                    // Some providers don't expose tools — that's fine
-                }
-                catch (NotImplementedException)
-                {
-                    // Some providers don't expose tools — that's fine
+                    try
+                    {
+                        var providerTools = await p.GetToolsAsync();
+                        providerToolCount += providerTools.Count;
+                        tools.AddRange(providerTools);
+
+                        logger.LogInformation(
+                            "Fallback AI chat added {FunctionCount} provider function(s) from provider '{ProviderName}'",
+                            providerTools.Count, p.Name);
+                    }
+                    catch (NotSupportedException)
+                    {
+                        // Some providers don't expose tools — that's fine
+                    }
+                    catch (NotImplementedException)
+                    {
+                        // Some providers don't expose tools — that's fine
+                    }
                 }
             }
+            else
+            {
+                logger.LogInformation(
+                    "Skipping provider tool exposure for obvious Medium article request in session '{SessionKey}'",
+                    sessionKey);
+            }
 
-            logger.LogDebug("Fallback AI chat with {ToolCount} tool(s) available", tools.Count);
+            logger.LogInformation(
+                "Fallback AI chat assembled {ToolCount} total tool(s): {IntegrationToolCount} integration, {ProviderToolCount} provider",
+                tools.Count, integrationToolCount, providerToolCount);
 
             // Load conversation history from the session store
+            var historyLoadStopwatch = Stopwatch.StartNew();
             var history = await sessionStore.LoadAsync(sessionKey);
-            logger.LogDebug(
-                "Loaded {Count} message(s) from session '{SessionKey}'",
-                history.Count, sessionKey);
+            historyLoadStopwatch.Stop();
+            logger.LogInformation(
+                "Loaded {Count} message(s) from session '{SessionKey}' in {ElapsedMs} ms",
+                history.Count, sessionKey, historyLoadStopwatch.ElapsedMilliseconds);
 
             // Compact the session if it exceeds the token limit
+            int historyCountBeforeCompaction = history.Count;
+            var compactionStopwatch = Stopwatch.StartNew();
             history = await CompactSessionAsync(sessionKey, history, chatClient);
+            compactionStopwatch.Stop();
+            logger.LogInformation(
+                "Session compaction check for '{SessionKey}' completed in {ElapsedMs} ms. Message count: {BeforeCount} -> {AfterCount}",
+                sessionKey, compactionStopwatch.ElapsedMilliseconds, historyCountBeforeCompaction, history.Count);
 
             // Build the message list: system prompt + history + current user message
             var messages = new List<ChatMessage>
@@ -377,6 +548,10 @@ public sealed class MessageProcessingService(
             // Add the current user message
             messages.Add(new ChatMessage(ChatRole.User, message.Text));
 
+            logger.LogInformation(
+                "Prepared fallback AI request for session '{SessionKey}' with {MessageCount} chat message(s)",
+                sessionKey, messages.Count);
+
             ChatResponse response;
             if (tools.Count > 0)
             {
@@ -384,21 +559,50 @@ public sealed class MessageProcessingService(
                 // AI requests a tool call → function is executed → result sent back → AI responds
                 var functionCallingClient = new FunctionInvokingChatClient(chatClient);
                 var options = new ChatOptions { Tools = tools };
+
+                logger.LogInformation(
+                    "Invoking FunctionInvokingChatClient for session '{SessionKey}' with {ToolCount} tool(s)",
+                    sessionKey, tools.Count);
+
+                var responseStopwatch = Stopwatch.StartNew();
                 response = await functionCallingClient.GetResponseAsync(messages, options);
+                responseStopwatch.Stop();
+
+                logger.LogInformation(
+                    "FunctionInvokingChatClient completed for session '{SessionKey}' in {ElapsedMs} ms",
+                    sessionKey, responseStopwatch.ElapsedMilliseconds);
             }
             else
             {
+                logger.LogInformation(
+                    "Invoking chat client directly for session '{SessionKey}' without tools",
+                    sessionKey);
+
+                var responseStopwatch = Stopwatch.StartNew();
                 response = await chatClient.GetResponseAsync(messages);
+                responseStopwatch.Stop();
+
+                logger.LogInformation(
+                    "Direct chat client call completed for session '{SessionKey}' in {ElapsedMs} ms",
+                    sessionKey, responseStopwatch.ElapsedMilliseconds);
             }
 
             string responseText = response.Text ?? "I received an empty response from the AI provider.";
+            logger.LogInformation(
+                "Fallback AI chat produced {ResponseLength} response character(s) for session '{SessionKey}'",
+                responseText.Length, sessionKey);
             LogUsageDetails(provider.Name, response);
 
             // Persist both user and assistant messages only after a successful AI response
+            logger.LogInformation("Appending user message to session '{SessionKey}'", sessionKey);
             await sessionStore.AppendAsync(sessionKey,
                 new SessionMessage("user", message.Text, message.Timestamp));
+
+            logger.LogInformation("Appending assistant message to session '{SessionKey}'", sessionKey);
             await sessionStore.AppendAsync(sessionKey,
                 new SessionMessage("assistant", responseText, DateTimeOffset.UtcNow));
+
+            logger.LogInformation("Fallback AI chat completed for session '{SessionKey}'", sessionKey);
 
             return responseText;
         }
@@ -406,6 +610,70 @@ public sealed class MessageProcessingService(
         {
             logger.LogError(ex, "Fallback AI chat failed using provider '{Name}'", provider.Name);
             return "I had trouble getting a response from the AI. Please try again.";
+        }
+    }
+
+    private static bool ShouldNarrowToMediumArticleTool(string messageText, IReadOnlyList<IIntegrationTool> availableIntegrationTools)
+    {
+        if (string.IsNullOrWhiteSpace(messageText))
+            return false;
+
+        bool mediumToolAvailable = availableIntegrationTools.Any(tool =>
+            tool.Name.Equals(MediumArticleIntegrationName, StringComparison.OrdinalIgnoreCase));
+        if (!mediumToolAvailable)
+            return false;
+
+        if (messageText.Contains(MediumArticleFunctionName, StringComparison.OrdinalIgnoreCase))
+            return true;
+
+        bool containsArticleRequestSignal = ContainsMediumArticleRequestSignal(messageText);
+        if (ContainsMediumHostedUrl(messageText))
+            return containsArticleRequestSignal;
+
+        if (!ContainsAbsoluteUrl(messageText))
+            return false;
+
+        bool mentionsMedium = messageText.Contains("medium", StringComparison.OrdinalIgnoreCase);
+        return mentionsMedium && containsArticleRequestSignal;
+    }
+
+    private static bool ContainsMediumArticleRequestSignal(string text) =>
+        text.Contains("article", StringComparison.OrdinalIgnoreCase) ||
+        text.Contains("summarize", StringComparison.OrdinalIgnoreCase) ||
+        text.Contains("summarise", StringComparison.OrdinalIgnoreCase) ||
+        text.Contains("summary", StringComparison.OrdinalIgnoreCase) ||
+        text.Contains("fetch", StringComparison.OrdinalIgnoreCase) ||
+        text.Contains("read", StringComparison.OrdinalIgnoreCase) ||
+        text.Contains("retrieve", StringComparison.OrdinalIgnoreCase);
+
+    private static bool ContainsAbsoluteUrl(string text) => ExtractAbsoluteUrls(text).Any();
+
+    private static bool ContainsMediumHostedUrl(string text)
+    {
+        foreach (var uri in ExtractAbsoluteUrls(text))
+        {
+            if (uri.Host.Equals("medium.com", StringComparison.OrdinalIgnoreCase))
+                return true;
+
+            if (uri.Host.EndsWith(".medium.com", StringComparison.OrdinalIgnoreCase))
+                return true;
+        }
+
+        return false;
+    }
+
+    private static IEnumerable<Uri> ExtractAbsoluteUrls(string text)
+    {
+        foreach (string token in text.Split([' ', '\t', '\r', '\n'], StringSplitOptions.RemoveEmptyEntries))
+        {
+            string candidate = token.Trim('"', '\'', '(', ')', '[', ']', '<', '>', ',', '.', ';', '!', ':');
+            if (!Uri.TryCreate(candidate, UriKind.Absolute, out var uri))
+                continue;
+
+            if (string.IsNullOrWhiteSpace(uri.Host))
+                continue;
+
+            yield return uri;
         }
     }
 

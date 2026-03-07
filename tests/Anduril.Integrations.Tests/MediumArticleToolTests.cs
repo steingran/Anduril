@@ -1,3 +1,4 @@
+using System.Net;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
@@ -9,7 +10,7 @@ public class MediumArticleToolTests
     [Test]
     public async Task InitializeAsync_BecomesAvailable()
     {
-        var tool = CreateTool((_, _) => Task.FromResult(BasicMediumHtml));
+        var tool = CreateTool((uri, _) => Task.FromResult(SuccessfulFetch(uri, BasicMediumHtml)));
 
         await tool.InitializeAsync();
 
@@ -17,45 +18,12 @@ public class MediumArticleToolTests
     }
 
     [Test]
-    public async Task InitializeAsync_WithoutCookieHeader_LogsWarning()
-    {
-        var logger = new ListLogger<MediumArticleTool>();
-        var tool = CreateTool((_, _) => Task.FromResult(BasicMediumHtml), logger: logger);
-
-        await tool.InitializeAsync();
-
-        await Assert.That(logger.WarningMessages.Count).IsEqualTo(1);
-        await Assert.That(logger.WarningMessages[0]).Contains("without an authenticated Medium cookie header");
-    }
-
-    [Test]
-    public async Task InitializeAsync_WithValidationUrlThatStillLooksPaywalled_LogsWarning()
+    public async Task InitializeAsync_WhenHttpOnly_DoesNotLogWarnings()
     {
         var logger = new ListLogger<MediumArticleTool>();
         var tool = CreateTool(
-            (uri, _) => Task.FromResult(uri.AbsoluteUri.Contains("member-post", StringComparison.Ordinal)
-                ? PaywalledMediumHtml
-                : BasicMediumHtml),
-            cookieHeader: "sid=abc; uid=123",
-            validationUrl: "https://medium.com/@author/member-post",
-            logger: logger);
-
-        await tool.InitializeAsync();
-
-        await Assert.That(logger.WarningMessages.Count).IsEqualTo(1);
-        await Assert.That(logger.WarningMessages[0]).Contains("may be stale, expired, or insufficient");
-    }
-
-    [Test]
-    public async Task InitializeAsync_WithHealthyValidationUrl_DoesNotLogWarning()
-    {
-        var logger = new ListLogger<MediumArticleTool>();
-        var tool = CreateTool(
-            (uri, _) => Task.FromResult(uri.AbsoluteUri.Contains("member-post", StringComparison.Ordinal)
-                ? BasicMediumHtml
-                : CustomDomainMediumHtml),
-            cookieHeader: "sid=abc; uid=123",
-            validationUrl: "https://medium.com/@author/member-post",
+            (uri, _) => Task.FromResult(SuccessfulFetch(uri, BasicMediumHtml)),
+            retrievalMode: MediumArticleRetrievalMode.HttpOnly,
             logger: logger);
 
         await tool.InitializeAsync();
@@ -64,44 +32,47 @@ public class MediumArticleToolTests
     }
 
     [Test]
-    public async Task InitializeAsync_WhenValidationFetchFails_LogsWarningAndRemainsAvailable()
+    public async Task InitializeAsync_WhenBrowserModeLacksProfilePath_LogsWarning()
     {
         var logger = new ListLogger<MediumArticleTool>();
         var tool = CreateTool(
-            (_, _) => Task.FromException<string>(new HttpRequestException("boom")),
-            cookieHeader: "sid=abc; uid=123",
-            validationUrl: "https://medium.com/@author/member-post",
+            (uri, _) => Task.FromResult(SuccessfulFetch(uri, BasicMediumHtml)),
+            retrievalMode: MediumArticleRetrievalMode.Auto,
             logger: logger);
 
         await tool.InitializeAsync();
 
-        await Assert.That(tool.IsAvailable).IsTrue();
-        await Assert.That(logger.WarningMessages.Count).IsEqualTo(1);
-        await Assert.That(logger.WarningMessages[0]).Contains("could not be completed");
+        await Assert.That(logger.WarningMessages.Any(message =>
+            message.Contains("BrowserRemoteDebuggingUrl", StringComparison.Ordinal) &&
+            message.Contains("BrowserUserDataDirectory", StringComparison.Ordinal) &&
+            message.Contains("browser fallback is disabled", StringComparison.Ordinal))).IsTrue();
+    }
+
+    [Test]
+    public async Task InitializeAsync_WhenBrowserModeUsesRemoteDebuggingUrl_DoesNotLogBrowserMisconfigurationWarning()
+    {
+        var logger = new ListLogger<MediumArticleTool>();
+        var tool = CreateTool(
+            (uri, _) => Task.FromResult(SuccessfulFetch(uri, BasicMediumHtml)),
+            retrievalMode: MediumArticleRetrievalMode.Auto,
+            browserRemoteDebuggingUrl: "http://127.0.0.1:9222",
+            logger: logger);
+
+        await tool.InitializeAsync();
+
+        await Assert.That(logger.WarningMessages.Any(message =>
+            message.Contains("BrowserRemoteDebuggingUrl", StringComparison.Ordinal) ||
+            message.Contains("BrowserUserDataDirectory", StringComparison.Ordinal))).IsFalse();
     }
 
     [Test]
     public async Task GetFunctions_ReturnsMediumGetArticle()
     {
-        var tool = CreateTool((_, _) => Task.FromResult(BasicMediumHtml));
+        var tool = CreateTool((uri, _) => Task.FromResult(SuccessfulFetch(uri, BasicMediumHtml)));
         var names = tool.GetFunctions().Select(function => function.Name).ToList();
 
         await Assert.That(names.Count).IsEqualTo(1);
         await Assert.That(names).Contains("medium_get_article");
-    }
-
-    [Test]
-    public async Task CreateRequestMessage_WithCookieHeader_AddsCookieRequestHeader()
-    {
-        var tool = CreateTool((_, _) => Task.FromResult(BasicMediumHtml), cookieHeader: "sid=abc; uid=123");
-        await tool.InitializeAsync();
-
-        using var request = tool.CreateRequestMessage(new Uri("https://medium.com/@author/post"));
-        var hasCookieHeader = request.Headers.TryGetValues("Cookie", out var values);
-
-        await Assert.That(hasCookieHeader).IsTrue();
-        await Assert.That(values).IsNotNull();
-        await Assert.That(values!.Single()).IsEqualTo("sid=abc; uid=123");
     }
 
     [Test]
@@ -111,7 +82,8 @@ public class MediumArticleToolTests
         var tool = CreateTool((_, _) =>
         {
             fetchCount++;
-            return Task.FromResult(CustomDomainMediumHtml);
+            var sourceUrl = new Uri("https://engineering.example.com/my-medium-post");
+            return Task.FromResult(SuccessfulFetch(sourceUrl, CustomDomainMediumHtml));
         });
         await tool.InitializeAsync();
 
@@ -130,7 +102,7 @@ public class MediumArticleToolTests
     [Test]
     public async Task GetArticleAsync_ReturnsHelpfulMessageForNonMediumUrl()
     {
-        var tool = CreateTool((_, _) => Task.FromResult("<html><body><p>Not Medium.</p></body></html>"));
+        var tool = CreateTool((uri, _) => Task.FromResult(SuccessfulFetch(uri, "<html><body><p>Not Medium.</p></body></html>")));
         await tool.InitializeAsync();
 
         var result = await tool.GetArticleAsync("https://example.com/post");
@@ -141,7 +113,7 @@ public class MediumArticleToolTests
     [Test]
     public async Task GetArticleAsync_GracefullyMarksPaywalledArticles()
     {
-        var tool = CreateTool((_, _) => Task.FromResult(PaywalledMediumHtml));
+        var tool = CreateTool((uri, _) => Task.FromResult(SuccessfulFetch(uri, PaywalledMediumHtml)));
         await tool.InitializeAsync();
 
         var result = await tool.GetArticleAsync("https://medium.com/@author/paywalled-post");
@@ -150,24 +122,108 @@ public class MediumArticleToolTests
         await Assert.That(result).Contains("Content preview unavailable because this Medium article appears to be paywalled");
     }
 
+    [Test]
+    public async Task GetArticleAsync_WhenFetchHitsCloudflareChallenge_ReturnsActionableMessage()
+    {
+        var tool = CreateTool((uri, _) => Task.FromResult(MediumArticleFetchResult.Failed(
+            uri,
+            uri,
+            MediumArticleRetrievalMethod.Http,
+            MediumArticleFetchFailureReason.CloudflareChallenge,
+            HttpStatusCode.Forbidden)));
+        await tool.InitializeAsync();
+
+        var result = await tool.GetArticleAsync("https://awstip.com/example-post");
+
+        await Assert.That(result).Contains("behind a browser challenge");
+        await Assert.That(result).Contains("custom domain");
+    }
+
+    [Test]
+    public async Task GetArticleAsync_WhenFetchRequiresAuthentication_ReturnsBrowserSessionGuidance()
+    {
+        var tool = CreateTool((uri, _) => Task.FromResult(MediumArticleFetchResult.Failed(
+            uri,
+            uri,
+            MediumArticleRetrievalMethod.Http,
+            MediumArticleFetchFailureReason.AuthenticationRequired,
+            HttpStatusCode.Unauthorized)));
+        await tool.InitializeAsync();
+
+        var result = await tool.GetArticleAsync("https://medium.com/@author/member-post");
+
+        await Assert.That(result).Contains("authenticated browser session");
+        await Assert.That(result).Contains("browser-backed retrieval");
+    }
+
+    [Test]
+    public async Task GetArticleAsync_WhenBrowserRetrieverIsUnavailable_ReturnsActionableMessage()
+    {
+        var tool = CreateTool((uri, _) => Task.FromResult(MediumArticleFetchResult.Failed(
+            uri,
+            uri,
+            MediumArticleRetrievalMethod.Browser,
+            MediumArticleFetchFailureReason.BrowserUnavailable,
+            diagnosticMessage: "No browser profile configured.")));
+        await tool.InitializeAsync();
+
+        var result = await tool.GetArticleAsync("https://awstip.com/example-post");
+
+        await Assert.That(result).Contains("Browser-backed retrieval is enabled but unavailable");
+        await Assert.That(result).Contains("browser profile directory");
+    }
+
+    [Test]
+    public async Task GetArticleAsync_WhenFetchFails_LogsFinalUrlAndDiagnostics()
+    {
+        var logger = new ListLogger<MediumArticleTool>();
+        var requestedUrl = new Uri("https://medium.com/@author/post");
+        var finalUrl = new Uri("https://search.brave.com/search?q=medium");
+        var tool = CreateTool(
+            (_, _) => Task.FromResult(MediumArticleFetchResult.Failed(
+                requestedUrl,
+                finalUrl,
+                MediumArticleRetrievalMethod.Browser,
+                MediumArticleFetchFailureReason.CloudflareChallenge,
+                HttpStatusCode.OK,
+                diagnosticMessage: "Browser page diagnostics: FinalUrl='https://search.brave.com/search?q=medium'. PageTitle='Brave Search'. MatchesRequestedUrl=False.")),
+            retrievalMode: MediumArticleRetrievalMode.BrowserOnly,
+            browserRemoteDebuggingUrl: "http://127.0.0.1:9222",
+            logger: logger);
+        await tool.InitializeAsync();
+
+        _ = await tool.GetArticleAsync(requestedUrl.AbsoluteUri);
+
+        await Assert.That(logger.WarningMessages.Count).IsEqualTo(1);
+        await Assert.That(logger.WarningMessages[0]).Contains("FinalUrl: https://search.brave.com/search?q=medium");
+        await Assert.That(logger.WarningMessages[0]).Contains("PageTitle='Brave Search'");
+        await Assert.That(logger.WarningMessages[0]).Contains("MatchesRequestedUrl=False");
+    }
+
     private static MediumArticleTool CreateTool(
-        Func<Uri, CancellationToken, Task<string>> fetchHtmlAsync,
-        string? cookieHeader = null,
-        string? validationUrl = null,
+        Func<Uri, CancellationToken, Task<MediumArticleFetchResult>> fetchAsync,
+        MediumArticleRetrievalMode retrievalMode = MediumArticleRetrievalMode.HttpOnly,
+        string? browserUserDataDirectory = null,
+        string? browserRemoteDebuggingUrl = null,
         ILogger<MediumArticleTool>? logger = null) =>
         new(
             Options.Create(new MediumArticleToolOptions
             {
+                RetrievalMode = retrievalMode,
                 CacheDurationMinutes = 60,
-                CookieHeader = cookieHeader,
-                ValidationUrl = validationUrl,
+                BrowserUserDataDirectory = browserUserDataDirectory,
+                BrowserRemoteDebuggingUrl = browserRemoteDebuggingUrl,
+                BrowserNavigationTimeoutSeconds = 60,
                 RequestTimeoutSeconds = 20,
-                UserAgent = "Anduril/0.1",
+                UserAgent = string.Empty,
                 MaximumContentLengthCharacters = 20_000
             }),
             logger ?? NullLogger<MediumArticleTool>.Instance,
-            fetchHtmlAsync,
+            new DelegateMediumArticleRetriever(fetchAsync),
             TimeProvider.System);
+
+    private static MediumArticleFetchResult SuccessfulFetch(Uri uri, string html) =>
+        MediumArticleFetchResult.Successful(uri, uri, html, MediumArticleRetrievalMethod.Http);
 
     private sealed class ListLogger<T> : ILogger<T>
     {
@@ -190,6 +246,13 @@ public class MediumArticleToolTests
 
             WarningMessages.Add(formatter(state, exception));
         }
+    }
+
+    private sealed class DelegateMediumArticleRetriever(
+        Func<Uri, CancellationToken, Task<MediumArticleFetchResult>> fetchAsync) : IMediumArticleRetriever
+    {
+        public Task<MediumArticleFetchResult> FetchAsync(Uri uri, CancellationToken cancellationToken) =>
+            fetchAsync(uri, cancellationToken);
     }
 
     private const string BasicMediumHtml = """
