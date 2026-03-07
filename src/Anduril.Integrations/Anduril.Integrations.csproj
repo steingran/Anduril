@@ -11,6 +11,7 @@
     <PackageReference Include="Microsoft.Extensions.AI" />
     <PackageReference Include="Microsoft.Extensions.Options" />
     <PackageReference Include="Microsoft.Graph" />
+    <PackageReference Include="Microsoft.Playwright" />
     <PackageReference Include="Octokit" />
     <PackageReference Include="Sentry" />
   </ItemGroup>

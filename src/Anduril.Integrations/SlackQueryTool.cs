@@ -90,23 +90,24 @@ public sealed class SlackQueryTool : IIntegrationTool
 
         var client = GetClient();
         var requestedChannels = ParseChannelList(channels);
-        var resolvedChannels = await ResolveChannelsAsync(client, requestedChannels);
+        var resolvedChannels = await ResolveChannelsAsync(client, requestedChannels, nameof(channels));
         var oldestTimestamp = ToDateTimeOffset(oldest);
         var latestTimestamp = ToDateTimeOffset(latest);
         var maxResults = ClampLimit(limit);
+        int pageSize = Math.Max(1, Math.Min(_options.SearchPageSize, maxResults));
         var results = new List<SlackMessageSummary>();
 
         foreach (var channel in resolvedChannels)
         {
             string? cursor = null;
 
-            for (var page = 0; page < _options.MaximumSearchPages && results.Count < maxResults; page++)
+            for (var page = 0; page < _options.MaximumSearchPages; page++)
             {
                 var response = await client.GetConversationHistoryAsync(
                     channel.ChannelId,
                     oldestTimestamp,
                     latestTimestamp,
-                    Math.Max(1, _options.SearchPageSize),
+                    pageSize,
                     cursor);
 
                 var matches = response.Messages
@@ -138,7 +139,7 @@ public sealed class SlackQueryTool : IIntegrationTool
     public async Task<string> GetRecentMessagesAsync(string channel, int limit = 20)
     {
         var client = GetClient();
-        var resolvedChannel = (await ResolveChannelsAsync(client, [channel])).Single();
+        var resolvedChannel = (await ResolveChannelsAsync(client, [channel], nameof(channel))).Single();
         var response = await client.GetConversationHistoryAsync(
             resolvedChannel.ChannelId,
             oldest: null,
@@ -164,17 +165,22 @@ public sealed class SlackQueryTool : IIntegrationTool
             throw new ArgumentException("A Slack thread timestamp is required.", nameof(threadTs));
 
         var client = GetClient();
-        var resolvedChannel = (await ResolveChannelsAsync(client, [channel])).Single();
+        var resolvedChannel = (await ResolveChannelsAsync(client, [channel], nameof(channel))).Single();
         var maxResults = ClampLimit(limit);
         var messages = new List<SlackMessageSummary>();
         string? cursor = null;
 
-        for (var page = 0; page < _options.MaximumSearchPages && messages.Count < maxResults; page++)
+        for (var page = 0; page < _options.MaximumSearchPages; page++)
         {
+            int remainingResults = maxResults - messages.Count;
+            if (remainingResults <= 0)
+                break;
+
+            int pageSize = Math.Max(1, Math.Min(_options.SearchPageSize, remainingResults));
             var response = await client.GetConversationRepliesAsync(
                 resolvedChannel.ChannelId,
                 threadTs,
-                Math.Min(_options.SearchPageSize, maxResults),
+                pageSize,
                 cursor);
 
             messages.AddRange(response.Messages.Select(message => message with { ChannelName = resolvedChannel.ChannelLabel }));
@@ -216,7 +222,8 @@ public sealed class SlackQueryTool : IIntegrationTool
 
     private async Task<IReadOnlyList<(string ChannelId, string ChannelLabel)>> ResolveChannelsAsync(
         ISlackQueryClient client,
-        IReadOnlyList<string> requestedChannels)
+        IReadOnlyList<string> requestedChannels,
+        string argumentName)
     {
         Dictionary<string, string>? channelLookup = null;
         var resolvedChannels = new List<(string ChannelId, string ChannelLabel)>(requestedChannels.Count);
@@ -232,7 +239,7 @@ public sealed class SlackQueryTool : IIntegrationTool
             channelLookup ??= new Dictionary<string, string>(await client.ListConversationNamesAsync(), StringComparer.OrdinalIgnoreCase);
 
             if (!channelLookup.TryGetValue(requestedChannel, out var channelId))
-                throw new ArgumentException($"Slack channel '{requestedChannel}' could not be resolved.", nameof(requestedChannels));
+                throw new ArgumentException($"Slack channel '{requestedChannel}' could not be resolved from the '{argumentName}' argument.", argumentName);
 
             resolvedChannels.Add((channelId, $"#{requestedChannel}"));
         }
