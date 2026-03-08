@@ -25,7 +25,7 @@
     <PackageVersion Include="SlackNet.Extensions.DependencyInjection" Version="0.17.9" />
     <PackageVersion Include="Spectre.Console" Version="0.54.0" />
     <PackageVersion Include="TUnit" Version="1.19.0" />
-    <PackageVersion Include="TUnit.Engine" Version="1.19.0" />
+    <PackageVersion Include="TUnit.Engine" Version="1.19.11" />
     <PackageVersion Include="Velopack" Version="0.0.1298" />
   </ItemGroup>
 </Project>
