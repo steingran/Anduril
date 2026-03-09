@@ -362,7 +362,7 @@ public class MessageProcessingServiceTests
         provider ??= new FakeAiProvider("Test AI response");
         router ??= new SkillRouter(NullLogger<SkillRouter>.Instance);
         var loader = new PromptSkillLoader(NullLogger<PromptSkillLoader>.Instance);
-        var promptRunner = new PromptSkillRunner(loader, [], NullLogger<PromptSkillRunner>.Instance, "nonexistent_skills");
+        var promptRunner = new PromptSkillRunner(loader, [], [], NullLogger<PromptSkillRunner>.Instance, "nonexistent_skills");
         var compiledRunner = new CompiledSkillRunner(NullLogger<CompiledSkillRunner>.Instance, "nonexistent_plugins");
         var sessionStore = new FakeSessionStore();
         var sessionOptions = Options.Create(new ConversationSessionOptions());

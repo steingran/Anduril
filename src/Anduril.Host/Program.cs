@@ -6,6 +6,7 @@ using Anduril.Communication;
 using Anduril.Core.AI;
 using Anduril.Core.Communication;
 using Anduril.Core.Integrations;
+using Anduril.Core.MenuPlanning;
 using Anduril.Core.Skills;
 using Anduril.Core.Webhooks;
 using Anduril.Host;
@@ -63,6 +64,7 @@ try
     bool slackEnabled = slackSection.GetValue<bool?>("Enabled") ?? true;
     bool teamsEnabled = teamsSection.GetValue<bool?>("Enabled") ?? true;
     bool signalEnabled = signalSection.GetValue<bool?>("Enabled") ?? true;
+    bool weeklyMenuPlannerEnabled = config.GetSection("WeeklyMenuPlanner").GetValue<bool?>("Enabled") ?? true;
 
     // ---------------------------------------------------------------------------
     // Check if unconfigured or missing local dependencies
@@ -273,6 +275,7 @@ try
     builder.Services.Configure<GmailToolOptions>(config.GetSection("Integrations:Gmail"));
     builder.Services.Configure<SlackQueryToolOptions>(config.GetSection("Integrations:SlackQuery"));
     builder.Services.Configure<MediumArticleToolOptions>(config.GetSection("Integrations:MediumArticle"));
+    builder.Services.Configure<WeeklyMenuPlannerOptions>(config.GetSection("WeeklyMenuPlanner"));
     builder.Services.AddHttpClient(SentryTool.HttpClientName);
     builder.Services.AddHttpClient(nameof(MediumArticleTool));
 
@@ -284,6 +287,12 @@ try
     builder.Services.AddSingleton<IIntegrationTool, SlackQueryTool>();
     builder.Services.AddSingleton<IIntegrationTool, MediumArticleTool>();
 
+    if (weeklyMenuPlannerEnabled)
+    {
+        builder.Services.AddSingleton<IWeeklyMenuSubscriptionStore, SqliteWeeklyMenuSubscriptionStore>();
+        builder.Services.AddSingleton<IIntegrationTool, WeeklyMenuPlannerTool>();
+    }
+
     // ------------------------------------------------------------------
     // Conversation Session Store
     // ------------------------------------------------------------------
@@ -293,8 +302,20 @@ try
     // ------------------------------------------------------------------
     // Skill System
     // ------------------------------------------------------------------
+    builder.Services.Configure<SkillsOptions>(config.GetSection("Skills"));
     builder.Services.AddSingleton<PromptSkillLoader>();
-    builder.Services.AddSingleton<PromptSkillRunner>();
+    builder.Services.AddSingleton<PromptSkillRunner>(sp =>
+    {
+        var skillOptions = sp.GetRequiredService<IOptions<SkillsOptions>>().Value;
+
+        return new PromptSkillRunner(
+            sp.GetRequiredService<PromptSkillLoader>(),
+            sp.GetServices<IAiProvider>(),
+            sp.GetServices<IIntegrationTool>(),
+            sp.GetRequiredService<ILogger<PromptSkillRunner>>(),
+            skillOptions.SkillsDirectory,
+            skillOptions.LocalSkillsDirectory);
+    });
     builder.Services.AddSingleton<CompiledSkillRunner>();
     builder.Services.AddSingleton<ISkillRouter, SkillRouter>();
     builder.Services.AddSingleton<ISkill, StandupHelperSkill>();
@@ -326,6 +347,12 @@ try
     // ------------------------------------------------------------------
     builder.Services.AddHostedService<UpdateService>();
     builder.Services.AddHostedService<MessageProcessingService>();
+
+    if (weeklyMenuPlannerEnabled)
+    {
+        builder.Services.AddHostedService<WeeklyMenuPlannerSchedulerService>();
+    }
+
     builder.Services.AddHostedService<StandupSchedulerService>();
     builder.Services.AddHostedService<GmailSchedulerService>();
     builder.Services.AddHostedService<GmailWatchRenewalService>();
