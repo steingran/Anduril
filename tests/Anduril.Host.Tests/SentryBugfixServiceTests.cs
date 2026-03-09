@@ -621,6 +621,245 @@ public class SentryBugfixServiceTests
         await Assert.That(prCreator.LastCall).IsNull();
     }
 
+    [Test]
+    public async Task Pipeline_InFlightDuplicateWebhook_IsSkipped()
+    {
+        var gitRunner = new FakeGitCommandRunner();
+        gitRunner.OutputByArgumentSubstring["status --porcelain"] = " M file.cs\n";
+        var auggieStarted = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
+        var allowAuggieToFinish = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
+        var auggieRunner = new FakeAuggieCliRunner
+        {
+            OnRunAsync = async (_, _, cancellationToken) =>
+            {
+                auggieStarted.TrySetResult(true);
+                await allowAuggieToFinish.Task.WaitAsync(cancellationToken);
+            }
+        };
+        var prCreator = new FakePullRequestCreator();
+        var adapter = new FakeAdapter();
+        var service = CreateServiceWithAdapter(
+            adapter,
+            opts =>
+            {
+                opts.GitHubOwner = "test-owner";
+                opts.GitHubRepo = "test-repo";
+            },
+            gitHubOpts: new GitHubToolOptions { Token = "fake-token" },
+            gitRunner: gitRunner,
+            auggieRunner: auggieRunner,
+            pullRequestCreator: prCreator);
+        var payload = CreatePayload(action: "created", count: "100");
+
+        var firstRun = service.HandleWebhookAsync(payload);
+        await auggieStarted.Task;
+
+        await service.HandleWebhookAsync(payload);
+
+        allowAuggieToFinish.TrySetResult(true);
+        await firstRun;
+
+        var startingMessages = adapter.SentMessages.Count(message =>
+            message.Text.Contains("Starting automated bugfix", StringComparison.Ordinal));
+        await Assert.That(startingMessages).IsEqualTo(1);
+        await Assert.That(prCreator.LastCall).IsNotNull();
+    }
+
+    [Test]
+    public async Task Pipeline_WhenOpenPullRequestAlreadyExists_SendsInfoNotificationAndSkips()
+    {
+        var gitRunner = new FakeGitCommandRunner();
+        var auggieRunner = new FakeAuggieCliRunner();
+        var prCreator = new FakePullRequestCreator
+        {
+            ExistingPrUrlToReturn = "https://github.com/test-owner/test-repo/pull/123"
+        };
+
+        var (service, adapter) = CreatePipelineService(gitRunner, auggieRunner, prCreator);
+
+        await service.HandleWebhookAsync(CreatePayload(action: "created", count: "100"));
+
+        await Assert.That(gitRunner.Calls.Count).IsEqualTo(0);
+        await Assert.That(auggieRunner.ReceivedPrompt).IsNull();
+        await Assert.That(prCreator.LastCall).IsNull();
+
+        var infoMessage = adapter.SentMessages.FirstOrDefault(message =>
+            message.Text.Contains("already exists", StringComparison.Ordinal));
+        await Assert.That(infoMessage).IsNotNull();
+        await Assert.That(infoMessage!.Text).Contains(prCreator.ExistingPrUrlToReturn!);
+    }
+
+    [Test]
+    public async Task Pipeline_WhenRemoteBranchAlreadyExists_SendsInfoNotificationAndSkips()
+    {
+        var gitRunner = new FakeGitCommandRunner();
+        gitRunner.OutputByArgumentSubstring["ls-remote --heads"] = "abc123\trefs/heads/sentry-bugfix/PROJ-42";
+        var auggieRunner = new FakeAuggieCliRunner();
+        var prCreator = new FakePullRequestCreator();
+
+        var (service, adapter) = CreatePipelineService(gitRunner, auggieRunner, prCreator);
+
+        await service.HandleWebhookAsync(CreatePayload(action: "created", count: "100"));
+
+        await Assert.That(gitRunner.Calls.Count).IsEqualTo(1);
+        await Assert.That(gitRunner.Calls[0].Arguments).Contains("ls-remote --heads");
+        await Assert.That(auggieRunner.ReceivedPrompt).IsNull();
+        await Assert.That(prCreator.LastCall).IsNull();
+
+        var infoMessage = adapter.SentMessages.FirstOrDefault(message =>
+            message.Text.Contains("branch already exists", StringComparison.Ordinal));
+        await Assert.That(infoMessage).IsNotNull();
+    }
+
+    [Test]
+    public async Task Pipeline_WhenVerificationCommandsConfigured_RunsVerificationCommands()
+    {
+        var gitRunner = new FakeGitCommandRunner();
+        gitRunner.OutputByArgumentSubstring["status --porcelain"] = " M src/Foo.cs\n";
+        var auggieRunner = new FakeAuggieCliRunner();
+        var shellRunner = new FakeShellCommandRunner();
+        var prCreator = new FakePullRequestCreator();
+        var adapter = new FakeAdapter();
+        var service = CreateServiceWithAdapter(
+            adapter,
+            opts =>
+            {
+                opts.GitHubOwner = "test-owner";
+                opts.GitHubRepo = "test-repo";
+                opts.VerificationCommands = ["dotnet test --project tests/Anduril.Host.Tests/Anduril.Host.Tests.csproj"];
+            },
+            gitHubOpts: new GitHubToolOptions { Token = "fake-token" },
+            gitRunner: gitRunner,
+            auggieRunner: auggieRunner,
+            shellCommandRunner: shellRunner,
+            pullRequestCreator: prCreator);
+
+        await service.HandleWebhookAsync(CreatePayload(action: "created", count: "100"));
+
+        await Assert.That(shellRunner.Calls.Count).IsEqualTo(1);
+        await Assert.That(shellRunner.Calls[0].Command).Contains("dotnet test --project tests/Anduril.Host.Tests/Anduril.Host.Tests.csproj");
+        await Assert.That(gitRunner.Calls.Any(call => call.Arguments.Contains("commit -F", StringComparison.Ordinal))).IsTrue();
+        await Assert.That(prCreator.LastCall).IsNotNull();
+    }
+
+    [Test]
+    public async Task Pipeline_WhenVerificationCommandFails_SendsErrorNotificationAndSkipsCommit()
+    {
+        var gitRunner = new FakeGitCommandRunner();
+        gitRunner.OutputByArgumentSubstring["status --porcelain"] = " M src/Foo.cs\n";
+        var auggieRunner = new FakeAuggieCliRunner();
+        var shellRunner = new FakeShellCommandRunner
+        {
+            ExceptionToThrow = new InvalidOperationException("tests failed")
+        };
+        var prCreator = new FakePullRequestCreator();
+        var adapter = new FakeAdapter();
+        var service = CreateServiceWithAdapter(
+            adapter,
+            opts =>
+            {
+                opts.GitHubOwner = "test-owner";
+                opts.GitHubRepo = "test-repo";
+                opts.VerificationCommands = ["dotnet test --project tests/Anduril.Host.Tests/Anduril.Host.Tests.csproj"];
+            },
+            gitHubOpts: new GitHubToolOptions { Token = "fake-token" },
+            gitRunner: gitRunner,
+            auggieRunner: auggieRunner,
+            shellCommandRunner: shellRunner,
+            pullRequestCreator: prCreator);
+
+        await service.HandleWebhookAsync(CreatePayload(action: "created", count: "100"));
+
+        var errorMessage = adapter.SentMessages.FirstOrDefault(message =>
+            message.Text.Contains("Verification command failed", StringComparison.Ordinal));
+        await Assert.That(errorMessage).IsNotNull();
+        await Assert.That(gitRunner.Calls.Any(call => call.Arguments.Contains("commit -F", StringComparison.Ordinal))).IsFalse();
+        await Assert.That(prCreator.LastCall).IsNull();
+    }
+
+    [Test]
+    public async Task Pipeline_WhenVerificationCommandTimesOut_SendsTimeoutNotificationAndSkipsCommit()
+    {
+        var gitRunner = new FakeGitCommandRunner();
+        gitRunner.OutputByArgumentSubstring["status --porcelain"] = " M src/Foo.cs\n";
+        var auggieRunner = new FakeAuggieCliRunner();
+        var shellRunner = new FakeShellCommandRunner
+        {
+            ExceptionToThrow = new OperationCanceledException("timed out")
+        };
+        var prCreator = new FakePullRequestCreator();
+        var adapter = new FakeAdapter();
+        var service = CreateServiceWithAdapter(
+            adapter,
+            opts =>
+            {
+                opts.GitHubOwner = "test-owner";
+                opts.GitHubRepo = "test-repo";
+                opts.VerificationCommands = ["dotnet test --project tests/Anduril.Host.Tests/Anduril.Host.Tests.csproj"];
+                opts.VerificationTimeoutMinutes = 1;
+            },
+            gitHubOpts: new GitHubToolOptions { Token = "fake-token" },
+            gitRunner: gitRunner,
+            auggieRunner: auggieRunner,
+            shellCommandRunner: shellRunner,
+            pullRequestCreator: prCreator);
+
+        await service.HandleWebhookAsync(CreatePayload(action: "created", count: "100"));
+
+        var errorMessage = adapter.SentMessages.FirstOrDefault(message =>
+            message.Text.Contains("timed out after 1 minutes", StringComparison.Ordinal));
+        await Assert.That(errorMessage).IsNotNull();
+        await Assert.That(gitRunner.Calls.Any(call => call.Arguments.Contains("commit -F", StringComparison.Ordinal))).IsFalse();
+        await Assert.That(prCreator.LastCall).IsNull();
+    }
+
+    [Test]
+    public async Task Pipeline_WhenVerificationCommandIsExternallyCancelled_PropagatesCancellation()
+    {
+        var gitRunner = new FakeGitCommandRunner();
+        gitRunner.OutputByArgumentSubstring["status --porcelain"] = " M src/Foo.cs\n";
+        var auggieRunner = new FakeAuggieCliRunner();
+        var verificationStarted = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
+        var shellRunner = new FakeShellCommandRunner
+        {
+            OnRunAsync = async (_, _, cancellationToken) =>
+            {
+                verificationStarted.TrySetResult(true);
+                await Task.Delay(Timeout.InfiniteTimeSpan, cancellationToken);
+                return string.Empty;
+            }
+        };
+        var prCreator = new FakePullRequestCreator();
+        var adapter = new FakeAdapter();
+        var service = CreateServiceWithAdapter(
+            adapter,
+            opts =>
+            {
+                opts.GitHubOwner = "test-owner";
+                opts.GitHubRepo = "test-repo";
+                opts.VerificationCommands = ["dotnet test --project tests/Anduril.Host.Tests/Anduril.Host.Tests.csproj"];
+            },
+            gitHubOpts: new GitHubToolOptions { Token = "fake-token" },
+            gitRunner: gitRunner,
+            auggieRunner: auggieRunner,
+            shellCommandRunner: shellRunner,
+            pullRequestCreator: prCreator);
+        using var cancellationTokenSource = new CancellationTokenSource();
+
+        var runTask = service.HandleWebhookAsync(CreatePayload(action: "created", count: "100"), cancellationTokenSource.Token);
+        await verificationStarted.Task;
+        cancellationTokenSource.Cancel();
+
+        await Assert.That(async () => await runTask).Throws<OperationCanceledException>();
+
+        var errorMessage = adapter.SentMessages.FirstOrDefault(message =>
+            message.Text.Contains("Automated bugfix failed", StringComparison.Ordinal)
+            || message.Text.Contains("Verification command failed", StringComparison.Ordinal));
+        await Assert.That(errorMessage).IsNull();
+        await Assert.That(gitRunner.Calls.Any(call => call.Arguments.Contains("commit -F", StringComparison.Ordinal))).IsFalse();
+        await Assert.That(prCreator.LastCall).IsNull();
+    }
+
     // ---------------------------------------------------------------
     // Helpers
     // ---------------------------------------------------------------
@@ -667,6 +906,7 @@ public class SentryBugfixServiceTests
         IEnumerable<IIntegrationTool>? integrationTools = null,
         IGitCommandRunner? gitRunner = null,
         IAuggieCliRunner? auggieRunner = null,
+        IShellCommandRunner? shellCommandRunner = null,
         IPullRequestCreator? pullRequestCreator = null)
     {
         var opts = new SentryBugfixOptions
@@ -687,6 +927,7 @@ public class SentryBugfixServiceTests
             integrationTools ?? [],
             gitRunner ?? new NoOpGitCommandRunner(),
             auggieRunner ?? new NoOpAuggieCliRunner(),
+            shellCommandRunner ?? new NoOpShellCommandRunner(),
             pullRequestCreator ?? new NoOpPullRequestCreator(),
             NullLogger<SentryBugfixService>.Instance);
     }
@@ -756,8 +997,17 @@ public class SentryBugfixServiceTests
             => Task.CompletedTask;
     }
 
+    private sealed class NoOpShellCommandRunner : IShellCommandRunner
+    {
+        public Task<string> RunAsync(string workingDirectory, string command, CancellationToken cancellationToken = default)
+            => Task.FromResult(string.Empty);
+    }
+
     private sealed class NoOpPullRequestCreator : IPullRequestCreator
     {
+        public Task<string?> FindOpenAsync(string owner, string repo, string branchName, CancellationToken cancellationToken = default)
+            => Task.FromResult<string?>(null);
+
         public Task<string> CreateAsync(string owner, string repo, string branchName, string baseBranch, string title, string body, CancellationToken cancellationToken = default)
             => Task.FromResult("https://github.com/test/test/pull/1");
     }
@@ -791,23 +1041,50 @@ public class SentryBugfixServiceTests
         public string? ReceivedWorkingDirectory { get; private set; }
         public string? ReceivedPrompt { get; private set; }
         public Exception? ExceptionToThrow { get; set; }
+        public Func<string, string, CancellationToken, Task>? OnRunAsync { get; set; }
 
-        public Task RunAsync(string workingDirectory, string prompt, CancellationToken cancellationToken = default)
+        public async Task RunAsync(string workingDirectory, string prompt, CancellationToken cancellationToken = default)
         {
             if (ExceptionToThrow is not null)
                 throw ExceptionToThrow;
 
             ReceivedWorkingDirectory = workingDirectory;
             ReceivedPrompt = prompt;
-            return Task.CompletedTask;
+
+            if (OnRunAsync is not null)
+                await OnRunAsync(workingDirectory, prompt, cancellationToken);
+        }
+    }
+
+    private sealed class FakeShellCommandRunner : IShellCommandRunner
+    {
+        public List<(string WorkingDirectory, string Command)> Calls { get; } = [];
+        public Exception? ExceptionToThrow { get; set; }
+        public Func<string, string, CancellationToken, Task<string>>? OnRunAsync { get; set; }
+
+        public async Task<string> RunAsync(string workingDirectory, string command, CancellationToken cancellationToken = default)
+        {
+            if (ExceptionToThrow is not null)
+                throw ExceptionToThrow;
+
+            Calls.Add((workingDirectory, command));
+
+            if (OnRunAsync is not null)
+                return await OnRunAsync(workingDirectory, command, cancellationToken);
+
+            return string.Empty;
         }
     }
 
     private sealed class FakePullRequestCreator : IPullRequestCreator
     {
         public string PrUrlToReturn { get; set; } = "https://github.com/test-owner/test-repo/pull/42";
+        public string? ExistingPrUrlToReturn { get; set; }
         public (string Owner, string Repo, string Branch, string BaseBranch, string Title, string Body)? LastCall { get; private set; }
         public Exception? ExceptionToThrow { get; set; }
+
+        public Task<string?> FindOpenAsync(string owner, string repo, string branchName, CancellationToken cancellationToken = default)
+            => Task.FromResult(ExistingPrUrlToReturn);
 
         public Task<string> CreateAsync(string owner, string repo, string branchName, string baseBranch, string title, string body, CancellationToken cancellationToken = default)
         {

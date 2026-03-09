@@ -7,6 +7,12 @@ namespace Anduril.Host.Services;
 public interface IPullRequestCreator
 {
     /// <summary>
+    /// Finds an existing open pull request for the given source branch and returns its HTML URL.
+    /// Returns null when no open pull request exists.
+    /// </summary>
+    Task<string?> FindOpenAsync(string owner, string repo, string branchName, CancellationToken cancellationToken = default);
+
+    /// <summary>
     /// Creates a pull request and returns its HTML URL.
     /// </summary>
     /// <param name="owner">The repository owner.</param>

@@ -1,6 +1,4 @@
 using System.Diagnostics;
-using System.Security.Cryptography;
-using System.Text;
 using System.Text.Json;
 using Anduril.AI.Detection;
 using Anduril.AI.Providers;
@@ -275,6 +273,7 @@ try
     builder.Services.Configure<GmailToolOptions>(config.GetSection("Integrations:Gmail"));
     builder.Services.Configure<SlackQueryToolOptions>(config.GetSection("Integrations:SlackQuery"));
     builder.Services.Configure<MediumArticleToolOptions>(config.GetSection("Integrations:MediumArticle"));
+    builder.Services.AddHttpClient(SentryTool.HttpClientName);
     builder.Services.AddHttpClient(nameof(MediumArticleTool));
 
     builder.Services.AddSingleton<IIntegrationTool, GitHubTool>();
@@ -317,7 +316,9 @@ try
     builder.Services.Configure<SentryBugfixOptions>(config.GetSection("SentryBugfix"));
     builder.Services.AddSingleton<IGitCommandRunner, GitCommandRunner>();
     builder.Services.AddSingleton<IAuggieCliRunner, AuggieCliRunner>();
+    builder.Services.AddSingleton<IShellCommandRunner, ShellCommandRunner>();
     builder.Services.AddSingleton<IPullRequestCreator, OctokitPullRequestCreator>();
+    builder.Services.AddSingleton<SentryWebhookRequestValidator>();
     builder.Services.AddSingleton<SentryBugfixService>();
 
     // ------------------------------------------------------------------
@@ -428,6 +429,7 @@ try
     app.MapPost("/webhooks/sentry", async (
         HttpContext context,
         SentryBugfixService bugfixService,
+        SentryWebhookRequestValidator webhookValidator,
         IOptions<SentryBugfixOptions> bugfixOptions,
         IHostApplicationLifetime lifetime,
         ILogger<Program> endpointLogger) =>
@@ -438,53 +440,20 @@ try
             using var ms = new MemoryStream();
             await context.Request.Body.CopyToAsync(ms);
             var bodyBytes = ms.ToArray();
+            var validationResult = webhookValidator.Validate(
+                bodyBytes,
+                context.Request.Headers["sentry-hook-signature"].FirstOrDefault(),
+                bugfixOptions.Value);
 
-            // Require webhook secret when the feature is enabled to prevent unauthenticated requests
-            var secret = bugfixOptions.Value.WebhookSecret;
-            if (string.IsNullOrEmpty(secret))
+            if (!validationResult.IsValid)
             {
-                if (bugfixOptions.Value.Enabled)
-                {
-                    endpointLogger.LogError("Sentry bugfix is enabled but WebhookSecret is not configured. Rejecting request.");
-                    return Results.StatusCode(403);
-                }
-            }
-            else
-            {
-                var signature = context.Request.Headers["sentry-hook-signature"].FirstOrDefault();
-                if (string.IsNullOrEmpty(signature))
-                {
-                    endpointLogger.LogWarning("Sentry webhook missing sentry-hook-signature header.");
-                    return Results.Unauthorized();
-                }
+                if (validationResult.StatusCode == 400)
+                    return Results.BadRequest(validationResult.ErrorMessage ?? "Invalid payload.");
 
-                var keyBytes = Encoding.UTF8.GetBytes(secret);
-                var computedHash = HMACSHA256.HashData(keyBytes, bodyBytes);
-
-                byte[] signatureBytes;
-                try
-                {
-                    signatureBytes = Convert.FromHexString(signature);
-                }
-                catch (FormatException)
-                {
-                    endpointLogger.LogWarning("Sentry webhook signature is not valid hex.");
-                    return Results.Unauthorized();
-                }
-
-                if (!CryptographicOperations.FixedTimeEquals(computedHash, signatureBytes))
-                {
-                    endpointLogger.LogWarning("Sentry webhook signature mismatch.");
-                    return Results.Unauthorized();
-                }
+                return Results.StatusCode(validationResult.StatusCode ?? 500);
             }
 
-            var payload = JsonSerializer.Deserialize<SentryWebhookPayload>(bodyBytes);
-            if (payload is null)
-            {
-                endpointLogger.LogWarning("Received null Sentry webhook payload.");
-                return Results.BadRequest("Invalid payload.");
-            }
+            var payload = validationResult.Payload!;
 
             endpointLogger.LogInformation(
                 "Sentry webhook received: action={Action}, issue={IssueId}",

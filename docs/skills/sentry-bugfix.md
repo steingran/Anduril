@@ -1,6 +1,6 @@
-# Sentry Bugfix Skill
+# Sentry Bugfix Automation
 
-Automated bugfix generation from Sentry error monitoring webhooks. When Sentry detects recurring production errors, this skill clones the affected repository, generates a targeted fix using the Augment Code CLI (`auggie`), opens a pull request, and notifies your team via Slack (or another configured platform).
+Automated bugfix generation from Sentry error monitoring webhooks. When Sentry detects recurring production errors, this webhook-driven automation flow clones the affected repository, generates a targeted fix using the Augment Code CLI (`auggie`), optionally runs verification commands, opens a pull request, and notifies your team via Slack (or another configured platform).
 
 ---
 
@@ -27,16 +27,19 @@ Automated bugfix generation from Sentry error monitoring webhooks. When Sentry d
 
 ## Overview
 
-The sentry-bugfix skill is a **compiled skill** hosted inside `Anduril.Host`. Unlike prompt-based skills that respond to chat messages, this skill is triggered by an HTTP webhook from Sentry. It runs a fully automated pipeline:
+The sentry-bugfix flow is a **webhook-driven host service** inside `Anduril.Host`, not a compiled `ISkill`. Unlike prompt-based skills that respond to chat messages, this automation is triggered by an HTTP webhook from Sentry and runs a fully automated pipeline:
 
 1. **Receive** — Sentry sends a webhook `POST` to `/webhooks/sentry`
-2. **Evaluate** — Check occurrence count against a configurable threshold
-3. **Filter** — Skip HTTP 401 errors (configuration issues, not code bugs)
-4. **Clone** — Shallow-clone the GitHub repository to a unique temp folder
-5. **Generate** — Invoke `auggie` (Augment Code CLI) with a detailed prompt
-6. **Push** — Commit changes and push a feature branch
-7. **PR** — Create a GitHub pull request via Octokit
-8. **Notify** — Send Slack messages at each stage (start, skip, success, failure)
+2. **Validate** — Verify HMAC signature and deserialize the payload
+3. **Evaluate** — Check occurrence count against a configurable threshold
+4. **Filter** — Skip HTTP 401 errors and duplicate/in-flight issues
+5. **Preflight** — Check for an existing open PR or remote branch
+6. **Clone** — Shallow-clone the GitHub repository to a unique temp folder
+7. **Generate** — Invoke `auggie` (Augment Code CLI) with a detailed prompt
+8. **Verify** — Run configured shell verification commands before commit/PR creation
+9. **Push** — Commit changes and push a feature branch
+10. **PR** — Create a GitHub pull request via Octokit
+11. **Notify** — Send Slack messages at each stage (start, skip, success, failure)
 
 ---
 
@@ -71,15 +74,16 @@ Sentry Cloud                          Anduril Host
 
 ### Interface-Based I/O Abstraction
 
-The pipeline's three external I/O operations are abstracted behind interfaces, enabling full end-to-end testing without real git repos, CLI binaries, or GitHub API calls:
+The pipeline's four external I/O operations are abstracted behind interfaces, enabling full end-to-end testing without real git repos, CLI binaries, or GitHub API calls:
 
 | Interface | Implementation | Responsibility |
 |---|---|---|
-| `IGitCommandRunner` | `GitCommandRunner` | Spawns `git` processes (clone, config, checkout, add, commit, push) |
+| `IGitCommandRunner` | `GitCommandRunner` | Spawns `git` processes (clone, config, checkout, add, commit, push, ls-remote) |
 | `IAuggieCliRunner` | `AuggieCliRunner` | Spawns the `auggie` CLI process, pipes prompt to stdin, enforces timeout |
+| `IShellCommandRunner` | `ShellCommandRunner` | Runs configurable verification commands in the cloned repository |
 | `IPullRequestCreator` | `OctokitPullRequestCreator` | Creates GitHub PRs via the Octokit library |
 
-All three are registered as singletons in DI and injected into `SentryBugfixService` via its primary constructor.
+All four are registered as singletons in DI and injected into `SentryBugfixService` via its primary constructor. Request validation is handled separately by `SentryWebhookRequestValidator`.
 
 ### Key Design Decisions
 
@@ -87,11 +91,14 @@ All three are registered as singletons in DI and injected into `SentryBugfixServ
 |---|---|
 | **Fire-and-forget** webhook handler | Sentry expects a fast HTTP response. The pipeline runs in a background `Task.Run`. |
 | **Unique temp folder per invocation** | `sentry-bugfix-{guid}` ensures concurrent webhooks don't collide. |
+| **Dedicated webhook validator** | Signature verification and payload parsing live in `SentryWebhookRequestValidator`, which keeps endpoint logic small and directly unit-testable. |
+| **In-flight + remote duplicate checks** | Prevents duplicate work for the same issue by skipping in-progress issues, existing PRs, and existing remote branches. |
+| **Verification before commit** | Configurable shell commands can fail fast before Anduril commits and opens a pull request. |
 | **Shallow clone (`--depth 50`)** | Minimizes clone time while preserving enough history for `auggie` context. |
 | **`sealed` service class** | No inheritance needed — all orchestration is internal. |
 | **Records for DTOs** | Immutable data carriers with value equality and `with` expression support. |
-| **Interface extraction for I/O** | `IGitCommandRunner`, `IAuggieCliRunner`, `IPullRequestCreator` decouple the orchestrator from external processes, enabling recording fakes in tests. |
-| **Primary constructor injection** | All 8 dependencies injected via the primary constructor — no service locator or manual resolution. |
+| **Interface extraction for I/O** | `IGitCommandRunner`, `IAuggieCliRunner`, `IShellCommandRunner`, and `IPullRequestCreator` decouple the orchestrator from external processes, enabling recording fakes in tests. |
+| **Primary constructor injection** | All dependencies are injected via the primary constructor — no service locator or manual resolution. |
 
 ---
 
@@ -101,11 +108,14 @@ All three are registered as singletons in DI and injected into `SentryBugfixServ
 
 ```
 Webhook received (action=created)
+  → Validate HMAC signature and deserialize payload
   → Parse occurrence count (string → int)
   → Count ≥ threshold? YES
   → Is 401 error? NO
+  → Already processing the same issue? NO
   → Notify: "Starting automated bugfix..."
   → Resolve GitHub owner/repo (SentryBugfixOptions → fallback to GitHubToolOptions)
+  → Existing PR or remote branch already present? NO
   → Clone repo to temp dir
   → Configure git user (anduril-bot@automated.dev)
   → Create branch: sentry-bugfix/{ShortId}
@@ -113,6 +123,7 @@ Webhook received (action=created)
   → Build auggie prompt with error context + instructions
   → Pipe prompt to auggie CLI stdin
   → Check git status --porcelain
+  → Run verification commands (if configured)
   → Stage, commit, push
   → Create PR via Octokit
   → Notify: "PR created: {url}"
@@ -124,12 +135,19 @@ Webhook received (action=created)
 | Condition | Result |
 |---|---|
 | `Enabled = false` | Silent return |
+| Feature enabled but `WebhookSecret` missing | HTTP `403 Forbidden` |
+| Signature missing / invalid / mismatched | HTTP `401 Unauthorized` |
+| Payload is invalid JSON | HTTP `400 Bad Request` |
 | `Action ≠ "created"` | Silent return |
 | `Count` is not a valid integer | Silent return (logged as warning) |
 | `Count < OccurrenceThreshold` | Silent return (logged as info) |
 | Issue is HTTP 401 | Slack notification: "skipped — configuration issue" |
+| Issue is already in flight | Silent return |
+| Open PR already exists for the branch | Notification: existing PR URL |
+| Remote branch already exists | Notification: existing branch |
 | GitHub owner/repo not configured | Slack notification: "failed — not configured" |
 | `auggie` produces no changes | Slack notification: "could not generate a fix" |
+| Verification command fails or times out | Slack notification: "failed: ..." |
 | Any exception in the pipeline | Slack notification: "failed: {message}" |
 
 ---
@@ -144,10 +162,16 @@ All settings live under the `SentryBugfix` section in `appsettings.json`:
     "Enabled": false,
     "OccurrenceThreshold": 10,
     "NotificationPlatform": "slack",
+    "NotificationChannel": "",
+    "GitHubOwner": "",
+    "GitHubRepo": "",
     "AugmentCliPath": "auggie",
     "BranchPrefix": "sentry-bugfix/",
     "AuggieTimeoutMinutes": 10,
-    "BaseBranch": "main"
+    "BaseBranch": "main",
+    "VerificationCommands": [],
+    "VerificationTimeoutMinutes": 10,
+    "WebhookSecret": ""
   }
 }
 ```
@@ -166,6 +190,8 @@ All settings live under the `SentryBugfix` section in `appsettings.json`:
 | `BranchPrefix` | `string` | `"sentry-bugfix/"` | Prefix for auto-created feature branch names. The Sentry issue `ShortId` is appended. |
 | `AuggieTimeoutMinutes` | `int` | `10` | Maximum time (in minutes) to wait for `auggie` to complete before cancellation. |
 | `BaseBranch` | `string` | `"main"` | Target branch for pull requests. The repo is shallow-cloned from this branch and PRs are opened against it. |
+| `VerificationCommands` | `string[]` | `[]` | Shell commands to run in the cloned repository after Auggie changes are generated and before commit/PR creation. |
+| `VerificationTimeoutMinutes` | `int` | `10` | Maximum time (in minutes) allowed for each verification command. |
 | `WebhookSecret` | `string` | _required_ | Shared secret for HMAC-SHA256 webhook signature validation. Must be non-empty whenever the Sentry bugfix feature is enabled; webhook requests without a valid HMAC signature are rejected. |
 
 ### Related Configuration Sections
@@ -269,7 +295,9 @@ POST /webhooks/sentry
 builder.Services.Configure<SentryBugfixOptions>(config.GetSection("SentryBugfix"));
 builder.Services.AddSingleton<IGitCommandRunner, GitCommandRunner>();
 builder.Services.AddSingleton<IAuggieCliRunner, AuggieCliRunner>();
+builder.Services.AddSingleton<IShellCommandRunner, ShellCommandRunner>();
 builder.Services.AddSingleton<IPullRequestCreator, OctokitPullRequestCreator>();
+builder.Services.AddSingleton<SentryWebhookRequestValidator>();
 builder.Services.AddSingleton<SentryBugfixService>();
 ```
 
