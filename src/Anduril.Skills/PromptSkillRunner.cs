@@ -1,4 +1,5 @@
 using Anduril.Core.AI;
+using Anduril.Core.Integrations;
 using Anduril.Core.Skills;
 using Microsoft.Extensions.AI;
 using Microsoft.Extensions.Logging;
@@ -13,8 +14,10 @@ namespace Anduril.Skills;
 public class PromptSkillRunner(
     PromptSkillLoader loader,
     IEnumerable<IAiProvider> aiProviders,
+    IEnumerable<IIntegrationTool> integrationTools,
     ILogger<PromptSkillRunner> logger,
-    string skillsDirectory = "skills")
+    string skillsDirectory = "skills",
+    string? localSkillsDirectory = "skills.local")
     : ISkillRunner
 {
     private Dictionary<string, PromptSkill> _skills = new(StringComparer.OrdinalIgnoreCase);
@@ -39,6 +42,17 @@ public class PromptSkillRunner(
 
     public async Task<SkillResult> ExecuteAsync(
         string skillName, SkillContext context, CancellationToken cancellationToken = default)
+        => await ExecuteCoreAsync(skillName, context, allowToolInvocation: true, cancellationToken);
+
+    public async Task<SkillResult> ExecuteWithoutToolsAsync(
+        string skillName, SkillContext context, CancellationToken cancellationToken = default)
+        => await ExecuteCoreAsync(skillName, context, allowToolInvocation: false, cancellationToken);
+
+    private async Task<SkillResult> ExecuteCoreAsync(
+        string skillName,
+        SkillContext context,
+        bool allowToolInvocation,
+        CancellationToken cancellationToken)
     {
         if (!_skills.TryGetValue(skillName, out var skill))
         {
@@ -57,16 +71,31 @@ public class PromptSkillRunner(
                 throw new InvalidOperationException($"No chat-capable AI provider is available. {detail}");
             }
             var chatClient = provider.ChatClient;
-
-            string systemPrompt = BuildSystemPrompt(skill);
+            var tools = allowToolInvocation
+                ? await ResolveToolsAsync(skill, cancellationToken)
+                : [];
+            var resolvedToolNames = tools.Select(tool => tool.Name).ToList();
+            string systemPrompt = BuildSystemPrompt(skill, context, resolvedToolNames);
 
             var messages = new List<ChatMessage>
             {
                 new(ChatRole.System, systemPrompt),
                 new(ChatRole.User, context.Message.Text)
             };
+            ChatResponse response;
 
-            var response = await chatClient.GetResponseAsync(messages, cancellationToken: cancellationToken);
+            if (tools.Count > 0)
+            {
+                var functionCallingClient = new FunctionInvokingChatClient(chatClient);
+                response = await functionCallingClient.GetResponseAsync(
+                    messages,
+                    new ChatOptions { Tools = tools },
+                    cancellationToken);
+            }
+            else
+            {
+                response = await chatClient.GetResponseAsync(messages, cancellationToken: cancellationToken);
+            }
 
             string responseText = response.Text ?? string.Empty;
 
@@ -86,25 +115,101 @@ public class PromptSkillRunner(
     /// </summary>
     public async Task RefreshSkillsAsync(CancellationToken cancellationToken = default)
     {
-        var loaded = await loader.LoadFromDirectoryAsync(skillsDirectory, cancellationToken);
-        _skills = loaded.ToDictionary(s => s.Name, s => s, StringComparer.OrdinalIgnoreCase);
+        var loaded = new List<PromptSkill>();
+        loaded.AddRange(await loader.LoadFromDirectoryAsync(skillsDirectory, cancellationToken));
+
+        if (!string.IsNullOrWhiteSpace(localSkillsDirectory) && Directory.Exists(localSkillsDirectory))
+            loaded.AddRange(await loader.LoadFromDirectoryAsync(localSkillsDirectory, cancellationToken));
+
+        _skills = loaded
+            .GroupBy(skill => skill.Name, StringComparer.OrdinalIgnoreCase)
+            .ToDictionary(group => group.Key, group => group.Last(), StringComparer.OrdinalIgnoreCase);
     }
 
     /// <summary>
     /// Builds the full system prompt from a prompt skill's sections.
     /// </summary>
-    private static string BuildSystemPrompt(PromptSkill skill)
+    private async Task<IList<AITool>> ResolveToolsAsync(
+        PromptSkill skill,
+        CancellationToken cancellationToken)
+    {
+        if (skill.Tools.Count == 0)
+            return [];
+
+        var requestedTools = new HashSet<string>(skill.Tools, StringComparer.OrdinalIgnoreCase);
+        var resolvedTools = new Dictionary<string, AITool>(StringComparer.OrdinalIgnoreCase);
+
+        foreach (var integrationTool in integrationTools.Where(tool => tool.IsAvailable))
+        {
+            bool includeAllFunctions = requestedTools.Contains(integrationTool.Name);
+
+            foreach (var function in integrationTool.GetFunctions())
+            {
+                if (!includeAllFunctions && !requestedTools.Contains(function.Name))
+                    continue;
+
+                resolvedTools[function.Name] = function;
+            }
+        }
+
+        foreach (var provider in aiProviders.Where(provider => provider.IsAvailable))
+        {
+            try
+            {
+                bool includeAllFunctions = requestedTools.Contains(provider.Name);
+                var providerTools = await provider.GetToolsAsync(cancellationToken);
+
+                foreach (var providerTool in providerTools)
+                {
+                    if (!includeAllFunctions && !requestedTools.Contains(providerTool.Name))
+                        continue;
+
+                    resolvedTools[providerTool.Name] = providerTool;
+                }
+            }
+            catch (NotSupportedException)
+            {
+                logger.LogDebug(
+                    "Skipping tool discovery for AI provider '{ProviderName}' because provider tools are not supported.",
+                    provider.Name);
+            }
+            catch (NotImplementedException)
+            {
+                logger.LogDebug(
+                    "Skipping tool discovery for AI provider '{ProviderName}' because provider tools are not implemented.",
+                    provider.Name);
+            }
+        }
+
+        return [.. resolvedTools.Values.OrderBy(tool => tool.Name, StringComparer.Ordinal)];
+    }
+
+    private static string BuildSystemPrompt(
+        PromptSkill skill,
+        SkillContext context,
+        IReadOnlyList<string> availableToolNames)
     {
         var parts = new List<string>();
 
         if (!string.IsNullOrWhiteSpace(skill.Description))
             parts.Add($"You are: {skill.Description}");
 
+        var userId = context.UserId ?? context.Message.UserId;
+        if (!string.IsNullOrWhiteSpace(userId))
+        {
+            parts.Add(
+                $"Current request context:\n" +
+                $"- user_id: {userId}\n" +
+                $"- platform: {context.Message.Platform}\n" +
+                $"- channel_id: {context.ChannelId ?? context.Message.ChannelId}\n\n" +
+                "When a tool requires a user ID, use the current user_id unless the user explicitly provides a different one.");
+        }
+
         if (!string.IsNullOrWhiteSpace(skill.Instructions))
             parts.Add(skill.Instructions);
 
-        if (skill.Tools.Count > 0)
-            parts.Add($"Available tools: {string.Join(", ", skill.Tools)}");
+        if (availableToolNames.Count > 0)
+            parts.Add($"Available tools: {string.Join(", ", availableToolNames)}");
 
         if (!string.IsNullOrWhiteSpace(skill.OutputFormat))
             parts.Add($"Output Format:\n{skill.OutputFormat}");

@@ -187,7 +187,7 @@ public class GmailTool : IIntegrationTool, IAsyncDisposable
         return sb.ToString();
     }
 
-    private async Task<string> SendEmailAsync(string to, string subject, string body)
+    public async Task<string> SendEmailAsync(string to, string subject, string body)
     {
         var service = GetService();
         var mimeMessage = $"To: {to}\r\nSubject: {subject}\r\nContent-Type: text/plain; charset=utf-8\r\n\r\n{body}";
