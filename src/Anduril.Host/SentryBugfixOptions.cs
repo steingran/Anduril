@@ -58,6 +58,18 @@ public class SentryBugfixOptions
     public string BaseBranch { get; set; } = "main";
 
     /// <summary>
+    /// Gets or sets the shell commands to run after Auggie generates changes and before commit/PR creation.
+    /// Commands are executed in order from the cloned repository root.
+    /// </summary>
+    public string[] VerificationCommands { get; set; } = [];
+
+    /// <summary>
+    /// Gets or sets the timeout in minutes for each verification command.
+    /// Defaults to 10 minutes per command.
+    /// </summary>
+    public int VerificationTimeoutMinutes { get; set; } = 10;
+
+    /// <summary>
     /// Gets or sets the Sentry webhook secret for HMAC-SHA256 signature validation.
     /// Required when <see cref="Enabled"/> is <c>true</c> — the webhook endpoint will reject
     /// requests with HTTP 403 if the feature is enabled but this secret is not configured.

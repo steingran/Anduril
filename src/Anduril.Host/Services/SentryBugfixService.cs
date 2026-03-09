@@ -1,3 +1,4 @@
+using System.Collections.Concurrent;
 using System.Text;
 using System.Text.RegularExpressions;
 using Anduril.Core.Communication;
@@ -21,11 +22,13 @@ public sealed class SentryBugfixService(
     IEnumerable<IIntegrationTool> integrationTools,
     IGitCommandRunner gitRunner,
     IAuggieCliRunner auggieRunner,
+    IShellCommandRunner shellCommandRunner,
     IPullRequestCreator pullRequestCreator,
     ILogger<SentryBugfixService> logger)
 {
     private readonly SentryBugfixOptions _options = options.Value;
     private readonly GitHubToolOptions _gitHubOptions = gitHubOptions.Value;
+    private readonly ConcurrentDictionary<string, byte> _inFlightIssues = new(StringComparer.OrdinalIgnoreCase);
 
     /// <summary>
     /// Processes an incoming Sentry webhook payload end-to-end.
@@ -75,16 +78,10 @@ public sealed class SentryBugfixService(
             "Processing Sentry issue {IssueRef}: '{Title}' ({Count} occurrences, {UserCount} users affected).",
             issueRef, issue.Title, occurrenceCount, issue.UserCount);
 
-        await NotifyAsync(
-            $":robot_face: Starting automated bugfix for Sentry issue *{issueRef}*: _{issue.Title}_\n" +
-            $"Occurrences: {occurrenceCount} | Users affected: {issue.UserCount} | Level: {issue.Level}",
-            cancellationToken);
-
-        var (owner, repo) = ResolveGitHubRepo();
-        if (string.IsNullOrEmpty(owner) || string.IsNullOrEmpty(repo))
+        var issueKey = string.IsNullOrWhiteSpace(issue.Id) ? issueRef : issue.Id;
+        if (!_inFlightIssues.TryAdd(issueKey, 0))
         {
-            logger.LogError("GitHub owner/repo not configured. Cannot proceed with bugfix.");
-            await NotifyAsync(":x: Sentry bugfix failed — GitHub owner/repo not configured.", cancellationToken);
+            logger.LogInformation("Sentry issue {IssueRef} is already being processed. Skipping duplicate webhook.", issueRef);
             return;
         }
 
@@ -92,9 +89,22 @@ public sealed class SentryBugfixService(
 
         try
         {
+            await NotifyAsync(
+                $":robot_face: Starting automated bugfix for Sentry issue *{issueRef}*: _{issue.Title}_\n" +
+                $"Occurrences: {occurrenceCount} | Users affected: {issue.UserCount} | Level: {issue.Level}",
+                cancellationToken);
+
+            var (owner, repo) = ResolveGitHubRepo();
+            if (string.IsNullOrEmpty(owner) || string.IsNullOrEmpty(repo))
+            {
+                logger.LogError("GitHub owner/repo not configured. Cannot proceed with bugfix.");
+                await NotifyAsync(":x: Sentry bugfix failed — GitHub owner/repo not configured.", cancellationToken);
+                return;
+            }
+
             await ExecuteBugfixPipelineAsync(issue, issueRef, owner, repo, tempDir, cancellationToken);
         }
-        catch (Exception ex)
+        catch (Exception ex) when (ex is not OperationCanceledException)
         {
             logger.LogError(ex, "Sentry bugfix pipeline failed for issue {IssueRef}.", issueRef);
             await NotifyAsync(
@@ -104,6 +114,7 @@ public sealed class SentryBugfixService(
         finally
         {
             CleanupTempDirectory(tempDir);
+            _inFlightIssues.TryRemove(issueKey, out _);
         }
     }
 
@@ -116,6 +127,29 @@ public sealed class SentryBugfixService(
         var cloneUrl = $"https://github.com/{owner}/{repo}.git";
         var authHeader = $"Authorization: Bearer {token}";
         var branchName = $"{_options.BranchPrefix}{SanitizeGitRef(issueRef)}";
+
+        var existingPrUrl = await pullRequestCreator.FindOpenAsync(owner, repo, branchName, cancellationToken);
+        if (!string.IsNullOrWhiteSpace(existingPrUrl))
+        {
+            logger.LogInformation("Open pull request already exists for issue {IssueRef}: {PrUrl}", issueRef, existingPrUrl);
+            await NotifyAsync(
+                $":information_source: Automated bugfix already exists for *{issueRef}*: {existingPrUrl}",
+                cancellationToken);
+            return;
+        }
+
+        var existingBranch = await gitRunner.RunAsync(
+            null,
+            $"-c http.extraHeader=\"{authHeader}\" ls-remote --heads {cloneUrl} {branchName}",
+            cancellationToken);
+        if (!string.IsNullOrWhiteSpace(existingBranch))
+        {
+            logger.LogInformation("Remote branch {BranchName} already exists for issue {IssueRef}. Skipping duplicate automation.", branchName, issueRef);
+            await NotifyAsync(
+                $":information_source: Automated bugfix branch already exists for *{issueRef}*: `{branchName}`",
+                cancellationToken);
+            return;
+        }
 
         // Clone the repository from the configured base branch to avoid basing the fix on the wrong history
         logger.LogInformation("Cloning {Owner}/{Repo} (branch {BaseBranch}) into {TempDir}...", owner, repo, _options.BaseBranch, tempDir);
@@ -149,6 +183,8 @@ public sealed class SentryBugfixService(
                 cancellationToken);
             return;
         }
+
+        await RunVerificationCommandsAsync(tempDir, issueRef, cancellationToken);
 
         // Stage and commit using a temp file for the commit message (avoids shell escaping issues)
         await gitRunner.RunAsync(tempDir, "add -A", cancellationToken);
@@ -322,6 +358,40 @@ public sealed class SentryBugfixService(
         sb.AppendLine("7. Make sure the code compiles and passes existing tests");
 
         return sb.ToString();
+    }
+
+    private async Task RunVerificationCommandsAsync(string workingDirectory, string issueRef, CancellationToken cancellationToken)
+    {
+        var commands = _options.VerificationCommands
+            .Where(command => !string.IsNullOrWhiteSpace(command))
+            .ToArray();
+        if (commands.Length == 0)
+        {
+            logger.LogInformation("No verification commands configured for Sentry issue {IssueRef}. Continuing without verification.", issueRef);
+            return;
+        }
+
+        foreach (var command in commands)
+        {
+            logger.LogInformation("Running verification command for issue {IssueRef}: {Command}", issueRef, command);
+
+            using var timeoutCts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+            timeoutCts.CancelAfter(TimeSpan.FromMinutes(_options.VerificationTimeoutMinutes));
+
+            try
+            {
+                await shellCommandRunner.RunAsync(workingDirectory, command, timeoutCts.Token);
+            }
+            catch (OperationCanceledException) when (!cancellationToken.IsCancellationRequested)
+            {
+                throw new TimeoutException(
+                    $"Verification command timed out after {_options.VerificationTimeoutMinutes} minutes: {command}");
+            }
+            catch (Exception ex) when (ex is not OperationCanceledException)
+            {
+                throw new InvalidOperationException($"Verification command failed: {command}", ex);
+            }
+        }
     }
 
 

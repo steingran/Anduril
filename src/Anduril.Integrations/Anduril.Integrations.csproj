@@ -13,7 +13,6 @@
     <PackageReference Include="Microsoft.Graph" />
     <PackageReference Include="Microsoft.Playwright" />
     <PackageReference Include="Octokit" />
-    <PackageReference Include="Sentry" />
   </ItemGroup>
 
   <PropertyGroup>

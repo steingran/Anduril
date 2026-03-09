@@ -73,6 +73,20 @@ public class SentryBugfixOptionsTests
     }
 
     [Test]
+    public async Task DefaultVerificationCommands_IsEmpty()
+    {
+        var options = new SentryBugfixOptions();
+        await Assert.That(options.VerificationCommands.Length).IsEqualTo(0);
+    }
+
+    [Test]
+    public async Task DefaultVerificationTimeoutMinutes_Is10()
+    {
+        var options = new SentryBugfixOptions();
+        await Assert.That(options.VerificationTimeoutMinutes).IsEqualTo(10);
+    }
+
+    [Test]
     public async Task DefaultWebhookSecret_IsNull()
     {
         var options = new SentryBugfixOptions();
