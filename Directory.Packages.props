@@ -5,7 +5,7 @@
   </PropertyGroup>
   <ItemGroup>
     <PackageVersion Include="Anthropic.SDK" Version="5.10.0" />
-    <PackageVersion Include="Azure.Identity" Version="1.18.0" />
+    <PackageVersion Include="Azure.Identity" Version="1.19.0" />
     <PackageVersion Include="Google.Apis.Gmail.v1" Version="1.73.0.4029" />
     <PackageVersion Include="LLamaSharp" Version="0.26.0" />
     <PackageVersion Include="MailKit" Version="4.15.1" />
