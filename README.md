@@ -8,7 +8,7 @@ A personal AI assistant built from scratch in C#. Andúril connects to Slack (an
 - **Dual-mode skill system** — write skills as simple Markdown prompt files or as compiled C# plugins
 - **Slack integration** — real-time messaging via Socket Mode with threaded replies ([setup guide](docs/slack-setup.md))
 - **Tool augmentation** — Augment Code MCP provider exposes codebase-aware tools that chat providers can call
-- **Integration hooks** — GitHub, Sentry, and Office 365 Calendar adapters for pulling context into conversations ([GitHub setup](docs/github.md) · [Office 365 setup](docs/office365-calendar.md))
+- **Integration hooks** — GitHub, Sentry, Office 365 Calendar, and Proton Mail adapters for pulling context into conversations ([GitHub setup](docs/github.md) · [Office 365 setup](docs/office365-calendar.md) · [Proton Mail setup](docs/protonmail-setup.md))
 - **Best-effort startup** — providers and adapters initialise independently; failures are logged, never fatal
 
 ## Architecture
@@ -34,7 +34,7 @@ A personal AI assistant built from scratch in C#. Andúril connects to Slack (an
 | `Anduril.AI` | AI provider implementations |
 | `Anduril.Skills` | Skill system — prompt-based (Markdown) and compiled (DLL) runners |
 | `Anduril.Communication` | Platform adapters (Slack, Teams, CLI) |
-| `Anduril.Integrations` | External tool integrations (GitHub, Sentry, Calendar) |
+| `Anduril.Integrations` | External tool integrations (GitHub, Sentry, Calendar, Proton Mail) |
 | `Anduril.Host` | ASP.NET Core host — DI, background services, HTTP endpoints |
 
 ## AI Providers
