@@ -53,6 +53,7 @@ try
     var slackSection = config.GetSection("Communication:Slack");
     var teamsSection = config.GetSection("Communication:Teams");
     var signalSection = config.GetSection("Communication:Signal");
+    var protonMailSection = config.GetSection("Integrations:ProtonMail");
 
     bool openAiEnabled = openAiSection.GetValue<bool?>("Enabled") ?? true;
     bool anthropicEnabled = anthropicSection.GetValue<bool?>("Enabled") ?? true;
@@ -64,6 +65,7 @@ try
     bool slackEnabled = slackSection.GetValue<bool?>("Enabled") ?? true;
     bool teamsEnabled = teamsSection.GetValue<bool?>("Enabled") ?? true;
     bool signalEnabled = signalSection.GetValue<bool?>("Enabled") ?? true;
+    bool protonMailEnabled = protonMailSection.GetValue<bool?>("Enabled") ?? true;
     bool weeklyMenuPlannerEnabled = config.GetSection("WeeklyMenuPlanner").GetValue<bool?>("Enabled") ?? true;
 
     // ---------------------------------------------------------------------------
@@ -273,6 +275,7 @@ try
     builder.Services.Configure<SentryToolOptions>(config.GetSection("Integrations:Sentry"));
     builder.Services.Configure<Office365CalendarToolOptions>(config.GetSection("Integrations:Office365Calendar"));
     builder.Services.Configure<GmailToolOptions>(config.GetSection("Integrations:Gmail"));
+    builder.Services.Configure<ProtonMailToolOptions>(protonMailSection);
     builder.Services.Configure<SlackQueryToolOptions>(config.GetSection("Integrations:SlackQuery"));
     builder.Services.Configure<MediumArticleToolOptions>(config.GetSection("Integrations:MediumArticle"));
     builder.Services.Configure<WeeklyMenuPlannerOptions>(config.GetSection("WeeklyMenuPlanner"));
@@ -284,6 +287,12 @@ try
     builder.Services.AddSingleton<IIntegrationTool, Office365CalendarTool>();
     builder.Services.AddSingleton<GmailTool>();
     builder.Services.AddSingleton<IIntegrationTool>(sp => sp.GetRequiredService<GmailTool>());
+
+    if (protonMailEnabled)
+    {
+        builder.Services.AddSingleton<IIntegrationTool, ProtonMailTool>();
+    }
+
     builder.Services.AddSingleton<IIntegrationTool, SlackQueryTool>();
     builder.Services.AddSingleton<IIntegrationTool, MediumArticleTool>();
 
