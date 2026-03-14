@@ -1,5 +1,7 @@
 # Folders
 artifacts/
+publish/
+releases/
 bin/
 obj/
 .dotnet/
@@ -15,6 +17,7 @@ src/SignalR/clients/**/dist/
 modules/
 .ionide/
 TestResults/
+tmp/
 
 # File extensions
 *.aps
@@ -36,6 +39,7 @@ TestResults/
 *.svclog
 *.tlog
 *.trx
+*.DotSettings.user
 *.user
 *.userprefs
 *.vspx

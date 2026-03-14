@@ -1,0 +1,9 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Security vulnerability report
+    url: https://github.com/steingran/Anduril/security/advisories/new
+    about: Report vulnerabilities privately. Do not open public issues for security concerns.
+  - name: Support and usage guidance
+    url: https://github.com/steingran/Anduril/blob/main/SUPPORT.md
+    about: Read the support guidance before filing issues.
+
