@@ -11,3 +11,7 @@ artifacts/
 # Local tooling metadata
 .git/
 .vs/
+.idea/
+tmp/
+skills.local/
+*.DotSettings.user

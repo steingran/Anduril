@@ -1,0 +1,6 @@
+fail-on-severity: high
+
+fail-on-scopes:
+  - development
+  - runtime
+  - unknown

@@ -1,0 +1,55 @@
+name: Feature request
+description: Suggest an improvement for Anduril
+labels:
+  - enhancement
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for sharing an idea.
+
+        Please describe the problem first, not just the proposed solution.
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem to solve
+      placeholder: What workflow or limitation is motivating this request?
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposed solution
+      placeholder: Describe the change you would like to see.
+    validations:
+      required: true
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives considered
+      placeholder: Describe alternatives or workarounds you considered.
+  - type: dropdown
+    id: area
+    attributes:
+      label: Area
+      options:
+        - AI providers
+        - Skills
+        - Communication adapters
+        - Integrations
+        - Host / setup / Docker
+        - Documentation
+        - Other
+  - type: textarea
+    id: extra
+    attributes:
+      label: Additional context
+      description: Links, mockups, logs, or implementation notes.
+  - type: checkboxes
+    id: checks
+    attributes:
+      label: Confirmation
+      options:
+        - label: I searched existing issues first
+          required: true
+

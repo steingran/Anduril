@@ -48,6 +48,29 @@ A personal AI assistant built from scratch in C#. Andúril connects to Slack (an
 | Ollama | Chat | Local models (e.g. Qwen, Llama) — no API key required |
 | LLamaSharp | Chat | Run GGUF models directly in-process |
 
+## Support and Stability
+
+Andúril is maintained as a personal daily-driver assistant project. Support is strongest for the paths used regularly by the maintainer; everything else should be treated as best-effort unless noted otherwise.
+
+### Communication adapters
+
+| Adapter | Status | Notes |
+|---|---|---|
+| CLI | Supported | Best local development and smoke-test path |
+| Slack | Supported | Primary real-time adapter; threaded replies supported |
+| Signal | Experimental | Available, but expect configuration and operational edge cases |
+| Teams | Stub / experimental | Present in the architecture, not positioned as production-ready yet |
+
+### Provider and integration maturity
+
+| Area | Status | Notes |
+|---|---|---|
+| OpenAI / Anthropic / Augment Chat / Ollama | Supported | Best-maintained chat-provider paths |
+| Augment MCP | Supported (advanced) | Intended as a tool provider for richer code-aware workflows |
+| LLamaSharp | Experimental | Local in-process model support; expect more manual setup/tuning |
+| GitHub / Sentry / Office 365 Calendar / Slack Query | Supported | First-class workflow-oriented integrations |
+| Gmail / Medium article retrieval / personal schedulers | Experimental | Useful, but more likely to change as the project evolves |
+
 ## Built-in Skills
 
 | Skill | Trigger | Description |
@@ -82,7 +105,9 @@ dotnet run --project src/Anduril.Host
 
 ## Configuration
 
-All settings live in `src/Anduril.Host/appsettings.json`. Sensitive values (API keys, tokens) should be stored in [user secrets](https://learn.microsoft.com/en-us/aspnet/core/security/app-secrets) instead:
+For a quieter first-time setup, start from `src/Anduril.Host/appsettings.example.json` and enable only the components you actually want to run. The checked-in `src/Anduril.Host/appsettings.json` remains the full reference surface used by development.
+
+Sensitive values (API keys, tokens) should be stored in [user secrets](https://learn.microsoft.com/en-us/aspnet/core/security/app-secrets) or environment variables instead:
 
 ```bash
 cd src/Anduril.Host
@@ -94,6 +119,13 @@ dotnet user-secrets set "Communication:Slack:AppToken" "xapp-..."
 ```
 
 Most AI providers and communication adapters also support an `Enabled` switch, so you can turn individual components on or off in `appsettings.json` or via environment variables. Examples: `AI:Ollama:Enabled=false`, `Communication:Slack:Enabled=false`, or env vars such as `AI__Ollama__Enabled=false`.
+
+Recommended public/open-source onboarding flow:
+
+1. Copy values from `src/Anduril.Host/appsettings.example.json` into your local config.
+2. Enable `Communication:Cli` and exactly one chat-capable provider.
+3. Keep secrets out of tracked files and inject them with user-secrets or environment variables.
+4. Only enable adapters once their credentials and endpoints are ready. Most integration tools (GitHub, Sentry, Office 365 Calendar, Gmail, SlackQuery, Medium) become available automatically once their credentials are configured and do not need an explicit `Enabled` switch. ProtonMail and WeeklyMenuPlanner are exceptions — they are off by default and require `Enabled: true` in config to register.
 
 You only need **one** chat-capable AI provider to get started. The quickest options:
 
@@ -172,6 +204,19 @@ Andúril uses [TUnit](https://github.com/thomhurst/TUnit) on the Microsoft Testi
 ```bash
 dotnet test --solution Anduril.slnx --verbosity normal
 ```
+
+## Release Integrity
+
+Tagged releases publish platform archives plus SHA-256 checksum files. The Docker release path publishes to GHCR with provenance and SBOM attestations enabled, and binary release artifacts are attested in GitHub Actions.
+
+If you consume Andúril from a release rather than from source, prefer verifying checksums and attestations as part of your own supply-chain policy.
+
+## Community
+
+- [Contributing guide](CONTRIBUTING.md)
+- [Code of Conduct](CODE_OF_CONDUCT.md)
+- [Security policy](SECURITY.md)
+- [Support guide](SUPPORT.md)
 
 ## License
 
