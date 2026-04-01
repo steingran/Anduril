@@ -43,7 +43,6 @@ public sealed class HostService
 
         // Serilog integration
         builder.Host.UseSerilog((ctx, lc) => lc
-            .WriteTo.Console()
             .ReadFrom.Configuration(ctx.Configuration));
 
         builder.AddAndurilServices();

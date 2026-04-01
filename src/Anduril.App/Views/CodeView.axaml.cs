@@ -7,6 +7,8 @@ namespace Anduril.App.Views;
 
 public partial class CodeView : UserControl
 {
+    private CodeViewModel? _subscribedVm;
+
     public CodeView()
     {
         InitializeComponent();
@@ -17,10 +19,17 @@ public partial class CodeView : UserControl
     {
         base.OnDataContextChanged(e);
 
-        if (DataContext is CodeViewModel vm)
-            vm.Messages.CollectionChanged += (_, _) =>
-                Dispatcher.UIThread.Post(() => MessagesScroll.ScrollToEnd());
+        if (_subscribedVm is not null)
+            _subscribedVm.Messages.CollectionChanged -= OnMessagesChanged;
+
+        _subscribedVm = DataContext as CodeViewModel;
+
+        if (_subscribedVm is not null)
+            _subscribedVm.Messages.CollectionChanged += OnMessagesChanged;
     }
+
+    private void OnMessagesChanged(object? sender, System.Collections.Specialized.NotifyCollectionChangedEventArgs e)
+        => Dispatcher.UIThread.Post(() => MessagesScroll.ScrollToEnd());
 
     private async void OnBrowseRepoClicked(object? sender, Avalonia.Interactivity.RoutedEventArgs e)
     {

@@ -92,7 +92,7 @@ public sealed class ChatViewModel : ViewModelBase
                 var last = Messages[^1];
                 if (last.IsAssistant)
                 {
-                    last.Content = token.Token;
+                    last.Content = token.Error;
                     // Trigger UI update by replacing the item
                     Messages[^1] = last;
                 }
