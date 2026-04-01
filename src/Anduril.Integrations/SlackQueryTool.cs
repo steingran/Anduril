@@ -81,8 +81,8 @@ public sealed class SlackQueryTool : IIntegrationTool
     public async Task<string> SearchMessagesAsync(
         string channels,
         string keyword,
-        DateTime? oldest = null,
-        DateTime? latest = null,
+        string oldest = "",
+        string latest = "",
         int limit = 20)
     {
         if (string.IsNullOrWhiteSpace(keyword))
@@ -91,8 +91,8 @@ public sealed class SlackQueryTool : IIntegrationTool
         var client = GetClient();
         var requestedChannels = ParseChannelList(channels);
         var resolvedChannels = await ResolveChannelsAsync(client, requestedChannels, nameof(channels));
-        var oldestTimestamp = ToDateTimeOffset(oldest);
-        var latestTimestamp = ToDateTimeOffset(latest);
+        var oldestTimestamp = ParseDateTimeOffset(oldest);
+        var latestTimestamp = ParseDateTimeOffset(latest);
         var maxResults = ClampLimit(limit);
         int pageSize = Math.Max(1, Math.Min(_options.SearchPageSize, maxResults));
         var results = new List<SlackMessageSummary>();
@@ -271,16 +271,19 @@ public sealed class SlackQueryTool : IIntegrationTool
         return message.Text.Contains(keyword, StringComparison.OrdinalIgnoreCase);
     }
 
-    private static DateTimeOffset? ToDateTimeOffset(DateTime? value)
+    private static DateTimeOffset? ParseDateTimeOffset(string value)
     {
-        if (value is null)
+        if (string.IsNullOrWhiteSpace(value))
             return null;
 
-        return value.Value.Kind switch
+        if (!DateTime.TryParse(value, out var parsed))
+            throw new ArgumentException($"Could not parse '{value}' as a date/time.");
+
+        return parsed.Kind switch
         {
-            DateTimeKind.Unspecified => new DateTimeOffset(DateTime.SpecifyKind(value.Value, DateTimeKind.Utc)),
-            DateTimeKind.Utc => new DateTimeOffset(value.Value),
-            _ => new DateTimeOffset(value.Value.ToUniversalTime())
+            DateTimeKind.Unspecified => new DateTimeOffset(DateTime.SpecifyKind(parsed, DateTimeKind.Utc)),
+            DateTimeKind.Utc => new DateTimeOffset(parsed),
+            _ => new DateTimeOffset(parsed.ToUniversalTime())
         };
     }
 

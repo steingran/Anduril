@@ -41,5 +41,21 @@ public interface IAiProvider : IAsyncDisposable
     /// For MCP-backed providers, these come from the MCP server's tool list.
     /// </summary>
     Task<IReadOnlyList<AITool>> GetToolsAsync(CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Returns the models available through this provider, each with a technical ID and a
+    /// human-readable display name. An empty list means the provider exposes only the single
+    /// model from its configuration. Providers like Copilot and Anthropic that can enumerate
+    /// remote models override this.
+    /// </summary>
+    Task<IReadOnlyList<ModelInfo>> GetAvailableModelsAsync(CancellationToken cancellationToken = default)
+        => Task.FromResult<IReadOnlyList<ModelInfo>>([]);
+
+    /// <summary>
+    /// Returns a <see cref="IChatClient"/> configured for the given model.
+    /// The default ignores <paramref name="model"/> and returns <see cref="ChatClient"/>.
+    /// Providers that support dynamic model selection override this.
+    /// </summary>
+    IChatClient GetChatClientForModel(string model) => ChatClient;
 }
 

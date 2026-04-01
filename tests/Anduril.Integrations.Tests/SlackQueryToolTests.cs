@@ -55,8 +55,8 @@ public class SlackQueryToolTests
         var result = await tool.SearchMessagesAsync(
             channels: "general",
             keyword: "release",
-            oldest: new DateTime(2026, 3, 5, 0, 0, 0, DateTimeKind.Utc),
-            latest: new DateTime(2026, 3, 6, 0, 0, 0, DateTimeKind.Utc),
+            oldest: "2026-03-05T00:00:00Z",
+            latest: "2026-03-06T00:00:00Z",
             limit: 10);
 
         await Assert.That(tool.IsAvailable).IsTrue();

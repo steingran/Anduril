@@ -147,12 +147,14 @@ public sealed class ProtonMailTool : IIntegrationTool
         return string.Join("\n", messages.Select(FormatMessageSummary));
     }
 
-    private async Task<string> SendEmailAsync(string to, string subject, string body, string? cc = null, string? bcc = null)
+    private async Task<string> SendEmailAsync(string to, string subject, string body, string cc = "", string bcc = "")
     {
         EnsureAvailable();
 
         await using var smtpClient = _smtpClientFactory();
-        await smtpClient.SendAsync(_options, new ProtonMailOutgoingMessage(to, subject, body, cc, bcc, null, []));
+        string? ccValue = string.IsNullOrWhiteSpace(cc) ? null : cc;
+        string? bccValue = string.IsNullOrWhiteSpace(bcc) ? null : bcc;
+        await smtpClient.SendAsync(_options, new ProtonMailOutgoingMessage(to, subject, body, ccValue, bccValue, null, []));
         return $"Email sent successfully to {to}.";
     }
 

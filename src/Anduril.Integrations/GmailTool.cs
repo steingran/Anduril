@@ -132,7 +132,7 @@ public class GmailTool : IIntegrationTool, IAsyncDisposable
         ];
     }
 
-    private async Task<string> ListMessagesAsync(int maxResults = 10, string? query = null)
+    private async Task<string> ListMessagesAsync(int maxResults = 10, string query = "")
     {
         var service = GetService();
         var request = service.Users.Messages.List(_options.UserId);
@@ -233,17 +233,19 @@ public class GmailTool : IIntegrationTool, IAsyncDisposable
         return $"Reply sent successfully to {from}. Message ID: {result.Id}";
     }
 
-    private async Task<string> ModifyLabelsAsync(string messageId, string? addLabels = null, string? removeLabels = null)
+    private async Task<string> ModifyLabelsAsync(string messageId, string addLabels = "", string removeLabels = "")
     {
         var service = GetService();
+        string? addValue = string.IsNullOrWhiteSpace(addLabels) ? null : addLabels;
+        string? removeValue = string.IsNullOrWhiteSpace(removeLabels) ? null : removeLabels;
         var modRequest = new ModifyMessageRequest
         {
-            AddLabelIds = addLabels?.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries).ToList(),
-            RemoveLabelIds = removeLabels?.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries).ToList()
+            AddLabelIds = addValue?.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries).ToList(),
+            RemoveLabelIds = removeValue?.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries).ToList()
         };
 
         await service.Users.Messages.Modify(modRequest, _options.UserId, messageId).ExecuteAsync();
-        return $"Labels updated on message {messageId}. Added: [{addLabels ?? "none"}], Removed: [{removeLabels ?? "none"}].";
+        return $"Labels updated on message {messageId}. Added: [{addValue ?? "none"}], Removed: [{removeValue ?? "none"}].";
     }
 
     private async Task<string> GetAttachmentsAsync(string messageId, bool save = false)

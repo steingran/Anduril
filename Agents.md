@@ -24,18 +24,23 @@ Anduril is a personal AI assistant built from scratch in C#. It connects to Slac
 | `src/Anduril.AI` | AI provider implementations (OpenAI, Anthropic, Ollama, LLamaSharp, Augment MCP) |
 | `src/Anduril.Skills` | Skill system — prompt-based (markdown) and compiled (DLL) runners |
 | `src/Anduril.Communication` | Platform adapters (Slack, Teams, CLI) |
-| `src/Anduril.Integrations` | External tool integrations (GitHub, Sentry, Calendar) |
+| `src/Anduril.Integrations` | External tool integrations (GitHub, Sentry, Calendar, Gmail, Proton Mail) |
 | `src/Anduril.Host` | ASP.NET Core host — DI wiring, background services, HTTP endpoints |
+| `src/Anduril.Setup` | Interactive and headless setup tool for first-run configuration |
 | `tests/Anduril.Core.Tests` | Core unit tests |
 | `tests/Anduril.AI.Tests` | AI provider unit tests |
 | `tests/Anduril.Skills.Tests` | Skill system unit tests |
+| `tests/Anduril.Communication.Tests` | Communication adapter unit tests |
+| `tests/Anduril.Integrations.Tests` | Integration tool unit tests |
+| `tests/Anduril.Host.Tests` | Host/startup unit tests |
+| `tests/Anduril.Setup.Tests` | Setup tool unit tests |
 
 ### Key NuGet Packages
-- **AI**: `Microsoft.Extensions.AI` (10.3.0), `Microsoft.Extensions.AI.OpenAI` (10.3.0), `Anthropic.SDK` (5.9.0), `OllamaSharp` (5.4.16), `LLamaSharp` (0.25.0), `ModelContextProtocol` (0.8.0-preview.1)
-- **Communication**: `SlackNet` (0.17.9) — Socket Mode is built into the base package, no separate `SlackNet.SocketMode` needed. `Microsoft.Bot.Builder.Integration.AspNet.Core` (4.23.1)
-- **Integrations**: `Octokit` (14.0.0), `Sentry` (6.1.0), `Microsoft.Graph` (5.102.0)
-- **Infrastructure**: `Serilog.AspNetCore` (10.0.0), `Velopack` (0.0.1298), `Microsoft.EntityFrameworkCore.Sqlite` (10.0.3)
-- **Testing**: `TUnit` (1.14.0) + `TUnit.Engine` (1.14.0)
+- **AI**: `Microsoft.Extensions.AI` (10.3.0), `Microsoft.Extensions.AI.Abstractions` (10.3.0), `Microsoft.Extensions.AI.OpenAI` (10.3.0), `Anthropic.SDK` (5.10.0), `OllamaSharp` (5.4.23), `LLamaSharp` (0.26.0), `ModelContextProtocol` (1.1.0)
+- **Communication**: `SlackNet` (0.17.9), `SlackNet.Extensions.DependencyInjection` (0.17.9) — Socket Mode is built into the base package, no separate `SlackNet.SocketMode` needed. `Microsoft.Bot.Builder.Integration.AspNet.Core` (4.23.1)
+- **Integrations**: `Octokit` (14.0.0), `Sentry` (6.2.0), `Microsoft.Graph` (5.103.0), `Google.Apis.Gmail.v1` (1.73.0.4029), `MailKit` (4.15.1), `Azure.Identity` (1.19.0)
+- **Infrastructure**: `Serilog.AspNetCore` (10.0.0), `Velopack` (0.0.1298), `Microsoft.EntityFrameworkCore.Sqlite` (10.0.5), `Spectre.Console` (0.54.0)
+- **Testing**: `TUnit` (1.19.57) + `TUnit.Engine` (1.19.57), `Microsoft.Playwright` (1.58.0)
 
 ### Testing Platform
 - **TUnit** on **Microsoft.Testing.Platform (MTP)** — configured via `global.json`:
@@ -84,6 +89,8 @@ Anduril is a personal AI assistant built from scratch in C#. It connects to Slac
 13. **Container runtime paths must remain writable by `anduril`.** If you add or move runtime storage paths, ensure they are created and owned in the image build.
 
 14. **Keep startup logging actionable.** Do not double-register console logging sinks, and only log adapters as "started" when they are actually connected.
+
+15. **Always build after edits.** Run `dotnet build Anduril.slnx` from the repo root after any code change. `TreatWarningsAsErrors=true` means warnings fail the build — verify the build is clean before considering a change done. In worktrees, run from `.claude/worktrees/<name>/`.
 
 ---
 

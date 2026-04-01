@@ -66,12 +66,12 @@ public sealed class WeeklyMenuPlannerTool(
     private async Task<string> SavePreferencesAsync(
         string userId,
         string preferenceSummary,
-        string? recipientEmail = null,
-        int? peopleCount = null,
-        string? mealComplexity = null,
-        bool? includeShoppingList = null,
-        string? deliverySchedule = null,
-        bool? enableWeeklyEmail = null)
+        string recipientEmail = "",
+        int peopleCount = -1,
+        string mealComplexity = "",
+        string includeShoppingList = "",
+        string deliverySchedule = "",
+        string enableWeeklyEmail = "")
     {
         if (string.IsNullOrWhiteSpace(userId))
             return "A userId is required to save weekly menu preferences.";
@@ -81,12 +81,17 @@ public sealed class WeeklyMenuPlannerTool(
 
         var normalizedUserId = userId.Trim();
         var existing = await subscriptionStore.GetAsync(normalizedUserId);
-        var normalizedEmail = recipientEmail is null
+        var normalizedEmail = string.IsNullOrWhiteSpace(recipientEmail)
             ? existing?.RecipientEmail
-            : string.IsNullOrWhiteSpace(recipientEmail)
-                ? null
-                : recipientEmail.Trim();
-        var recurringEnabled = enableWeeklyEmail ?? existing?.IsRecurringEnabled ?? false;
+            : recipientEmail.Trim();
+        bool? parsedEnableWeeklyEmail = string.IsNullOrWhiteSpace(enableWeeklyEmail)
+            ? null
+            : bool.TryParse(enableWeeklyEmail, out var ewv) ? ewv : null;
+        bool? parsedIncludeShoppingList = string.IsNullOrWhiteSpace(includeShoppingList)
+            ? null
+            : bool.TryParse(includeShoppingList, out var islv) ? islv : null;
+        int? parsedPeopleCount = peopleCount >= 0 ? peopleCount : null;
+        var recurringEnabled = parsedEnableWeeklyEmail ?? existing?.IsRecurringEnabled ?? false;
 
         if (recurringEnabled && string.IsNullOrWhiteSpace(normalizedEmail))
             return "A recipient email address is required before recurring weekly menu delivery can be enabled.";
@@ -96,11 +101,11 @@ public sealed class WeeklyMenuPlannerTool(
             UserId = normalizedUserId,
             RecipientEmail = normalizedEmail,
             PreferenceSummary = preferenceSummary.Trim(),
-            PeopleCount = Math.Max(1, peopleCount ?? existing?.PeopleCount ?? 2),
+            PeopleCount = Math.Max(1, parsedPeopleCount ?? existing?.PeopleCount ?? 2),
             MealComplexity = string.IsNullOrWhiteSpace(mealComplexity)
                 ? existing?.MealComplexity ?? "balanced"
                 : mealComplexity.Trim(),
-            IncludeShoppingList = includeShoppingList ?? existing?.IncludeShoppingList ?? true,
+            IncludeShoppingList = parsedIncludeShoppingList ?? existing?.IncludeShoppingList ?? true,
             DeliverySchedule = string.IsNullOrWhiteSpace(deliverySchedule)
                 ? existing?.DeliverySchedule ?? "0 18 * * 0"
                 : deliverySchedule.Trim(),
