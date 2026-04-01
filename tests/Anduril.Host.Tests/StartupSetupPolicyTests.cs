@@ -98,6 +98,23 @@ public class StartupSetupPolicyTests
     }
 
     [Test]
+    public async Task Evaluate_CopilotConfigured_DoesNotRequireSetup()
+    {
+        var result = StartupSetupPolicy.Evaluate(
+            null, null, null, null, null,
+            ollamaMissing: false,
+            isContainer: true,
+            isUserInteractive: false,
+            isInputRedirected: true,
+            copilotApiKey: "ghp_copilot_token",
+            copilotEnabled: true);
+
+        await Assert.That(result.RequiresSetup).IsFalse();
+        await Assert.That(result.ShouldLaunchSetup).IsFalse();
+        await Assert.That(result.SkipMessage).IsNull();
+    }
+
+    [Test]
     public async Task IsRunningInContainer_DetectsDotnetEnvironmentVariable()
     {
         bool result = StartupSetupPolicy.IsRunningInContainer(

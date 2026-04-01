@@ -127,11 +127,11 @@ public class SentryTool : IIntegrationTool, IAsyncDisposable
         ];
     }
 
-    private async Task<string> ListUnresolvedIssuesAsync(string? project = null, int limit = 10)
+    private async Task<string> ListUnresolvedIssuesAsync(string project = "", int limit = 10)
     {
         var client = GetClient();
         string org = _options.Organization ?? throw new InvalidOperationException("Sentry organization not configured.");
-        string proj = project ?? _options.Project ?? throw new ArgumentException("Sentry project is required.");
+        string proj = (string.IsNullOrWhiteSpace(project) ? null : project) ?? _options.Project ?? throw new ArgumentException("Sentry project is required.");
 
         string response = await client.GetStringAsync(
             $"projects/{org}/{proj}/issues/?query=is:unresolved&limit={limit}");

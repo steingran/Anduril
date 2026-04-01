@@ -1,6 +1,7 @@
 using Anduril.Core.AI;
 using Anthropic.SDK;
 using Anthropic.SDK.Messaging;
+using Anthropic.SDK.Models;
 using Microsoft.Extensions.AI;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
@@ -15,7 +16,9 @@ public sealed class AnthropicProvider(IOptions<AiProviderOptions> options, ILogg
     : IAiProvider
 {
     private readonly AiProviderOptions _options = options.Value;
+    private AnthropicClient? _client;
     private IChatClient? _chatClient;
+    private IReadOnlyList<ModelInfo>? _cachedModels;
 
     public string Name => "anthropic";
 
@@ -26,29 +29,31 @@ public sealed class AnthropicProvider(IOptions<AiProviderOptions> options, ILogg
     public IChatClient ChatClient =>
         _chatClient ?? throw new InvalidOperationException("Anthropic provider has not been initialized.");
 
-    public Task InitializeAsync(CancellationToken cancellationToken = default)
+    public async Task InitializeAsync(CancellationToken cancellationToken = default)
     {
         string? apiKey = _options.ApiKey;
         if (string.IsNullOrWhiteSpace(apiKey))
         {
             logger.LogWarning("Anthropic API key is not configured. Anthropic provider will remain unavailable.");
-            return Task.CompletedTask;
+            return;
         }
 
         string model = _options.Model ?? "claude-sonnet-4-5";
         bool enablePromptCaching = _options.EnablePromptCaching;
 
+        _client = new AnthropicClient(apiKey);
+
+        // Fetch the model catalog eagerly so the UI can populate the model selector.
+        _cachedModels = await FetchModelsAsync(cancellationToken);
+
         // The Anthropic.SDK AnthropicClient.Messages implements IChatClient,
         // but requires the model to be specified per-request via ChatOptions.
         // We wrap it to automatically inject the model on every call.
-        var client = new AnthropicClient(apiKey);
-        var baseClient = client.Messages;
-        _chatClient = new AnthropicChatClientWrapper(baseClient, model, enablePromptCaching);
+        _chatClient = new AnthropicChatClientWrapper(_client.Messages, model, enablePromptCaching);
 
         logger.LogInformation(
-            "Anthropic provider initialized. Default model: {Model}, prompt caching: {PromptCaching}",
-            model, enablePromptCaching);
-        return Task.CompletedTask;
+            "Anthropic provider initialized. Default model: {Model}, prompt caching: {PromptCaching}, {Count} model(s) available",
+            model, enablePromptCaching, _cachedModels.Count);
     }
 
     public Task<IReadOnlyList<AITool>> GetToolsAsync(CancellationToken cancellationToken = default)
@@ -57,14 +62,50 @@ public sealed class AnthropicProvider(IOptions<AiProviderOptions> options, ILogg
         return Task.FromResult<IReadOnlyList<AITool>>([]);
     }
 
+    public async Task<IReadOnlyList<ModelInfo>> GetAvailableModelsAsync(CancellationToken cancellationToken = default)
+    {
+        if (_cachedModels is { Count: > 0 })
+            return _cachedModels;
+
+        _cachedModels = await FetchModelsAsync(cancellationToken);
+        return _cachedModels;
+    }
+
     public ValueTask DisposeAsync()
     {
         if (_chatClient is IDisposable disposable)
-        {
             disposable.Dispose();
-        }
         _chatClient = null;
+        _client?.Dispose();
+        _client = null;
         return ValueTask.CompletedTask;
+    }
+
+    private async Task<IReadOnlyList<ModelInfo>> FetchModelsAsync(CancellationToken cancellationToken)
+    {
+        if (_client is null)
+            return [];
+        try
+        {
+            // Fetch up to 1000 models — well above Anthropic's current catalog size.
+            var list = await _client.Models.ListModelsAsync(limit: 1000, ctx: cancellationToken);
+            var models = list.Models
+                .Where(m => !string.IsNullOrWhiteSpace(m.Id))
+                .OrderBy(m => m.DisplayName ?? m.Id)
+                .Select(m => new ModelInfo
+                {
+                    Id = m.Id,
+                    DisplayName = !string.IsNullOrWhiteSpace(m.DisplayName) ? m.DisplayName : m.Id
+                })
+                .ToList();
+            logger.LogDebug("Anthropic Models API returned {Count} model(s)", models.Count);
+            return models;
+        }
+        catch (Exception ex)
+        {
+            logger.LogWarning(ex, "Failed to fetch Anthropic model list.");
+            return [];
+        }
     }
 }
 

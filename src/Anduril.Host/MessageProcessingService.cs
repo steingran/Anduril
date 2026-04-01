@@ -39,24 +39,54 @@ public sealed class MessageProcessingService(
 
     public async Task StartAsync(CancellationToken cancellationToken)
     {
-        // 1. Initialize AI providers (best-effort — log failures, keep going)
-        int initializedCount = 0;
-        foreach (var provider in aiProviders)
+        // Steps 1, 2, and 3 are fully independent — run them all concurrently.
+        await Task.WhenAll(
+            InitializeProvidersAsync(cancellationToken),
+            InitializeToolsAsync(cancellationToken),
+            InitializeSkillsAsync(cancellationToken));
+
+        // Step 4: Subscribe event handlers synchronously first (must precede StartAsync to
+        // avoid missing any messages that arrive immediately on connect), then start all
+        // adapters concurrently.
+        foreach (var adapter in adapters)
+        {
+            Func<IncomingMessage, Task> handler = msg => OnMessageReceivedAsync(adapter, msg);
+            _eventHandlers[adapter] = handler;
+            adapter.MessageReceived += handler;
+        }
+
+        await Task.WhenAll(adapters.Select(async adapter =>
+        {
+            try
+            {
+                await adapter.StartAsync(cancellationToken);
+                if (adapter.IsConnected)
+                    logger.LogInformation("Communication adapter '{Platform}' started", adapter.Platform);
+            }
+            catch (Exception ex)
+            {
+                logger.LogWarning(ex, "Communication adapter '{Platform}' failed to start — skipping", adapter.Platform);
+            }
+        }));
+
+        logger.LogInformation("Message processing pipeline is ready");
+    }
+
+    private async Task InitializeProvidersAsync(CancellationToken cancellationToken)
+    {
+        await Task.WhenAll(aiProviders.Select(async provider =>
         {
             try
             {
                 await provider.InitializeAsync(cancellationToken);
                 if (provider.IsAvailable)
-                {
-                    initializedCount++;
                     logger.LogInformation("AI provider '{Name}' initialized successfully", provider.Name);
-                }
             }
             catch (Exception ex)
             {
                 logger.LogWarning(ex, "AI provider '{Name}' failed to initialize — skipping", provider.Name);
             }
-        }
+        }));
 
         int chatCount = aiProviders.Count(p => p.IsAvailable && p.SupportsChatCompletion);
         int toolCount = aiProviders.Count(p => p.IsAvailable && !p.SupportsChatCompletion);
@@ -65,66 +95,40 @@ public sealed class MessageProcessingService(
             chatCount, toolCount);
 
         if (chatCount == 0)
-        {
             logger.LogWarning(
                 "No chat-capable AI provider is available. " +
                 "Fallback AI chat will not work. Configure OpenAI, Anthropic, Augment Chat, Ollama, or LLamaSharp with valid credentials.");
-        }
+    }
 
-        // 2. Initialize integration tools (best-effort — log failures, keep going)
-        int toolsInitialized = 0;
-        foreach (var tool in integrationTools)
+    private async Task InitializeToolsAsync(CancellationToken cancellationToken)
+    {
+        await Task.WhenAll(integrationTools.Select(async tool =>
         {
             try
             {
                 await tool.InitializeAsync(cancellationToken);
                 if (tool.IsAvailable)
-                {
-                    toolsInitialized++;
                     logger.LogInformation("Integration tool '{Name}' initialized successfully", tool.Name);
-                }
             }
             catch (Exception ex)
             {
                 logger.LogWarning(ex, "Integration tool '{Name}' failed to initialize — skipping", tool.Name);
             }
-        }
+        }));
 
-        logger.LogInformation("{Count} integration tool(s) available", toolsInitialized);
+        logger.LogInformation("{Count} integration tool(s) available",
+            integrationTools.Count(t => t.IsAvailable));
+    }
 
-        // 3. Register skill runners with the router and build the skill index
+    private async Task InitializeSkillsAsync(CancellationToken cancellationToken)
+    {
         compiledRunner.LoadFromDirectory();
         foreach (var skill in compiledSkills)
-        {
             compiledRunner.Register(skill);
-        }
+
         router.RegisterRunner(promptRunner);
         router.RegisterRunner(compiledRunner);
         await router.RefreshAsync(cancellationToken);
-
-        // 4. Start communication adapters and subscribe to incoming messages
-        foreach (var adapter in adapters)
-        {
-            try
-            {
-                // Store the handler so we can unsubscribe later
-                Func<IncomingMessage, Task> handler = msg => OnMessageReceivedAsync(adapter, msg);
-                _eventHandlers[adapter] = handler;
-                adapter.MessageReceived += handler;
-
-                await adapter.StartAsync(cancellationToken);
-                if (adapter.IsConnected)
-                {
-                    logger.LogInformation("Communication adapter '{Platform}' started", adapter.Platform);
-                }
-            }
-            catch (Exception ex)
-            {
-                logger.LogWarning(ex, "Communication adapter '{Platform}' failed to start — skipping", adapter.Platform);
-            }
-        }
-
-        logger.LogInformation("Message processing pipeline is ready");
     }
 
     public async Task StopAsync(CancellationToken cancellationToken)

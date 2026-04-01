@@ -5,12 +5,20 @@
   </PropertyGroup>
   <ItemGroup>
     <PackageVersion Include="Anthropic.SDK" Version="5.10.0" />
+    <PackageVersion Include="Avalonia" Version="11.3.2" />
+    <PackageVersion Include="Avalonia.Desktop" Version="11.3.2" />
+    <PackageVersion Include="Avalonia.Fonts.Inter" Version="11.3.2" />
+    <PackageVersion Include="Avalonia.ReactiveUI" Version="11.3.2" />
+    <PackageVersion Include="Avalonia.Themes.Fluent" Version="11.3.2" />
     <PackageVersion Include="Azure.Identity" Version="1.19.0" />
+    <PackageVersion Include="GitHub.Copilot.SDK" Version="0.1.25" />
     <PackageVersion Include="Google.Apis.Gmail.v1" Version="1.73.0.4029" />
     <PackageVersion Include="LLamaSharp" Version="0.26.0" />
+    <PackageVersion Include="Markdown.Avalonia" Version="11.0.2" />
     <PackageVersion Include="MailKit" Version="4.15.1" />
     <PackageVersion Include="Microsoft.Bot.Builder.Integration.AspNet.Core" Version="4.23.1" />
     <PackageVersion Include="Microsoft.EntityFrameworkCore.Sqlite" Version="10.0.5" />
+    <PackageVersion Include="Microsoft.AspNetCore.SignalR.Client" Version="10.0.5" />
     <PackageVersion Include="Microsoft.Extensions.AI" Version="10.4.1" />
     <PackageVersion Include="Microsoft.Extensions.AI.Abstractions" Version="10.4.1" />
     <PackageVersion Include="Microsoft.Extensions.AI.OpenAI" Version="10.4.1" />
