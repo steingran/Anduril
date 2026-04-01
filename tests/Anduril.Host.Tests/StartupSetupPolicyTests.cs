@@ -106,7 +106,7 @@ public class StartupSetupPolicyTests
             isContainer: true,
             isUserInteractive: false,
             isInputRedirected: true,
-            copilotApiKey: "ghp_copilot_token",
+            copilotApiKey: "copilot-test-token",
             copilotEnabled: true);
 
         await Assert.That(result.RequiresSetup).IsFalse();
