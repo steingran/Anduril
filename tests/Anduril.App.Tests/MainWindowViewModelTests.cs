@@ -1,3 +1,4 @@
+using System.Reactive.Threading.Tasks;
 using Anduril.App.ViewModels;
 using Anduril.Core.Communication;
 
@@ -31,7 +32,7 @@ public sealed class MainWindowViewModelTests
     {
         var vm = new MainWindowViewModel(BuildFakeService(), new FakeUserPreferencesService());
 
-        await vm.SwitchToCodeCommand.Execute();
+        await vm.SwitchToCodeCommand.Execute().ToTask();
 
         await Assert.That(vm.IsCodeActive).IsTrue();
         await Assert.That(vm.IsChatActive).IsFalse();
@@ -41,9 +42,9 @@ public sealed class MainWindowViewModelTests
     public async Task SwitchToChatCommand_MakesIsChatActiveTrue()
     {
         var vm = new MainWindowViewModel(BuildFakeService(), new FakeUserPreferencesService());
-        await vm.SwitchToCodeCommand.Execute();
+        await vm.SwitchToCodeCommand.Execute().ToTask();
 
-        await vm.SwitchToChatCommand.Execute();
+        await vm.SwitchToChatCommand.Execute().ToTask();
 
         await Assert.That(vm.IsChatActive).IsTrue();
     }
@@ -58,7 +59,7 @@ public sealed class MainWindowViewModelTests
             MakeProvider("p4", "local", "phi", supportsChatCompletion: false));
 
         var vm = new MainWindowViewModel(fake, new FakeUserPreferencesService());
-        await vm.LoadModelsCommand.Execute();
+        await vm.LoadModelsCommand.Execute().ToTask();
 
         await Assert.That(vm.AvailableModels.Count).IsEqualTo(2);
         await Assert.That(vm.AvailableModels.Select(m => m.ProviderId)).Contains("p1");
@@ -73,7 +74,7 @@ public sealed class MainWindowViewModelTests
             MakeProvider("p2", "anthropic", "claude-3"));
 
         var vm = new MainWindowViewModel(fake, new FakeUserPreferencesService());
-        await vm.LoadModelsCommand.Execute();
+        await vm.LoadModelsCommand.Execute().ToTask();
 
         await Assert.That(vm.SelectedModel).IsNotNull();
         await Assert.That(vm.SelectedModel!.ProviderId).IsEqualTo("p1");
@@ -90,7 +91,7 @@ public sealed class MainWindowViewModelTests
         prefs.Load().SelectedProviderId = "p2";
 
         var vm = new MainWindowViewModel(fake, prefs);
-        await vm.LoadModelsCommand.Execute();
+        await vm.LoadModelsCommand.Execute().ToTask();
 
         await Assert.That(vm.SelectedModel!.ProviderId).IsEqualTo("p2");
     }
@@ -105,7 +106,7 @@ public sealed class MainWindowViewModelTests
         prefs.Load().SelectedProviderId = "nonexistent-provider";
 
         var vm = new MainWindowViewModel(fake, prefs);
-        await vm.LoadModelsCommand.Execute();
+        await vm.LoadModelsCommand.Execute().ToTask();
 
         await Assert.That(vm.SelectedModel!.ProviderId).IsEqualTo("p1");
     }
@@ -115,7 +116,7 @@ public sealed class MainWindowViewModelTests
     {
         var fake = BuildFakeService(MakeProvider("p1", "openai", "gpt-4o"));
         var vm = new MainWindowViewModel(fake, new FakeUserPreferencesService());
-        await vm.LoadModelsCommand.Execute();
+        await vm.LoadModelsCommand.Execute().ToTask();
 
         vm.SelectedModel = vm.AvailableModels[0];
 
@@ -128,7 +129,7 @@ public sealed class MainWindowViewModelTests
         var fake = BuildFakeService(MakeProvider("p1", "openai", "gpt-4o"));
         var prefs = new FakeUserPreferencesService();
         var vm = new MainWindowViewModel(fake, prefs);
-        await vm.LoadModelsCommand.Execute();
+        await vm.LoadModelsCommand.Execute().ToTask();
 
         vm.SelectedModel = vm.AvailableModels[0];
         await Task.Delay(50); // let SaveAsync complete
@@ -143,7 +144,7 @@ public sealed class MainWindowViewModelTests
             new ProviderInfo { Id = "p1", Name = "anthropic", Model = "claude-3-haiku", DisplayName = "Claude 3 Haiku", IsAvailable = true, SupportsChatCompletion = true });
 
         var vm = new MainWindowViewModel(fake, new FakeUserPreferencesService());
-        await vm.LoadModelsCommand.Execute();
+        await vm.LoadModelsCommand.Execute().ToTask();
 
         await Assert.That(vm.AvailableModels[0].DisplayName).IsEqualTo("Anthropic: Claude 3 Haiku");
     }
@@ -155,7 +156,7 @@ public sealed class MainWindowViewModelTests
             new ProviderInfo { Id = "p1", Name = "openai", Model = "gpt-4o", DisplayName = null, IsAvailable = true, SupportsChatCompletion = true });
 
         var vm = new MainWindowViewModel(fake, new FakeUserPreferencesService());
-        await vm.LoadModelsCommand.Execute();
+        await vm.LoadModelsCommand.Execute().ToTask();
 
         await Assert.That(vm.AvailableModels[0].DisplayName).IsEqualTo("OpenAI: gpt-4o");
     }
@@ -174,7 +175,7 @@ public sealed class MainWindowViewModelTests
         // is set to true before the HTTP call, so this is still testable.
         var vm = new MainWindowViewModel(BuildFakeService(), new FakeUserPreferencesService());
 
-        await vm.ToggleToolInspectorCommand.Execute();
+        await vm.ToggleToolInspectorCommand.Execute().ToTask();
 
         await Assert.That(vm.IsToolInspectorOpen).IsTrue();
     }
@@ -183,9 +184,9 @@ public sealed class MainWindowViewModelTests
     public async Task ToggleToolInspectorCommand_WhenOpen_ClosesInspector()
     {
         var vm = new MainWindowViewModel(BuildFakeService(), new FakeUserPreferencesService());
-        await vm.ToggleToolInspectorCommand.Execute();
+        await vm.ToggleToolInspectorCommand.Execute().ToTask();
 
-        await vm.ToggleToolInspectorCommand.Execute();
+        await vm.ToggleToolInspectorCommand.Execute().ToTask();
 
         await Assert.That(vm.IsToolInspectorOpen).IsFalse();
     }

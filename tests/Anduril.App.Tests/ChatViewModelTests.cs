@@ -1,3 +1,4 @@
+using System.Reactive.Threading.Tasks;
 using Anduril.App.ViewModels;
 
 namespace Anduril.App.Tests;
@@ -84,7 +85,7 @@ public sealed class ChatViewModelTests
         vm.SetConversation("conv-1", fake);
         vm.InputText = "Hello";
 
-        await vm.SendCommand.Execute();
+        await vm.SendCommand.Execute().ToTask();
 
         await Assert.That(vm.Messages.Count).IsEqualTo(2);
         await Assert.That(vm.Messages[0].IsUser).IsTrue();
@@ -100,7 +101,7 @@ public sealed class ChatViewModelTests
         vm.SetConversation("conv-1", fake);
         vm.InputText = "Hello";
 
-        await vm.SendCommand.Execute();
+        await vm.SendCommand.Execute().ToTask();
 
         await Assert.That(vm.InputText).IsEqualTo(string.Empty);
     }
@@ -113,7 +114,7 @@ public sealed class ChatViewModelTests
         vm.SetConversation("conv-1", fake);
         vm.InputText = "Hello agent";
 
-        await vm.SendCommand.Execute();
+        await vm.SendCommand.Execute().ToTask();
 
         await Assert.That(fake.SentMessages.Count).IsEqualTo(1);
         await Assert.That(fake.SentMessages[0].Text).IsEqualTo("Hello agent");
@@ -128,7 +129,7 @@ public sealed class ChatViewModelTests
         vm.SetConversation("conv-1", fake);
         vm.InputText = "Hello";
 
-        await vm.SendCommand.Execute();
+        await vm.SendCommand.Execute().ToTask();
 
         await Assert.That(vm.IsStreaming).IsTrue();
     }

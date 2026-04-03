@@ -77,4 +77,75 @@ public sealed class ChatMessageModelTests
         await Assert.That(msg.Timestamp).IsGreaterThanOrEqualTo(before);
         await Assert.That(msg.Timestamp).IsLessThanOrEqualTo(after);
     }
+
+    [Test]
+    public async Task IsCollapsible_WhenContentIsShort_ReturnsFalse()
+    {
+        var msg = new ChatMessageModel { Role = "assistant", Content = "short" };
+        await Assert.That(msg.IsCollapsible).IsFalse();
+    }
+
+    [Test]
+    public async Task IsCollapsible_WhenContentExceedsThreshold_ReturnsTrue()
+    {
+        var msg = new ChatMessageModel { Role = "assistant", Content = new string('x', 501) };
+        await Assert.That(msg.IsCollapsible).IsTrue();
+    }
+
+    [Test]
+    public async Task ContentMaxHeight_WhenCollapsibleAndNotExpanded_Returns200()
+    {
+        var msg = new ChatMessageModel { Role = "assistant", Content = new string('x', 501) };
+        await Assert.That(msg.ContentMaxHeight).IsEqualTo(200.0);
+    }
+
+    [Test]
+    public async Task ContentMaxHeight_WhenExpanded_ReturnsInfinity()
+    {
+        var msg = new ChatMessageModel { Role = "assistant", Content = new string('x', 501) };
+        msg.IsExpanded = true;
+        await Assert.That(msg.ContentMaxHeight).IsEqualTo(double.PositiveInfinity);
+    }
+
+    [Test]
+    public async Task ContentMaxHeight_WhenNotCollapsible_ReturnsInfinity()
+    {
+        var msg = new ChatMessageModel { Role = "assistant", Content = "short" };
+        await Assert.That(msg.ContentMaxHeight).IsEqualTo(double.PositiveInfinity);
+    }
+
+    [Test]
+    public async Task ShowMoreLabel_Initially_ReturnsShowMore()
+    {
+        var msg = new ChatMessageModel { Role = "assistant", Content = new string('x', 501) };
+        await Assert.That(msg.ShowMoreLabel).IsEqualTo("Show more");
+    }
+
+    [Test]
+    public async Task ShowMoreLabel_WhenExpanded_ReturnsShowLess()
+    {
+        var msg = new ChatMessageModel { Role = "assistant", Content = new string('x', 501) };
+        msg.IsExpanded = true;
+        await Assert.That(msg.ShowMoreLabel).IsEqualTo("Show less");
+    }
+
+    [Test]
+    public async Task ToggleExpandCommand_WhenExecuted_FlipsIsExpanded()
+    {
+        var msg = new ChatMessageModel { Role = "assistant", Content = new string('x', 501) };
+        await Assert.That(msg.IsExpanded).IsFalse();
+
+        msg.ToggleExpandCommand.Execute(null);
+
+        await Assert.That(msg.IsExpanded).IsTrue();
+    }
+
+    [Test]
+    public async Task ToggleExpandCommand_WhenExecutedTwice_ReturnsFalse()
+    {
+        var msg = new ChatMessageModel { Role = "assistant", Content = new string('x', 501) };
+        msg.ToggleExpandCommand.Execute(null);
+        msg.ToggleExpandCommand.Execute(null);
+        await Assert.That(msg.IsExpanded).IsFalse();
+    }
 }
