@@ -55,6 +55,13 @@ public sealed class ChatViewModel : ViewModelBase
         _conversationId = conversationId;
         _chatService = chatService;
         _chatService.TokenReceived += OnTokenReceived;
+
+        // If a response was mid-stream when this conversation was replaced, reset the streaming
+        // state immediately. The in-flight IsComplete token from the hub will be ignored because
+        // the conversationId no longer matches.
+        if (IsStreaming)
+            IsStreaming = false;
+
         Messages.Clear();
     }
 

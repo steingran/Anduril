@@ -175,15 +175,38 @@ internal sealed class CopilotChatClientAdapter : IChatClient
         var messageFallbackBuilder = new System.Text.StringBuilder();
         var reasoningFallbackBuilder = new System.Text.StringBuilder();
 
+        // Sub-agent tracking: when the Copilot SDK uses internal sub-agents (e.g. to read files
+        // or search code), it emits SubagentStartedEvent before and SubagentCompletedEvent after
+        // the tool run. In multi-turn scenarios the SDK may also fire SessionIdleEvent between the
+        // first assistant turn and the sub-agent work — completing the channel prematurely and
+        // causing the partial first-round response to appear in the UI and then vanish once the
+        // hub sends IsComplete = true before the final answer arrives.
+        //
+        // Fix: defer channel completion while any sub-agent is active. Content produced before
+        // the first sub-agent starts (the "I'll check…" preamble) is buffered and discarded so
+        // that only the final post-tool response reaches the UI.
+        var subAgentDepth = 0;        // increments on SubagentStarted, decrements on SubagentCompleted
+        var subAgentEverStarted = false; // latched true once the first sub-agent fires
+        var pendingIdle = false;       // set when SessionIdleEvent arrives while depth > 0
+        var preToolBuffer = new System.Text.StringBuilder(); // holds tokens emitted before first sub-agent
+
         session.On(evt =>
         {
             switch (evt)
             {
                 case AssistantMessageDeltaEvent delta when !string.IsNullOrEmpty(delta.Data.DeltaContent):
-                    // Stream actual response tokens directly.
                     receivedMessageDelta = true;
                     receivedMessageContent = true;
-                    channel.Writer.TryWrite(delta.Data.DeltaContent);
+                    if (subAgentEverStarted)
+                    {
+                        // Post-tool turn: write directly to the channel.
+                        channel.Writer.TryWrite(delta.Data.DeltaContent);
+                    }
+                    else
+                    {
+                        // Pre-tool turn: buffer for now; will be discarded when sub-agent starts.
+                        preToolBuffer.Append(delta.Data.DeltaContent);
+                    }
                     break;
                 case AssistantMessageEvent msg when !string.IsNullOrEmpty(msg.Data.Content):
                     // Full response event (non-streaming models or post-delta summary).
@@ -202,16 +225,64 @@ internal sealed class CopilotChatClientAdapter : IChatClient
                     if (!receivedMessageContent)
                         reasoningFallbackBuilder.Append(reasoning.Data.Content);
                     break;
+                case SubagentStartedEvent:
+                    subAgentDepth++;
+                    if (!subAgentEverStarted)
+                    {
+                        // First sub-agent: discard the pre-tool preamble so it never reaches the
+                        // UI. Reset streaming-received flags so fallback logic works cleanly for
+                        // the final turn.
+                        subAgentEverStarted = true;
+                        preToolBuffer.Clear();
+                        receivedMessageDelta = false;
+                        receivedMessageContent = false;
+                        messageFallbackBuilder.Clear();
+                        reasoningFallbackBuilder.Clear();
+                    }
+                    break;
+                case SubagentCompletedEvent:
+                    subAgentDepth--;
+                    if (subAgentDepth == 0 && pendingIdle)
+                    {
+                        // A SessionIdleEvent arrived while the sub-agent was running; complete now.
+                        pendingIdle = false;
+                        if (!receivedMessageDelta)
+                        {
+                            var fallback = messageFallbackBuilder.Length > 0
+                                ? messageFallbackBuilder.ToString()
+                                : reasoningFallbackBuilder.ToString();
+                            if (fallback.Length > 0)
+                                channel.Writer.TryWrite(fallback);
+                        }
+                        channel.Writer.TryComplete();
+                    }
+                    break;
                 case SessionIdleEvent:
-                    // Emit accumulated content for non-streaming models.
+                    if (subAgentDepth > 0)
+                    {
+                        // Sub-agent still running — defer channel completion.
+                        pendingIdle = true;
+                        break;
+                    }
+                    // Emit accumulated content for non-streaming models (or flush pre-tool buffer
+                    // when no sub-agent was ever involved).
                     if (!receivedMessageDelta)
                     {
-                        // Prefer actual message content; fall back to reasoning only if nothing else arrived.
-                        var fallback = messageFallbackBuilder.Length > 0
-                            ? messageFallbackBuilder.ToString()
-                            : reasoningFallbackBuilder.ToString();
-                        if (fallback.Length > 0)
-                            channel.Writer.TryWrite(fallback);
+                        // No sub-agent path: pre-tool buffer holds all content (or is empty).
+                        var directContent = preToolBuffer.Length > 0 ? preToolBuffer.ToString() : string.Empty;
+                        if (directContent.Length > 0)
+                        {
+                            channel.Writer.TryWrite(directContent);
+                        }
+                        else
+                        {
+                            // Prefer actual message content; fall back to reasoning only if nothing else arrived.
+                            var fallback = messageFallbackBuilder.Length > 0
+                                ? messageFallbackBuilder.ToString()
+                                : reasoningFallbackBuilder.ToString();
+                            if (fallback.Length > 0)
+                                channel.Writer.TryWrite(fallback);
+                        }
                     }
                     channel.Writer.TryComplete();
                     break;
@@ -230,8 +301,6 @@ internal sealed class CopilotChatClientAdapter : IChatClient
                 case SessionInfoEvent:
                 case ToolExecutionStartEvent:
                 case ToolExecutionCompleteEvent:
-                case SubagentStartedEvent:
-                case SubagentCompletedEvent:
                     break;
                 // Empty-content message/reasoning events — start/end markers used by some models
                 // (e.g. claude-sonnet-4.6). Explicitly silenced so they don't reach the default

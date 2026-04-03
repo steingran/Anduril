@@ -1,3 +1,4 @@
+using System.Reactive.Threading.Tasks;
 using Anduril.App.ViewModels;
 
 namespace Anduril.App.Tests;
@@ -56,7 +57,7 @@ public sealed class CodeViewModelTests
         var vm = new CodeViewModel();
         vm.HasStagedActions = true;
 
-        await vm.AcceptAllCommand.Execute();
+        await vm.AcceptAllCommand.Execute().ToTask();
 
         await Assert.That(vm.HasStagedActions).IsFalse();
         await Assert.That(vm.StagedActions).IsEmpty();
@@ -68,7 +69,7 @@ public sealed class CodeViewModelTests
         var vm = new CodeViewModel();
         vm.HasStagedActions = true;
 
-        await vm.RejectAllCommand.Execute();
+        await vm.RejectAllCommand.Execute().ToTask();
 
         await Assert.That(vm.HasStagedActions).IsFalse();
         await Assert.That(vm.StagedActions).IsEmpty();
