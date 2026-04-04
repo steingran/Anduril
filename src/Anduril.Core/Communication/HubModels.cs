@@ -4,7 +4,7 @@ namespace Anduril.Core.Communication;
 /// Describes an available AI provider and its current state.
 /// Used by the desktop app to populate the model selector.
 /// </summary>
-public sealed class ProviderInfo
+public sealed record ProviderInfo
 {
     public required string Id { get; init; }
     public required string Name { get; init; }
@@ -24,7 +24,7 @@ public sealed class ProviderInfo
 /// <summary>
 /// A single streaming token from the AI response, sent from the hub to the client.
 /// </summary>
-public sealed class ChatStreamToken
+public sealed record ChatStreamToken
 {
     public required string ConversationId { get; init; }
     public required string Token { get; init; }
@@ -42,7 +42,7 @@ public sealed class ChatStreamToken
 /// <summary>
 /// Describes a conversation session.
 /// </summary>
-public sealed class ConversationInfo
+public sealed record ConversationInfo
 {
     public required string Id { get; init; }
     public string? Title { get; init; }

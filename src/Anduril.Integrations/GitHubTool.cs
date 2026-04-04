@@ -280,7 +280,7 @@ public class GitHubTool(IOptions<GitHubToolOptions> options, ILogger<GitHubTool>
     }
 
     private static string? NullIfEmpty(string value) =>
-        string.IsNullOrWhiteSpace(value) ? null : value;
+        string.IsNullOrWhiteSpace(value) ? null : value.Trim();
 
     private GitHubClient GetClient() =>
         _client ?? throw new InvalidOperationException("GitHub integration is not initialized.");

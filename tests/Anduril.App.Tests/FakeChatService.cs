@@ -1,3 +1,4 @@
+using Anduril.App.Models;
 using Anduril.App.Services;
 using Anduril.Core.Communication;
 
@@ -11,6 +12,7 @@ namespace Anduril.App.Tests;
 public sealed class FakeChatService : IChatService
 {
     public event Action<ChatStreamToken>? TokenReceived;
+    public event Action<StagedActionModel>? StagedActionReceived;
 
     public List<ProviderInfo> Providers { get; set; } = [];
     public Queue<ConversationInfo> Conversations { get; set; } = new();
@@ -53,4 +55,7 @@ public sealed class FakeChatService : IChatService
 
     /// <summary>Fires the <see cref="TokenReceived"/> event, simulating a token arriving from the server.</summary>
     public void RaiseTokenReceived(ChatStreamToken token) => TokenReceived?.Invoke(token);
+
+    /// <summary>Fires the <see cref="StagedActionReceived"/> event, simulating a staged action from the server.</summary>
+    public void RaiseStagedActionReceived(StagedActionModel action) => StagedActionReceived?.Invoke(action);
 }

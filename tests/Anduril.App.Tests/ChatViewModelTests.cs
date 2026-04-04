@@ -1,4 +1,5 @@
 using System.Reactive.Threading.Tasks;
+using Anduril.App.Models;
 using Anduril.App.ViewModels;
 
 namespace Anduril.App.Tests;
@@ -32,6 +33,11 @@ public sealed class ChatViewModelTests
         var vm = new ChatViewModel();
         var fake = new FakeChatService();
         vm.SetConversation("conv-1", fake);
+
+        // Seed messages so the second SetConversation has something to clear.
+        vm.Messages.Add(new ChatMessageModel { Role = "user", Content = "hello" });
+        vm.Messages.Add(new ChatMessageModel { Role = "assistant", Content = "hi" });
+
         vm.SetConversation("conv-2", fake);
 
         await Assert.That(vm.Messages).IsEmpty();

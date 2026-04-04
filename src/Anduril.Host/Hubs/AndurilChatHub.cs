@@ -179,7 +179,7 @@ public sealed class AndurilChatHub(
         // Cancel any previous in-flight request for the same conversation to avoid orphaned CTS.
         if (ActiveRequests.TryRemove(requestKey, out var previousCts))
             previousCts.Cancel();
-        ActiveRequests[requestKey] = cts;
+        ActiveRequests.TryAdd(requestKey, cts);
 
         try
         {
@@ -602,8 +602,8 @@ public sealed class AndurilChatHub(
             if (provider is not null)
                 return (provider, provider.GetChatClientForModel(modelId));
 
-            logger.LogWarning("Provider '{Provider}' for model '{Model}' is not available, falling back",
-                providerName, modelId);
+            logger.LogWarning("Provider '{Provider}' for model '{Model}' is not available", providerName, modelId);
+            return (null, null);
         }
         else
         {
@@ -614,10 +614,8 @@ public sealed class AndurilChatHub(
             if (provider is not null)
                 return (provider, provider.ChatClient);
 
-            logger.LogWarning("Requested provider '{Provider}' is not available, falling back", providerId);
+            logger.LogWarning("Requested provider '{Provider}' is not available", providerId);
+            return (null, null);
         }
-
-        var def = aiProviders.FirstOrDefault(p => p.IsAvailable && p.SupportsChatCompletion);
-        return (def, def?.ChatClient);
     }
 }

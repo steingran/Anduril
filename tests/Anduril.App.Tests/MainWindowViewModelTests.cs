@@ -118,7 +118,13 @@ public sealed class MainWindowViewModelTests
         var vm = new MainWindowViewModel(fake, new FakeUserPreferencesService());
         await vm.LoadModelsCommand.Execute().ToTask();
 
+        // Clear any recorded calls from initial model auto-selection.
+        fake.SelectedProviderIds.Clear();
+
         vm.SelectedModel = vm.AvailableModels[0];
+
+        // Allow fire-and-forget SelectModelAsync to complete.
+        await Task.Delay(50);
 
         await Assert.That(fake.SelectedProviderIds).Contains("p1");
     }
@@ -132,7 +138,10 @@ public sealed class MainWindowViewModelTests
         await vm.LoadModelsCommand.Execute().ToTask();
 
         vm.SelectedModel = vm.AvailableModels[0];
-        await Task.Delay(50); // let SaveAsync complete
+
+        // Allow fire-and-forget SaveAsync to complete.
+        await Task.Yield();
+        await Task.Delay(100);
 
         await Assert.That(prefs.Load().SelectedProviderId).IsEqualTo("p1");
     }
