@@ -1,5 +1,6 @@
 using Anduril.App.Models;
 using Anduril.Core.Communication;
+using System.Diagnostics;
 using Avalonia.Threading;
 using Microsoft.AspNetCore.SignalR.Client;
 
@@ -42,9 +43,14 @@ public sealed class CodeAgentClientService : IAsyncDisposable
     {
         if (_connection.State != HubConnectionState.Disconnected)
         {
-            // Wait for Connected state if still connecting/reconnecting.
+            // Wait for Connected state if still connecting/reconnecting, with timeout.
+            var sw = Stopwatch.StartNew();
             while (_connection.State is HubConnectionState.Connecting or HubConnectionState.Reconnecting)
+            {
+                if (sw.Elapsed.TotalSeconds > 30)
+                    throw new TimeoutException("Timed out waiting for SignalR connection.");
                 await Task.Delay(50);
+            }
             return;
         }
 

@@ -1,5 +1,6 @@
 using Anduril.App.Models;
 using Anduril.Core.Communication;
+using System.Diagnostics;
 using Avalonia.Threading;
 using Microsoft.AspNetCore.SignalR.Client;
 
@@ -28,10 +29,15 @@ public sealed class SignalRChatService : IChatService, IAsyncDisposable
             .WithAutomaticReconnect()
             .Build();
 
-        // Dispatch SignalR callback to Avalonia UI thread to avoid cross-thread issues.
+        // Dispatch SignalR callbacks to Avalonia UI thread to avoid cross-thread issues.
         _connection.On<ChatStreamToken>("ReceiveToken", token =>
         {
             Dispatcher.UIThread.Post(() => TokenReceived?.Invoke(token));
+        });
+
+        _connection.On<StagedActionModel>("ReceiveStagedAction", action =>
+        {
+            Dispatcher.UIThread.Post(() => StagedActionReceived?.Invoke(action));
         });
     }
 
@@ -39,9 +45,14 @@ public sealed class SignalRChatService : IChatService, IAsyncDisposable
     {
         if (_connection.State != HubConnectionState.Disconnected)
         {
-            // Wait for Connected state if still connecting/reconnecting.
+            // Wait for Connected state if still connecting/reconnecting, with timeout.
+            var sw = Stopwatch.StartNew();
             while (_connection.State is HubConnectionState.Connecting or HubConnectionState.Reconnecting)
+            {
+                if (sw.Elapsed.TotalSeconds > 30)
+                    throw new TimeoutException("Timed out waiting for SignalR connection.");
                 await Task.Delay(50);
+            }
             return;
         }
 

@@ -90,6 +90,7 @@ public sealed class AnthropicProvider(IOptions<AiProviderOptions> options, ILogg
         _chatClient = null;
         _client?.Dispose();
         _client = null;
+        _modelLock.Dispose();
         return ValueTask.CompletedTask;
     }
 
