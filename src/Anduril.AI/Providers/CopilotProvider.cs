@@ -128,7 +128,14 @@ public sealed class CopilotProvider(IOptions<AiProviderOptions> options, ILogger
                 // Best-effort shutdown.
             }
 
-            await _client.DisposeAsync();
+            try
+            {
+                await _client.DisposeAsync();
+            }
+            catch
+            {
+                // Best-effort disposal — the client may not have started cleanly.
+            }
             _client = null;
         }
     }
