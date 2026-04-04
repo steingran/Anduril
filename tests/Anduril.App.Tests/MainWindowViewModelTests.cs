@@ -123,8 +123,10 @@ public sealed class MainWindowViewModelTests
 
         vm.SelectedModel = vm.AvailableModels[0];
 
-        // Allow fire-and-forget SelectModelAsync to complete.
-        await Task.Delay(50);
+        // Poll until the fire-and-forget SelectModelAsync completes (scheduled on thread pool).
+        var deadline = DateTime.UtcNow.AddSeconds(2);
+        while (!fake.SelectedProviderIds.Contains("p1") && DateTime.UtcNow < deadline)
+            await Task.Yield();
 
         await Assert.That(fake.SelectedProviderIds).Contains("p1");
     }
@@ -139,9 +141,10 @@ public sealed class MainWindowViewModelTests
 
         vm.SelectedModel = vm.AvailableModels[0];
 
-        // Allow fire-and-forget SaveAsync to complete.
-        await Task.Yield();
-        await Task.Delay(100);
+        // Poll until the fire-and-forget SaveAsync completes (scheduled on thread pool).
+        var deadline = DateTime.UtcNow.AddSeconds(2);
+        while (prefs.Load().SelectedProviderId != "p1" && DateTime.UtcNow < deadline)
+            await Task.Yield();
 
         await Assert.That(prefs.Load().SelectedProviderId).IsEqualTo("p1");
     }

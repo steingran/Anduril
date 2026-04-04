@@ -264,15 +264,13 @@ internal sealed class CopilotChatClientAdapter : IChatClient
                         pendingIdle = true;
                         break;
                     }
-                    // Emit accumulated content for non-streaming models (or flush pre-tool buffer
-                    // when no sub-agent was ever involved).
-                    if (!receivedMessageDelta)
+                    // No-sub-agent path: flush the buffered chunks we held back until we knew
+                    // whether this turn would fork into a tool run.
+                    if (!subAgentEverStarted)
                     {
-                        // No sub-agent path: pre-tool buffer holds all content (or is empty).
-                        var directContent = preToolBuffer.Length > 0 ? preToolBuffer.ToString() : string.Empty;
-                        if (directContent.Length > 0)
+                        if (preToolBuffer.Length > 0)
                         {
-                            channel.Writer.TryWrite(directContent);
+                            channel.Writer.TryWrite(preToolBuffer.ToString());
                         }
                         else
                         {
@@ -283,6 +281,15 @@ internal sealed class CopilotChatClientAdapter : IChatClient
                             if (fallback.Length > 0)
                                 channel.Writer.TryWrite(fallback);
                         }
+                    }
+                    else if (!receivedMessageDelta)
+                    {
+                        // Sub-agent path but no post-tool deltas arrived — use fallback content.
+                        var fallback = messageFallbackBuilder.Length > 0
+                            ? messageFallbackBuilder.ToString()
+                            : reasoningFallbackBuilder.ToString();
+                        if (fallback.Length > 0)
+                            channel.Writer.TryWrite(fallback);
                     }
                     channel.Writer.TryComplete();
                     break;

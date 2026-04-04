@@ -137,6 +137,9 @@ public sealed class ChatViewModelTests
 
         await vm.SendCommand.Execute().ToTask();
 
+        // IsStreaming is set true before SendMessageAsync and stays true until a
+        // completion token arrives. The fake does not fire TokenReceived, so
+        // IsStreaming remains true here — validating the initial transition.
         await Assert.That(vm.IsStreaming).IsTrue();
     }
 }
