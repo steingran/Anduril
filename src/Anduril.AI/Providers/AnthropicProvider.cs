@@ -19,6 +19,7 @@ public sealed class AnthropicProvider(IOptions<AiProviderOptions> options, ILogg
     private AnthropicClient? _client;
     private IChatClient? _chatClient;
     private IReadOnlyList<ModelInfo>? _cachedModels;
+    private readonly SemaphoreSlim _modelLock = new(1, 1);
 
     public string Name => "anthropic";
 
@@ -67,8 +68,19 @@ public sealed class AnthropicProvider(IOptions<AiProviderOptions> options, ILogg
         if (_cachedModels is { Count: > 0 })
             return _cachedModels;
 
-        _cachedModels = await FetchModelsAsync(cancellationToken);
-        return _cachedModels;
+        await _modelLock.WaitAsync(cancellationToken);
+        try
+        {
+            if (_cachedModels is { Count: > 0 })
+                return _cachedModels;
+
+            _cachedModels = await FetchModelsAsync(cancellationToken);
+            return _cachedModels;
+        }
+        finally
+        {
+            _modelLock.Release();
+        }
     }
 
     public ValueTask DisposeAsync()

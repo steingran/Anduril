@@ -105,7 +105,7 @@ public sealed class AndurilChatHub(
     /// </summary>
     public Task<ConversationInfo> CreateConversation()
     {
-        const string id = "desktop:local";
+        var id = $"desktop:{Guid.NewGuid():N}";
         return Task.FromResult(new ConversationInfo
         {
             Id = id,
@@ -175,6 +175,10 @@ public sealed class AndurilChatHub(
 
         var requestKey = $"{Context.ConnectionId}:{conversationId}";
         using var cts = CancellationTokenSource.CreateLinkedTokenSource(Context.ConnectionAborted);
+
+        // Cancel any previous in-flight request for the same conversation to avoid orphaned CTS.
+        if (ActiveRequests.TryRemove(requestKey, out var previousCts))
+            previousCts.Cancel();
         ActiveRequests[requestKey] = cts;
 
         try
@@ -478,6 +482,10 @@ public sealed class AndurilChatHub(
             var full = Path.GetFullPath(Path.Combine(basePath, path));
             if (!full.StartsWith(basePath, StringComparison.OrdinalIgnoreCase))
                 return "Error: path is outside the repository.";
+            // Resolve symlinks/reparse points to prevent traversal via symlink targets
+            var resolved = Path.GetFullPath(new FileInfo(full).LinkTarget ?? full);
+            if (!resolved.StartsWith(basePath, StringComparison.OrdinalIgnoreCase))
+                return "Error: path resolves outside the repository.";
             if (!File.Exists(full))
                 return $"File not found: {path}";
             var content = File.ReadAllText(full);
@@ -496,6 +504,10 @@ public sealed class AndurilChatHub(
             var baseStripped = basePath.TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);
             if (!dir.StartsWith(baseStripped, StringComparison.OrdinalIgnoreCase))
                 return "Error: path is outside the repository.";
+            // Resolve symlinks/reparse points to prevent traversal via symlink targets
+            var resolvedDir = Path.GetFullPath(new DirectoryInfo(dir).LinkTarget ?? dir);
+            if (!resolvedDir.StartsWith(baseStripped, StringComparison.OrdinalIgnoreCase))
+                return "Error: path resolves outside the repository.";
             if (!Directory.Exists(dir))
                 return $"Directory not found: {subdirectory}";
 
@@ -513,8 +525,9 @@ public sealed class AndurilChatHub(
                 return "Error: no git subcommand provided.";
 
             // Allow only read-only git operations — never mutations like commit, push, reset.
+            // Excluded: branch, remote, tag (can create/delete refs with certain flags).
             var allowedSubcommands = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
-                { "status", "log", "diff", "branch", "ls-files", "show", "describe", "rev-parse", "remote", "tag", "shortlog" };
+                { "status", "log", "diff", "ls-files", "show", "describe", "rev-parse", "shortlog" };
 
             if (!allowedSubcommands.Contains(argv[0]))
                 return $"Error: '{argv[0]}' is not permitted. Allowed read-only subcommands: {string.Join(", ", allowedSubcommands)}.";
@@ -533,8 +546,15 @@ public sealed class AndurilChatHub(
             using var proc = Process.Start(psi);
             if (proc is null) return "Error: could not start git process.";
 
-            var stdout = await proc.StandardOutput.ReadToEndAsync();
+            // Read stdout and stderr concurrently to avoid deadlock when either buffer fills.
+            var stdoutTask = proc.StandardOutput.ReadToEndAsync();
+            var stderrTask = proc.StandardError.ReadToEndAsync();
             await proc.WaitForExitAsync();
+            var stdout = await stdoutTask;
+            var stderr = await stderrTask;
+
+            if (proc.ExitCode != 0 && !string.IsNullOrWhiteSpace(stderr))
+                return $"Error (exit code {proc.ExitCode}): {stderr.Trim()}";
 
             if (string.IsNullOrWhiteSpace(stdout))
                 return "(no output)";

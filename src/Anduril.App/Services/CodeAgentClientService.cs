@@ -1,5 +1,6 @@
 using Anduril.App.Models;
 using Anduril.Core.Communication;
+using Avalonia.Threading;
 using Microsoft.AspNetCore.SignalR.Client;
 
 namespace Anduril.App.Services;
@@ -29,17 +30,25 @@ public sealed class CodeAgentClientService : IAsyncDisposable
             .WithAutomaticReconnect()
             .Build();
 
+        // Dispatch SignalR callbacks to the Avalonia UI thread to avoid cross-thread issues.
         _connection.On<ChatStreamToken>("ReceiveToken",
-            token => TokenReceived?.Invoke(token));
+            token => Dispatcher.UIThread.Post(() => TokenReceived?.Invoke(token)));
 
         _connection.On<StagedActionModel>("ReceiveStagedAction",
-            action => StagedActionReceived?.Invoke(action));
+            action => Dispatcher.UIThread.Post(() => StagedActionReceived?.Invoke(action)));
     }
 
     public async Task ConnectAsync()
     {
-        if (_connection.State == HubConnectionState.Disconnected)
-            await _connection.StartAsync();
+        if (_connection.State != HubConnectionState.Disconnected)
+        {
+            // Wait for Connected state if still connecting/reconnecting.
+            while (_connection.State is HubConnectionState.Connecting or HubConnectionState.Reconnecting)
+                await Task.Delay(50);
+            return;
+        }
+
+        await _connection.StartAsync();
     }
 
     public async Task SelectModelAsync(string providerId)

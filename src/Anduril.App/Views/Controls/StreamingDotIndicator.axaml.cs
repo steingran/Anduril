@@ -27,7 +27,7 @@ public partial class StreamingDotIndicator : UserControl
     {
         base.OnPropertyChanged(change);
 
-        if (change.Property == IsStreamingProperty)
+        if (change.Property == IsStreamingProperty && DotsPanel is not null)
             DotsPanel.IsVisible = (bool)change.NewValue!;
     }
 }

@@ -106,7 +106,7 @@ public class StartupSetupPolicyTests
             isContainer: true,
             isUserInteractive: false,
             isInputRedirected: true,
-            copilotApiKey: "copilot-test-token",
+            copilotApiKey: "test-copilot-placeholder",
             copilotEnabled: true);
 
         await Assert.That(result.RequiresSetup).IsFalse();

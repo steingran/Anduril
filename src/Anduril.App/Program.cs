@@ -14,10 +14,15 @@ VelopackApp.Build().Run();
 var hostService = new HostService(args);
 await hostService.StartAsync();
 
-BuildAvaloniaApp()
-    .StartWithClassicDesktopLifetime(args);
-
-await hostService.StopAsync();
+try
+{
+    BuildAvaloniaApp()
+        .StartWithClassicDesktopLifetime(args);
+}
+finally
+{
+    await hostService.StopAsync();
+}
 
 static AppBuilder BuildAvaloniaApp()
     => AppBuilder.Configure<Anduril.App.App>()

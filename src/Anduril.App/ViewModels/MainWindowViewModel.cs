@@ -178,9 +178,11 @@ public sealed class MainWindowViewModel : ViewModelBase
 
     private static string FriendlyIntegrationName(string name) => name.ToLowerInvariant() switch
     {
+        "" or null         => name,
         "github"           => "GitHub",
         "sentry"           => "Sentry",
-        "office365calendar"=> "Office 365 Calendar",
+        "office365calendar"
+            or "office365-calendar" => "Office 365 Calendar",
         "gmail"            => "Gmail",
         "protonmail"       => "Proton Mail",
         "slackquery"       => "Slack",
@@ -192,14 +194,15 @@ public sealed class MainWindowViewModel : ViewModelBase
 
     private static string FriendlyProviderName(string providerName) => providerName.ToLowerInvariant() switch
     {
-        "anthropic"    => "Anthropic",
-        "copilot"      => "Copilot",
-        "openai"       => "OpenAI",
-        "ollama"       => "Local",
-        "llamasharp"   => "Local",
-        "augment"      => "Augment",
-        "augment-chat" => "Augment",
-        var other      => char.ToUpper(other[0]) + other[1..]
+        "" or null         => providerName,
+        "anthropic"        => "Anthropic",
+        "copilot"          => "Copilot",
+        "openai"           => "OpenAI",
+        "ollama"           => "Local",
+        "llamasharp"       => "Local",
+        "augment"          => "Augment",
+        "augment-chat"     => "Augment",
+        var other          => char.ToUpper(other[0]) + other[1..]
     };
 
     private async Task CreateNewConversationAsync()

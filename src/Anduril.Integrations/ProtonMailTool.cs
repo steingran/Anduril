@@ -152,8 +152,8 @@ public sealed class ProtonMailTool : IIntegrationTool
         EnsureAvailable();
 
         await using var smtpClient = _smtpClientFactory();
-        string? ccValue = string.IsNullOrWhiteSpace(cc) ? null : cc;
-        string? bccValue = string.IsNullOrWhiteSpace(bcc) ? null : bcc;
+        string? ccValue = string.IsNullOrWhiteSpace(cc) ? null : cc.Trim();
+        string? bccValue = string.IsNullOrWhiteSpace(bcc) ? null : bcc.Trim();
         await smtpClient.SendAsync(_options, new ProtonMailOutgoingMessage(to, subject, body, ccValue, bccValue, null, []));
         return $"Email sent successfully to {to}.";
     }

@@ -28,7 +28,7 @@ public sealed class OllamaProvider(IOptions<AiProviderOptions> options, ILogger<
     public async Task InitializeAsync(CancellationToken cancellationToken = default)
     {
         string endpoint = _options.Endpoint ?? "http://localhost:11434";
-        string? configuredModel = string.IsNullOrWhiteSpace(_options.Model) ? null : _options.Model;
+        string? configuredModel = string.IsNullOrWhiteSpace(_options.Model) ? null : _options.Model.Trim();
         string model = configuredModel ?? "mistral";
 
         var uri = new Uri(endpoint);
