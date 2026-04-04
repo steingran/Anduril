@@ -94,6 +94,10 @@ public sealed class ChatViewModel : ViewModelBase
 
         Dispatcher.UIThread.Post(() =>
         {
+            // Re-check after dispatch: SetConversation may have changed _conversationId
+            // between the outer check and this callback executing on the UI thread.
+            if (token.ConversationId != _conversationId) return;
+
             if (token.Error is not null && Messages.Count > 0)
             {
                 var last = Messages[^1];

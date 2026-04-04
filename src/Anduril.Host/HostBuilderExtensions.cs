@@ -412,8 +412,10 @@ public static class HostBuilderExtensions
 
         // Sentry Webhook Endpoint (Sentry → Anduril)
         var webhookSemaphore = new SemaphoreSlim(3);
-        var appLifetime = app.Services.GetRequiredService<IHostApplicationLifetime>();
-        appLifetime.ApplicationStopping.Register(() => webhookSemaphore.Dispose());
+        // Note: intentionally NOT disposing webhookSemaphore on ApplicationStopping.
+        // Disposing it races with in-flight background tasks whose finally blocks call
+        // Release(), throwing ObjectDisposedException during shutdown. The GC handles
+        // the unmanaged wait handle (if any) when the process exits.
         app.MapPost("/webhooks/sentry", async (
             HttpContext context,
             SentryBugfixService bugfixService,

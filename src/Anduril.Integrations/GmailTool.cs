@@ -236,8 +236,8 @@ public class GmailTool : IIntegrationTool, IAsyncDisposable
     private async Task<string> ModifyLabelsAsync(string messageId, string addLabels = "", string removeLabels = "")
     {
         var service = GetService();
-        string? addValue = string.IsNullOrWhiteSpace(addLabels) ? null : addLabels;
-        string? removeValue = string.IsNullOrWhiteSpace(removeLabels) ? null : removeLabels;
+        string? addValue = string.IsNullOrWhiteSpace(addLabels) ? null : addLabels.Trim();
+        string? removeValue = string.IsNullOrWhiteSpace(removeLabels) ? null : removeLabels.Trim();
         var modRequest = new ModifyMessageRequest
         {
             AddLabelIds = addValue?.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries).ToList(),

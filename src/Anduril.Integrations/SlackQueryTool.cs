@@ -276,8 +276,10 @@ public sealed class SlackQueryTool : IIntegrationTool
         if (string.IsNullOrWhiteSpace(value))
             return null;
 
-        if (!DateTimeOffset.TryParse(value, System.Globalization.CultureInfo.InvariantCulture, System.Globalization.DateTimeStyles.None, out var parsed))
-            throw new ArgumentException($"Could not parse '{value}' as a date/time.");
+        if (!DateTimeOffset.TryParse(value, System.Globalization.CultureInfo.InvariantCulture,
+                System.Globalization.DateTimeStyles.AssumeUniversal | System.Globalization.DateTimeStyles.AdjustToUniversal,
+                out var parsed))
+            throw new ArgumentException($"Could not parse '{value}' as a date/time.", nameof(value));
 
         return parsed;
     }
