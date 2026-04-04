@@ -53,7 +53,8 @@ public sealed class SignalRChatService : IChatService, IAsyncDisposable
                     throw new TimeoutException("Timed out waiting for SignalR connection.");
                 await Task.Delay(50);
             }
-            return;
+            if (_connection.State == HubConnectionState.Connected)
+                return;
         }
 
         await _connection.StartAsync();

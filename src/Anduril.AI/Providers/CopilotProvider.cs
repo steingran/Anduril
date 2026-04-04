@@ -90,6 +90,7 @@ public sealed class CopilotProvider(IOptions<AiProviderOptions> options, ILogger
     public async ValueTask DisposeAsync()
     {
         await CleanupAsync();
+        _modelLock.Dispose();
     }
 
     private async Task<IReadOnlyList<AiModelInfo>> FetchModelsFromSdkAsync(CancellationToken cancellationToken)
@@ -115,7 +116,6 @@ public sealed class CopilotProvider(IOptions<AiProviderOptions> options, ILogger
     private async Task CleanupAsync()
     {
         _chatClient = null;
-        _modelLock.Dispose();
 
         if (_client is not null)
         {
