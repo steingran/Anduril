@@ -86,10 +86,10 @@ public sealed class WeeklyMenuPlannerTool(
             : recipientEmail.Trim();
         bool? parsedEnableWeeklyEmail = string.IsNullOrWhiteSpace(enableWeeklyEmail)
             ? null
-            : bool.TryParse(enableWeeklyEmail, out var ewv) ? ewv : null;
+            : TryParseBool(enableWeeklyEmail);
         bool? parsedIncludeShoppingList = string.IsNullOrWhiteSpace(includeShoppingList)
             ? null
-            : bool.TryParse(includeShoppingList, out var islv) ? islv : null;
+            : TryParseBool(includeShoppingList);
         int? parsedPeopleCount = peopleCount >= 0 ? peopleCount : null;
         var recurringEnabled = parsedEnableWeeklyEmail ?? existing?.IsRecurringEnabled ?? false;
 
@@ -151,4 +151,12 @@ public sealed class WeeklyMenuPlannerTool(
 
         return $"Recurring weekly menu emails have been disabled for user '{normalizedUserId}'. Saved preferences were kept.";
     }
+
+    private static bool? TryParseBool(string value) =>
+        value.Trim().ToLowerInvariant() switch
+        {
+            "true" or "yes" or "1" or "on" => true,
+            "false" or "no" or "0" or "off" => false,
+            _ => bool.TryParse(value, out var result) ? result : null
+        };
 }

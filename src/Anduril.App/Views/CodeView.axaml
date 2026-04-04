@@ -204,7 +204,7 @@
                              VerticalContentAlignment="Top"
                              TextWrapping="Wrap">
                         <TextBox.KeyBindings>
-                            <KeyBinding Gesture="Return" Command="{Binding SendCommand}" />
+                            <KeyBinding Gesture="Ctrl+Return" Command="{Binding SendCommand}" />
                         </TextBox.KeyBindings>
                     </TextBox>
                     <Button Grid.Row="0" Grid.Column="1"

@@ -1,3 +1,4 @@
+using Anduril.App.Models;
 using Anduril.Core.Communication;
 using Avalonia.Threading;
 using Microsoft.AspNetCore.SignalR.Client;
@@ -18,6 +19,7 @@ public sealed class SignalRChatService : IChatService, IAsyncDisposable
     private string? _selectedProviderId;
 
     public event Action<ChatStreamToken>? TokenReceived;
+    public event Action<StagedActionModel>? StagedActionReceived;
 
     public SignalRChatService(string baseUrl)
     {

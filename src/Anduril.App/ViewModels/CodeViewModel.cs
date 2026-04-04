@@ -107,11 +107,15 @@ public sealed class CodeViewModel : ViewModelBase
     public void SetConversation(string conversationId, IChatService chatService)
     {
         if (_chatService is not null)
+        {
             _chatService.TokenReceived -= OnTokenReceived;
+            _chatService.StagedActionReceived -= OnStagedActionReceived;
+        }
 
         _conversationId = conversationId;
         _chatService = chatService;
         _chatService.TokenReceived += OnTokenReceived;
+        _chatService.StagedActionReceived += OnStagedActionReceived;
 
         // If a response was mid-stream when this conversation was replaced, reset the streaming
         // state immediately. The in-flight IsComplete token from the hub will be ignored because

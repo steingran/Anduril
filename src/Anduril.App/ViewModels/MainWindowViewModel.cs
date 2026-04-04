@@ -11,6 +11,7 @@ namespace Anduril.App.ViewModels;
 public sealed class MainWindowViewModel : ViewModelBase
 {
     private static readonly JsonSerializerOptions _jsonOptions = new() { PropertyNameCaseInsensitive = true };
+    private static readonly HttpClient s_httpClient = new();
 
     private readonly IChatService _chatService;
     private readonly IUserPreferencesService _prefsService;
@@ -76,9 +77,13 @@ public sealed class MainWindowViewModel : ViewModelBase
             this.RaiseAndSetIfChanged(ref _selectedModel, value);
             if (value is not null)
             {
-                _ = _chatService.SelectModelAsync(value.ProviderId);
+                _ = _chatService.SelectModelAsync(value.ProviderId).ContinueWith(
+                    t => { if (t.IsFaulted) System.Diagnostics.Debug.WriteLine(t.Exception); },
+                    TaskScheduler.Default);
                 _prefs.SelectedProviderId = value.ProviderId;
-                _ = _prefsService.SaveAsync(_prefs);
+                _ = _prefsService.SaveAsync(_prefs).ContinueWith(
+                    t => { if (t.IsFaulted) System.Diagnostics.Debug.WriteLine(t.Exception); },
+                    TaskScheduler.Default);
             }
         }
     }
@@ -140,8 +145,7 @@ public sealed class MainWindowViewModel : ViewModelBase
     {
         try
         {
-            using var http = new HttpClient();
-            var response = await http.GetFromJsonAsync<ToolsResponse>(
+            var response = await s_httpClient.GetFromJsonAsync<ToolsResponse>(
                 $"{HostService.BaseUrl}/api/tools", _jsonOptions);
 
             if (response is null) return;
@@ -189,6 +193,7 @@ public sealed class MainWindowViewModel : ViewModelBase
         "mediumarticle"    => "Medium Articles",
         "weeklymenu"       => "Weekly Menu Planner",
         "code"             => "Code Repository",
+        { Length: 1 } single => char.ToUpper(single[0]).ToString(),
         var other          => char.ToUpper(other[0]) + other[1..]
     };
 
@@ -202,6 +207,7 @@ public sealed class MainWindowViewModel : ViewModelBase
         "llamasharp"       => "Local",
         "augment"          => "Augment",
         "augment-chat"     => "Augment",
+        { Length: 1 } single => char.ToUpper(single[0]).ToString(),
         var other          => char.ToUpper(other[0]) + other[1..]
     };
 

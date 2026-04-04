@@ -20,9 +20,11 @@ public sealed class HostService
 
     /// <summary>
     /// The base URL of the running host (e.g. "http://localhost:54321").
-    /// Set after <see cref="StartAsync"/> completes.
+    /// Set after <see cref="StartAsync"/> completes. Volatile to ensure visibility
+    /// across threads.
     /// </summary>
-    public static string BaseUrl { get; private set; } = string.Empty;
+    private static volatile string s_baseUrl = string.Empty;
+    public static string BaseUrl => s_baseUrl;
 
     private readonly string[] _args;
 
@@ -58,8 +60,13 @@ public sealed class HostService
         // Resolve the actual port the OS assigned
         var server = _app.Services.GetRequiredService<IServer>();
         var addressFeature = server.Features.Get<IServerAddressesFeature>();
-        var address = addressFeature?.Addresses.FirstOrDefault() ?? "http://127.0.0.1:5000";
-        BaseUrl = address;
+        var address = addressFeature?.Addresses.FirstOrDefault();
+        if (address is null)
+        {
+            address = "http://127.0.0.1:5000";
+            Log.Warning("Could not resolve server address from host; falling back to {FallbackUrl}", address);
+        }
+        s_baseUrl = address;
 
         // Run in background
         _runTask = _app.WaitForShutdownAsync();

@@ -377,22 +377,28 @@ public static class HostBuilderExtensions
 
                 foreach (var notification in notifications)
                 {
-                    var adapter = adapters.FirstOrDefault(a => a.IsConnected);
-                    if (adapter is null) break;
-
-                    try
+                    bool sent = false;
+                    foreach (var adapter in adapters.Where(a => a.IsConnected))
                     {
-                        await adapter.SendMessageAsync(new OutgoingMessage
+                        try
                         {
-                            Text = notification,
-                            ChannelId = app.Configuration["GmailScheduler:TargetChannel"] ?? ""
-                        });
+                            await adapter.SendMessageAsync(new OutgoingMessage
+                            {
+                                Text = notification,
+                                ChannelId = app.Configuration["GmailScheduler:TargetChannel"] ?? ""
+                            });
+                            sent = true;
+                            break;
+                        }
+                        catch (Exception ex)
+                        {
+                            endpointLogger.LogError(ex,
+                                "Failed to send Gmail notification through {Platform}, trying next adapter", adapter.Platform);
+                        }
                     }
-                    catch (Exception ex)
-                    {
-                        endpointLogger.LogError(ex,
-                            "Failed to send Gmail notification through {Platform}", adapter.Platform);
-                    }
+
+                    if (!sent)
+                        endpointLogger.LogWarning("No connected adapter could deliver Gmail notification");
                 }
 
                 return Results.Ok();
@@ -406,6 +412,8 @@ public static class HostBuilderExtensions
 
         // Sentry Webhook Endpoint (Sentry → Anduril)
         var webhookSemaphore = new SemaphoreSlim(3);
+        var appLifetime = app.Services.GetRequiredService<IHostApplicationLifetime>();
+        appLifetime.ApplicationStopping.Register(() => webhookSemaphore.Dispose());
         app.MapPost("/webhooks/sentry", async (
             HttpContext context,
             SentryBugfixService bugfixService,

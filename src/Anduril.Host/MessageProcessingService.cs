@@ -122,7 +122,7 @@ public sealed class MessageProcessingService(
 
     private async Task InitializeSkillsAsync(CancellationToken cancellationToken)
     {
-        compiledRunner.LoadFromDirectory();
+        await Task.Run(() => compiledRunner.LoadFromDirectory());
         foreach (var skill in compiledSkills)
             compiledRunner.Register(skill);
 

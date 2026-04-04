@@ -1,3 +1,4 @@
+using Anduril.App.Models;
 using Anduril.Core.Communication;
 
 namespace Anduril.App.Services;
@@ -9,6 +10,7 @@ namespace Anduril.App.Services;
 public interface IChatService
 {
     event Action<ChatStreamToken>? TokenReceived;
+    event Action<StagedActionModel>? StagedActionReceived;
 
     Task<List<ProviderInfo>> GetAvailableProvidersAsync();
     Task SelectModelAsync(string providerId);

@@ -1,4 +1,5 @@
 using System.Reactive.Threading.Tasks;
+using Anduril.App.Models;
 using Anduril.App.ViewModels;
 
 namespace Anduril.App.Tests;
@@ -55,6 +56,7 @@ public sealed class CodeViewModelTests
     public async Task AcceptAllCommand_WhenHasStagedActions_ClearsStagedActionsAndSetsHasStagedActionsToFalse()
     {
         var vm = new CodeViewModel();
+        vm.StagedActions.Add(new StagedActionModel { Kind = StagedActionKind.Create, FilePath = "test.cs" });
         vm.HasStagedActions = true;
 
         await vm.AcceptAllCommand.Execute().ToTask();
@@ -67,6 +69,7 @@ public sealed class CodeViewModelTests
     public async Task RejectAllCommand_WhenHasStagedActions_ClearsStagedActionsAndSetsHasStagedActionsToFalse()
     {
         var vm = new CodeViewModel();
+        vm.StagedActions.Add(new StagedActionModel { Kind = StagedActionKind.Edit, FilePath = "test.cs" });
         vm.HasStagedActions = true;
 
         await vm.RejectAllCommand.Execute().ToTask();
