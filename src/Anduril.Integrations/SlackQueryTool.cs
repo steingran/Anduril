@@ -276,15 +276,10 @@ public sealed class SlackQueryTool : IIntegrationTool
         if (string.IsNullOrWhiteSpace(value))
             return null;
 
-        if (!DateTime.TryParse(value, out var parsed))
+        if (!DateTimeOffset.TryParse(value, System.Globalization.CultureInfo.InvariantCulture, System.Globalization.DateTimeStyles.None, out var parsed))
             throw new ArgumentException($"Could not parse '{value}' as a date/time.");
 
-        return parsed.Kind switch
-        {
-            DateTimeKind.Unspecified => new DateTimeOffset(DateTime.SpecifyKind(parsed, DateTimeKind.Utc)),
-            DateTimeKind.Utc => new DateTimeOffset(parsed),
-            _ => new DateTimeOffset(parsed.ToUniversalTime())
-        };
+        return parsed;
     }
 
     private static bool LooksLikeChannelId(string channel) =>

@@ -24,9 +24,9 @@ public class App : Application
 
             desktop.MainWindow = new MainWindow { DataContext = mainVm };
 
-            desktop.ShutdownRequested += (_, _) =>
+            desktop.Exit += (_, _) =>
             {
-                _ = chatService.DisposeAsync().AsTask();
+                chatService.DisposeAsync().AsTask().GetAwaiter().GetResult();
             };
         }
 

@@ -36,7 +36,7 @@ Anduril is a personal AI assistant built from scratch in C#. It connects to Slac
 | `tests/Anduril.Setup.Tests` | Setup tool unit tests |
 
 ### Key NuGet Packages
-- **AI**: `Microsoft.Extensions.AI` (10.3.0), `Microsoft.Extensions.AI.Abstractions` (10.3.0), `Microsoft.Extensions.AI.OpenAI` (10.3.0), `Anthropic.SDK` (5.10.0), `OllamaSharp` (5.4.23), `LLamaSharp` (0.26.0), `ModelContextProtocol` (1.1.0)
+- **AI**: `Microsoft.Extensions.AI` (10.4.1), `Microsoft.Extensions.AI.Abstractions` (10.4.1), `Microsoft.Extensions.AI.OpenAI` (10.4.1), `Anthropic.SDK` (5.10.0), `OllamaSharp` (5.4.25), `LLamaSharp` (0.26.0), `ModelContextProtocol` (1.1.0)
 - **Communication**: `SlackNet` (0.17.9), `SlackNet.Extensions.DependencyInjection` (0.17.9) — Socket Mode is built into the base package, no separate `SlackNet.SocketMode` needed. `Microsoft.Bot.Builder.Integration.AspNet.Core` (4.23.1)
 - **Integrations**: `Octokit` (14.0.0), `Sentry` (6.2.0), `Microsoft.Graph` (5.103.0), `Google.Apis.Gmail.v1` (1.73.0.4029), `MailKit` (4.15.1), `Azure.Identity` (1.19.0)
 - **Infrastructure**: `Serilog.AspNetCore` (10.0.0), `Velopack` (0.0.1298), `Microsoft.EntityFrameworkCore.Sqlite` (10.0.5), `Spectre.Console` (0.54.0)

@@ -40,7 +40,7 @@ public sealed class CopilotProvider(IOptions<AiProviderOptions> options, ILogger
 
         try
         {
-            _client = new CopilotClient(new CopilotClientOptions()); // { GithubToken = token });
+            _client = new CopilotClient(new CopilotClientOptions { GithubToken = token });
             await _client.StartAsync(cancellationToken);
 
             _cachedModels = await FetchModelsFromSdkAsync(cancellationToken);
