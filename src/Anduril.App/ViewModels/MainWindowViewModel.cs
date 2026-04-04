@@ -180,9 +180,9 @@ public sealed class MainWindowViewModel : ViewModelBase
         }
     }
 
-    private static string FriendlyIntegrationName(string name) => name.ToLowerInvariant() switch
+    private static string FriendlyIntegrationName(string name) => name?.ToLowerInvariant() switch
     {
-        "" or null         => name,
+        null or ""         => name ?? string.Empty,
         "github"           => "GitHub",
         "sentry"           => "Sentry",
         "office365calendar"
@@ -197,9 +197,9 @@ public sealed class MainWindowViewModel : ViewModelBase
         var other          => char.ToUpper(other[0]) + other[1..]
     };
 
-    private static string FriendlyProviderName(string providerName) => providerName.ToLowerInvariant() switch
+    private static string FriendlyProviderName(string providerName) => providerName?.ToLowerInvariant() switch
     {
-        "" or null         => providerName,
+        null or ""         => providerName ?? string.Empty,
         "anthropic"        => "Anthropic",
         "copilot"          => "Copilot",
         "openai"           => "OpenAI",

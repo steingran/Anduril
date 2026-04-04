@@ -19,6 +19,7 @@ public sealed class AnthropicProvider(IOptions<AiProviderOptions> options, ILogg
     private AnthropicClient? _client;
     private IChatClient? _chatClient;
     private IReadOnlyList<ModelInfo>? _cachedModels;
+    private bool _modelsLoaded;
     private readonly SemaphoreSlim _modelLock = new(1, 1);
 
     public string Name => "anthropic";
@@ -46,6 +47,7 @@ public sealed class AnthropicProvider(IOptions<AiProviderOptions> options, ILogg
 
         // Fetch the model catalog eagerly so the UI can populate the model selector.
         _cachedModels = await FetchModelsAsync(cancellationToken);
+        _modelsLoaded = true;
 
         // The Anthropic.SDK AnthropicClient.Messages implements IChatClient,
         // but requires the model to be specified per-request via ChatOptions.
@@ -65,16 +67,17 @@ public sealed class AnthropicProvider(IOptions<AiProviderOptions> options, ILogg
 
     public async Task<IReadOnlyList<ModelInfo>> GetAvailableModelsAsync(CancellationToken cancellationToken = default)
     {
-        if (_cachedModels is { Count: > 0 })
+        if (_modelsLoaded && _cachedModels is not null)
             return _cachedModels;
 
         await _modelLock.WaitAsync(cancellationToken);
         try
         {
-            if (_cachedModels is { Count: > 0 })
+            if (_modelsLoaded && _cachedModels is not null)
                 return _cachedModels;
 
             _cachedModels = await FetchModelsAsync(cancellationToken);
+            _modelsLoaded = true;
             return _cachedModels;
         }
         finally

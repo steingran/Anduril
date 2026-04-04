@@ -19,6 +19,7 @@ public sealed class CopilotProvider(IOptions<AiProviderOptions> options, ILogger
     private CopilotClient? _client;
     private IChatClient? _chatClient;
     private IReadOnlyList<AiModelInfo>? _cachedModels;
+    private bool _modelsLoaded;
     private readonly SemaphoreSlim _modelLock = new(1, 1);
 
     public string Name => "copilot";
@@ -32,19 +33,16 @@ public sealed class CopilotProvider(IOptions<AiProviderOptions> options, ILogger
 
     public async Task InitializeAsync(CancellationToken cancellationToken = default)
     {
-        string? token = _options.ApiKey;
-        if (string.IsNullOrWhiteSpace(token))
-        {
-            logger.LogWarning("GitHub token is not configured. Copilot provider will remain unavailable.");
-            return;
-        }
-
         try
         {
-            _client = new CopilotClient(new CopilotClientOptions { GithubToken = token });
+            var clientOptions = new CopilotClientOptions();
+            if (!string.IsNullOrWhiteSpace(_options.ApiKey))
+                clientOptions.GithubToken = _options.ApiKey;
+            _client = new CopilotClient(clientOptions);
             await _client.StartAsync(cancellationToken);
 
             _cachedModels = await FetchModelsFromSdkAsync(cancellationToken);
+            _modelsLoaded = true;
             logger.LogInformation("Copilot provider: {Count} model(s) available", _cachedModels.Count);
 
             string model = string.IsNullOrWhiteSpace(_options.Model) ? "gpt-4o" : _options.Model;
@@ -64,17 +62,16 @@ public sealed class CopilotProvider(IOptions<AiProviderOptions> options, ILogger
 
     public async Task<IReadOnlyList<AiModelInfo>> GetAvailableModelsAsync(CancellationToken cancellationToken = default)
     {
-        // Return the cache only if it has real results; an empty cache means the
-        // init-time fetch failed and we should try again now that the client is up.
-        if (_cachedModels is { Count: > 0 })
+        if (_modelsLoaded && _cachedModels is not null)
             return _cachedModels;
 
         await _modelLock.WaitAsync(cancellationToken);
         try
         {
-            if (_cachedModels is { Count: > 0 })
+            if (_modelsLoaded && _cachedModels is not null)
                 return _cachedModels;
             _cachedModels = await FetchModelsFromSdkAsync(cancellationToken);
+            _modelsLoaded = true;
             return _cachedModels;
         }
         finally
