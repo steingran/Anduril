@@ -64,8 +64,8 @@ public class GitHubTool(IOptions<GitHubToolOptions> options, ILogger<GitHubTool>
     private async Task<string> ListIssuesAsync(string owner = "", string repo = "")
     {
         var client = GetClient();
-        string o = NullIfEmpty(owner) ?? _options.DefaultOwner ?? throw new ArgumentException("Repository owner is required.");
-        string r = NullIfEmpty(repo) ?? _options.DefaultRepo ?? throw new ArgumentException("Repository name is required.");
+        string o = NullIfEmpty(owner) ?? NullIfEmpty(_options.DefaultOwner ?? "") ?? throw new ArgumentException("Repository owner is required.");
+        string r = NullIfEmpty(repo) ?? NullIfEmpty(_options.DefaultRepo ?? "") ?? throw new ArgumentException("Repository name is required.");
 
         var issues = await client.Issue.GetAllForRepository(o, r,
             new RepositoryIssueRequest { State = ItemStateFilter.Open });
@@ -76,8 +76,8 @@ public class GitHubTool(IOptions<GitHubToolOptions> options, ILogger<GitHubTool>
     private async Task<string> GetIssueAsync(int number, string owner = "", string repo = "")
     {
         var client = GetClient();
-        string o = NullIfEmpty(owner) ?? _options.DefaultOwner ?? throw new ArgumentException("Repository owner is required.");
-        string r = NullIfEmpty(repo) ?? _options.DefaultRepo ?? throw new ArgumentException("Repository name is required.");
+        string o = NullIfEmpty(owner) ?? NullIfEmpty(_options.DefaultOwner ?? "") ?? throw new ArgumentException("Repository owner is required.");
+        string r = NullIfEmpty(repo) ?? NullIfEmpty(_options.DefaultRepo ?? "") ?? throw new ArgumentException("Repository name is required.");
 
         var issue = await client.Issue.Get(o, r, number);
         return $"#{issue.Number}: {issue.Title}\nState: {issue.State}\nAuthor: {issue.User.Login}\n\n{issue.Body}";
@@ -86,8 +86,8 @@ public class GitHubTool(IOptions<GitHubToolOptions> options, ILogger<GitHubTool>
     private async Task<string> ListPullRequestsAsync(string owner = "", string repo = "")
     {
         var client = GetClient();
-        string o = NullIfEmpty(owner) ?? _options.DefaultOwner ?? throw new ArgumentException("Repository owner is required.");
-        string r = NullIfEmpty(repo) ?? _options.DefaultRepo ?? throw new ArgumentException("Repository name is required.");
+        string o = NullIfEmpty(owner) ?? NullIfEmpty(_options.DefaultOwner ?? "") ?? throw new ArgumentException("Repository owner is required.");
+        string r = NullIfEmpty(repo) ?? NullIfEmpty(_options.DefaultRepo ?? "") ?? throw new ArgumentException("Repository name is required.");
 
         var prs = await client.PullRequest.GetAllForRepository(o, r);
         return string.Join("\n", prs.Select(p => $"#{p.Number}: {p.Title} ({p.Head.Ref} → {p.Base.Ref})"));
@@ -96,8 +96,8 @@ public class GitHubTool(IOptions<GitHubToolOptions> options, ILogger<GitHubTool>
     private async Task<string> GetPullRequestFilesAsync(int number, string owner = "", string repo = "")
     {
         var client = GetClient();
-        string o = NullIfEmpty(owner) ?? _options.DefaultOwner ?? throw new ArgumentException("Repository owner is required.");
-        string r = NullIfEmpty(repo) ?? _options.DefaultRepo ?? throw new ArgumentException("Repository name is required.");
+        string o = NullIfEmpty(owner) ?? NullIfEmpty(_options.DefaultOwner ?? "") ?? throw new ArgumentException("Repository owner is required.");
+        string r = NullIfEmpty(repo) ?? NullIfEmpty(_options.DefaultRepo ?? "") ?? throw new ArgumentException("Repository name is required.");
 
         var files = await client.PullRequest.Files(o, r, number);
         return string.Join("\n", files.Select(f => $"{f.Status}: {f.FileName} (+{f.Additions} -{f.Deletions})"));
@@ -106,8 +106,8 @@ public class GitHubTool(IOptions<GitHubToolOptions> options, ILogger<GitHubTool>
     private async Task<string> ListPullRequestsSinceAsync(DateTime since, string owner = "", string repo = "")
     {
         var client = GetClient();
-        string o = NullIfEmpty(owner) ?? _options.DefaultOwner ?? throw new ArgumentException("Repository owner is required.");
-        string r = NullIfEmpty(repo) ?? _options.DefaultRepo ?? throw new ArgumentException("Repository name is required.");
+        string o = NullIfEmpty(owner) ?? NullIfEmpty(_options.DefaultOwner ?? "") ?? throw new ArgumentException("Repository owner is required.");
+        string r = NullIfEmpty(repo) ?? NullIfEmpty(_options.DefaultRepo ?? "") ?? throw new ArgumentException("Repository name is required.");
 
         var request = new PullRequestRequest
         {
@@ -136,8 +136,8 @@ public class GitHubTool(IOptions<GitHubToolOptions> options, ILogger<GitHubTool>
     private async Task<string> ListIssuesSinceAsync(DateTime since, string owner = "", string repo = "")
     {
         var client = GetClient();
-        string o = NullIfEmpty(owner) ?? _options.DefaultOwner ?? throw new ArgumentException("Repository owner is required.");
-        string r = NullIfEmpty(repo) ?? _options.DefaultRepo ?? throw new ArgumentException("Repository name is required.");
+        string o = NullIfEmpty(owner) ?? NullIfEmpty(_options.DefaultOwner ?? "") ?? throw new ArgumentException("Repository owner is required.");
+        string r = NullIfEmpty(repo) ?? NullIfEmpty(_options.DefaultRepo ?? "") ?? throw new ArgumentException("Repository name is required.");
 
         var sinceUtc = since.ToUniversalTime();
         var request = new RepositoryIssueRequest
