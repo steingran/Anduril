@@ -417,7 +417,7 @@ public class SentryTool : IIntegrationTool, IAsyncDisposable
         return ValueTask.CompletedTask;
     }
 
-    private static string? NullIfEmpty(string value) =>
+    private static string? NullIfEmpty(string? value) =>
         string.IsNullOrWhiteSpace(value) ? null : value.Trim();
 }
 
