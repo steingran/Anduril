@@ -19,6 +19,7 @@ public sealed class CopilotProvider(IOptions<AiProviderOptions> options, ILogger
     private CopilotClient? _client;
     private IChatClient? _chatClient;
     private IReadOnlyList<AiModelInfo>? _cachedModels;
+    private readonly SemaphoreSlim _modelLock = new(1, 1);
 
     public string Name => "copilot";
 
@@ -68,8 +69,18 @@ public sealed class CopilotProvider(IOptions<AiProviderOptions> options, ILogger
         if (_cachedModels is { Count: > 0 })
             return _cachedModels;
 
-        _cachedModels = await FetchModelsFromSdkAsync(cancellationToken);
-        return _cachedModels;
+        await _modelLock.WaitAsync(cancellationToken);
+        try
+        {
+            if (_cachedModels is { Count: > 0 })
+                return _cachedModels;
+            _cachedModels = await FetchModelsFromSdkAsync(cancellationToken);
+            return _cachedModels;
+        }
+        finally
+        {
+            _modelLock.Release();
+        }
     }
 
     public IChatClient GetChatClientForModel(string model)
@@ -107,6 +118,7 @@ public sealed class CopilotProvider(IOptions<AiProviderOptions> options, ILogger
     private async Task CleanupAsync()
     {
         _chatClient = null;
+        _modelLock.Dispose();
 
         if (_client is not null)
         {

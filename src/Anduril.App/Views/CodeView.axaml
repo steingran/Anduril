@@ -7,6 +7,7 @@
              x:Class="Anduril.App.Views.CodeView"
              x:DataType="vm:CodeViewModel"
              xmlns:md="using:Markdown.Avalonia"
+             xmlns:ctxt="using:ColorTextBlock.Avalonia"
              Background="#0F1525">
 
     <UserControl.Styles>
@@ -96,7 +97,7 @@
         <Style Selector="Button.repo-browse:pointerover /template/ ContentPresenter">
             <Setter Property="Background" Value="#1A2848" />
         </Style>
-        <Style Selector="md|MarkdownScrollViewer TextBlock">
+        <Style Selector="md|MarkdownScrollViewer ctxt|CTextBlock">
             <Setter Property="Foreground" Value="#B8D4F8" />
             <Setter Property="FontSize" Value="13" />
         </Style>

@@ -362,7 +362,10 @@ public static class HostBuilderExtensions
                 var dataJson = System.Text.Encoding.UTF8.GetString(Convert.FromBase64String(dataBase64));
                 using var dataDoc = JsonDocument.Parse(dataJson);
 
-                var historyId = dataDoc.RootElement.GetProperty("historyId").GetUInt64();
+                var historyIdElement = dataDoc.RootElement.GetProperty("historyId");
+                var historyId = historyIdElement.ValueKind == System.Text.Json.JsonValueKind.String
+                    ? ulong.Parse(historyIdElement.GetString()!)
+                    : historyIdElement.GetUInt64();
 
                 endpointLogger.LogInformation(
                     "Gmail push notification received. History ID: {HistoryId}", historyId);

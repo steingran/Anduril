@@ -500,13 +500,17 @@ public sealed class AndurilChatHub(
                 ? Path.GetFullPath(Path.Combine(basePath, subdirectory))
                 : basePath.TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);
 
-            // Strip trailing separator before the prefix check to keep the comparison uniform.
-            var baseStripped = basePath.TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);
-            if (!dir.StartsWith(baseStripped, StringComparison.OrdinalIgnoreCase))
+            // Ensure the base path ends with a separator so prefix checks cannot match sibling directories
+            // (e.g., /foo/bar-other must not pass a prefix check against /foo/bar).
+            var baseWithSep = basePath.TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar)
+                + Path.DirectorySeparatorChar;
+            if (!dir.StartsWith(baseWithSep, StringComparison.OrdinalIgnoreCase)
+                && !string.Equals(dir + Path.DirectorySeparatorChar, baseWithSep, StringComparison.OrdinalIgnoreCase))
                 return "Error: path is outside the repository.";
             // Resolve symlinks/reparse points to prevent traversal via symlink targets
             var resolvedDir = Path.GetFullPath(new DirectoryInfo(dir).LinkTarget ?? dir);
-            if (!resolvedDir.StartsWith(baseStripped, StringComparison.OrdinalIgnoreCase))
+            if (!resolvedDir.StartsWith(baseWithSep, StringComparison.OrdinalIgnoreCase)
+                && !string.Equals(resolvedDir + Path.DirectorySeparatorChar, baseWithSep, StringComparison.OrdinalIgnoreCase))
                 return "Error: path resolves outside the repository.";
             if (!Directory.Exists(dir))
                 return $"Directory not found: {subdirectory}";

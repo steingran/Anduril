@@ -157,6 +157,6 @@ public sealed class WeeklyMenuPlannerTool(
         {
             "true" or "yes" or "1" or "on" => true,
             "false" or "no" or "0" or "off" => false,
-            _ => bool.TryParse(value, out var result) ? result : null
+            _ => null
         };
 }
