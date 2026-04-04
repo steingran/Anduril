@@ -363,7 +363,10 @@ public sealed class AndurilChatHub(
         }
         finally
         {
-            ActiveRequests.TryRemove(requestKey, out _);
+            // Only remove our own CTS — a concurrent SendMessage for the same conversation
+            // may have already replaced the entry with a newer CTS that must remain tracked.
+            ((ICollection<KeyValuePair<string, CancellationTokenSource>>)ActiveRequests)
+                .Remove(KeyValuePair.Create(requestKey, cts));
         }
     }
 
