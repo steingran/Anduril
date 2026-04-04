@@ -281,6 +281,13 @@ public sealed class SlackQueryTool : IIntegrationTool
                 out var parsed))
             throw new ArgumentException($"Could not parse '{value}' as a date/time.", parameterName);
 
+        // When a date-only string like "2026-03-05" is parsed, it resolves to midnight (start of day).
+        // For the "latest" parameter this is counter-intuitive — adjust to end of day so the full
+        // calendar day is included in the search range.
+        bool isDateOnly = parsed.TimeOfDay == TimeSpan.Zero && !value.Contains('T') && !value.Contains(':');
+        if (isDateOnly && parameterName == "latest")
+            parsed = parsed.AddDays(1).AddTicks(-1);
+
         return parsed;
     }
 

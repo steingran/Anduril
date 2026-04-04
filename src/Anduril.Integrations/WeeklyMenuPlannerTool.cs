@@ -86,10 +86,12 @@ public sealed class WeeklyMenuPlannerTool(
             : recipientEmail.Trim();
         bool? parsedEnableWeeklyEmail = string.IsNullOrWhiteSpace(enableWeeklyEmail)
             ? null
-            : TryParseBool(enableWeeklyEmail);
+            : TryParseBool(enableWeeklyEmail) ?? throw new ArgumentException(
+                $"Unrecognized boolean value '{enableWeeklyEmail}'. Use true/false, yes/no, 1/0, or on/off.");
         bool? parsedIncludeShoppingList = string.IsNullOrWhiteSpace(includeShoppingList)
             ? null
-            : TryParseBool(includeShoppingList);
+            : TryParseBool(includeShoppingList) ?? throw new ArgumentException(
+                $"Unrecognized boolean value '{includeShoppingList}'. Use true/false, yes/no, 1/0, or on/off.");
         int? parsedPeopleCount = peopleCount >= 0 ? peopleCount : null;
         var recurringEnabled = parsedEnableWeeklyEmail ?? existing?.IsRecurringEnabled ?? false;
 

@@ -98,6 +98,12 @@ public sealed class CodeViewModelTests
         var vm = new CodeViewModel();
         var fake = new FakeChatService();
         vm.SetConversation("conv-1", fake);
+
+        // Seed non-empty state so the clearing logic is actually exercised
+        vm.Messages.Add(new ChatMessageModel { Text = "hello", IsUser = true });
+        vm.StagedActions.Add(new StagedActionModel { Kind = StagedActionKind.Create, FilePath = "test.cs" });
+        vm.HasStagedActions = true;
+
         vm.SetConversation("conv-2", fake);
 
         await Assert.That(vm.Messages).IsEmpty();

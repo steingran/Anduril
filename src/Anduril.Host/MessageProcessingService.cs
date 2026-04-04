@@ -63,6 +63,10 @@ public sealed class MessageProcessingService(
                 if (adapter.IsConnected)
                     logger.LogInformation("Communication adapter '{Platform}' started", adapter.Platform);
             }
+            catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+            {
+                throw;
+            }
             catch (Exception ex)
             {
                 logger.LogWarning(ex, "Communication adapter '{Platform}' failed to start — skipping", adapter.Platform);
@@ -81,6 +85,10 @@ public sealed class MessageProcessingService(
                 await provider.InitializeAsync(cancellationToken);
                 if (provider.IsAvailable)
                     logger.LogInformation("AI provider '{Name}' initialized successfully", provider.Name);
+            }
+            catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+            {
+                throw;
             }
             catch (Exception ex)
             {
@@ -109,6 +117,10 @@ public sealed class MessageProcessingService(
                 await tool.InitializeAsync(cancellationToken);
                 if (tool.IsAvailable)
                     logger.LogInformation("Integration tool '{Name}' initialized successfully", tool.Name);
+            }
+            catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+            {
+                throw;
             }
             catch (Exception ex)
             {

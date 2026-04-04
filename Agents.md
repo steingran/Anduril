@@ -26,12 +26,14 @@ Anduril is a personal AI assistant built from scratch in C#. It connects to Slac
 | `src/Anduril.Communication` | Platform adapters (Slack, Teams, CLI) |
 | `src/Anduril.Integrations` | External tool integrations (GitHub, Sentry, Calendar, Gmail, Proton Mail) |
 | `src/Anduril.Host` | ASP.NET Core host — DI wiring, background services, HTTP endpoints |
+| `src/Anduril.App` | Avalonia desktop app — publishable UI host with chat and code views |
 | `src/Anduril.Setup` | Interactive and headless setup tool for first-run configuration |
 | `tests/Anduril.Core.Tests` | Core unit tests |
 | `tests/Anduril.AI.Tests` | AI provider unit tests |
 | `tests/Anduril.Skills.Tests` | Skill system unit tests |
 | `tests/Anduril.Communication.Tests` | Communication adapter unit tests |
 | `tests/Anduril.Integrations.Tests` | Integration tool unit tests |
+| `tests/Anduril.App.Tests` | Desktop app unit tests |
 | `tests/Anduril.Host.Tests` | Host/startup unit tests |
 | `tests/Anduril.Setup.Tests` | Setup tool unit tests |
 
