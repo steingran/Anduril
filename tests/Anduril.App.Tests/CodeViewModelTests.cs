@@ -100,7 +100,7 @@ public sealed class CodeViewModelTests
         vm.SetConversation("conv-1", fake);
 
         // Seed non-empty state so the clearing logic is actually exercised
-        vm.Messages.Add(new ChatMessageModel { Role = "user", Content = "hello" });
+        vm.Messages.Add(new CodeMessageModel { Role = "user", Content = "hello" });
         vm.StagedActions.Add(new StagedActionModel { Kind = StagedActionKind.Create, FilePath = "test.cs" });
         vm.HasStagedActions = true;
 
