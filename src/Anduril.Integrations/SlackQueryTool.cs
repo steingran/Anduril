@@ -91,8 +91,8 @@ public sealed class SlackQueryTool : IIntegrationTool
         var client = GetClient();
         var requestedChannels = ParseChannelList(channels);
         var resolvedChannels = await ResolveChannelsAsync(client, requestedChannels, nameof(channels));
-        var oldestTimestamp = ParseDateTimeOffset(oldest);
-        var latestTimestamp = ParseDateTimeOffset(latest);
+        var oldestTimestamp = ParseDateTimeOffset(oldest, nameof(oldest));
+        var latestTimestamp = ParseDateTimeOffset(latest, nameof(latest));
         var maxResults = ClampLimit(limit);
         int pageSize = Math.Max(1, Math.Min(_options.SearchPageSize, maxResults));
         var results = new List<SlackMessageSummary>();
@@ -271,7 +271,7 @@ public sealed class SlackQueryTool : IIntegrationTool
         return message.Text.Contains(keyword, StringComparison.OrdinalIgnoreCase);
     }
 
-    private static DateTimeOffset? ParseDateTimeOffset(string value)
+    private static DateTimeOffset? ParseDateTimeOffset(string value, string parameterName)
     {
         if (string.IsNullOrWhiteSpace(value))
             return null;
@@ -279,7 +279,7 @@ public sealed class SlackQueryTool : IIntegrationTool
         if (!DateTimeOffset.TryParse(value, System.Globalization.CultureInfo.InvariantCulture,
                 System.Globalization.DateTimeStyles.AssumeUniversal | System.Globalization.DateTimeStyles.AdjustToUniversal,
                 out var parsed))
-            throw new ArgumentException($"Could not parse '{value}' as a date/time.", nameof(value));
+            throw new ArgumentException($"Could not parse '{value}' as a date/time.", parameterName);
 
         return parsed;
     }
