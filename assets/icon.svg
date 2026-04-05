@@ -1,0 +1,38 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024" width="1024" height="1024">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#1e2a4a"/>
+      <stop offset="100%" stop-color="#0f1628"/>
+    </linearGradient>
+    <linearGradient id="accent" x1="0.5" y1="0" x2="0.5" y2="1">
+      <stop offset="0%" stop-color="#4a7dff"/>
+      <stop offset="100%" stop-color="#2b5cd6"/>
+    </linearGradient>
+    <filter id="glow">
+      <feGaussianBlur stdDeviation="8" result="blur"/>
+      <feComposite in="SourceGraphic" in2="blur" operator="over"/>
+    </filter>
+    <filter id="textShadow">
+      <feDropShadow dx="0" dy="4" stdDeviation="12" flood-color="#000000" flood-opacity="0.3"/>
+    </filter>
+  </defs>
+
+  <!-- Background rounded square -->
+  <rect x="0" y="0" width="1024" height="1024" rx="220" ry="220" fill="url(#bg)"/>
+
+  <!-- Subtle inner border/highlight -->
+  <rect x="16" y="16" width="992" height="992" rx="208" ry="208"
+        fill="none" stroke="url(#accent)" stroke-width="2" opacity="0.2"/>
+
+  <!-- Accent glow at top -->
+  <ellipse cx="512" cy="200" rx="300" ry="180" fill="#4a7dff" opacity="0.06"/>
+
+  <!-- The letter 'ú' -->
+  <text x="512" y="680" text-anchor="middle"
+        font-family="'Segoe UI', 'SF Pro Display', 'Helvetica Neue', Arial, sans-serif"
+        font-weight="700"
+        font-size="640"
+        fill="white"
+        filter="url(#textShadow)"
+        letter-spacing="-10">ú</text>
+</svg>

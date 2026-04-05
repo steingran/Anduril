@@ -81,8 +81,8 @@ public sealed class SlackQueryTool : IIntegrationTool
     public async Task<string> SearchMessagesAsync(
         string channels,
         string keyword,
-        DateTime? oldest = null,
-        DateTime? latest = null,
+        string oldest = "",
+        string latest = "",
         int limit = 20)
     {
         if (string.IsNullOrWhiteSpace(keyword))
@@ -91,8 +91,8 @@ public sealed class SlackQueryTool : IIntegrationTool
         var client = GetClient();
         var requestedChannels = ParseChannelList(channels);
         var resolvedChannels = await ResolveChannelsAsync(client, requestedChannels, nameof(channels));
-        var oldestTimestamp = ToDateTimeOffset(oldest);
-        var latestTimestamp = ToDateTimeOffset(latest);
+        var oldestTimestamp = ParseDateTimeOffset(oldest, nameof(oldest));
+        var latestTimestamp = ParseDateTimeOffset(latest, nameof(latest));
         var maxResults = ClampLimit(limit);
         int pageSize = Math.Max(1, Math.Min(_options.SearchPageSize, maxResults));
         var results = new List<SlackMessageSummary>();
@@ -271,17 +271,24 @@ public sealed class SlackQueryTool : IIntegrationTool
         return message.Text.Contains(keyword, StringComparison.OrdinalIgnoreCase);
     }
 
-    private static DateTimeOffset? ToDateTimeOffset(DateTime? value)
+    private static DateTimeOffset? ParseDateTimeOffset(string value, string parameterName)
     {
-        if (value is null)
+        if (string.IsNullOrWhiteSpace(value))
             return null;
 
-        return value.Value.Kind switch
-        {
-            DateTimeKind.Unspecified => new DateTimeOffset(DateTime.SpecifyKind(value.Value, DateTimeKind.Utc)),
-            DateTimeKind.Utc => new DateTimeOffset(value.Value),
-            _ => new DateTimeOffset(value.Value.ToUniversalTime())
-        };
+        if (!DateTimeOffset.TryParse(value, System.Globalization.CultureInfo.InvariantCulture,
+                System.Globalization.DateTimeStyles.AssumeUniversal | System.Globalization.DateTimeStyles.AdjustToUniversal,
+                out var parsed))
+            throw new ArgumentException($"Could not parse '{value}' as a date/time.", parameterName);
+
+        // When a date-only string like "2026-03-05" is parsed, it resolves to midnight (start of day).
+        // For the "latest" parameter this is counter-intuitive — adjust to end of day so the full
+        // calendar day is included in the search range.
+        bool isDateOnly = parsed.TimeOfDay == TimeSpan.Zero && !value.Contains('T') && !value.Contains(':');
+        if (isDateOnly && parameterName == "latest")
+            parsed = parsed.AddDays(1).AddTicks(-1);
+
+        return parsed;
     }
 
     private static bool LooksLikeChannelId(string channel) =>

@@ -16,16 +16,19 @@ internal static class StartupSetupPolicy
         bool anthropicEnabled = true,
         bool augmentChatEnabled = true,
         bool ollamaEnabled = true,
-        bool llamaSharpEnabled = true)
+        bool llamaSharpEnabled = true,
+        string? copilotApiKey = null,
+        bool copilotEnabled = false)
     {
         bool openAiConfigured = openAiEnabled && HasValue(openAiApiKey);
         bool anthropicConfigured = anthropicEnabled && HasValue(anthropicApiKey);
         bool augmentChatConfigured = augmentChatEnabled && HasValue(augmentChatApiKey);
         bool ollamaConfigured = ollamaEnabled && HasValue(ollamaModel);
         bool llamaSharpConfigured = llamaSharpEnabled && HasValue(llamaSharpModelPath);
+        bool copilotConfigured = copilotEnabled && HasValue(copilotApiKey);
 
         bool anyAlternativeChatProviderConfigured =
-            openAiConfigured || anthropicConfigured || augmentChatConfigured || llamaSharpConfigured;
+            openAiConfigured || anthropicConfigured || augmentChatConfigured || llamaSharpConfigured || copilotConfigured;
 
         bool noChatProviderConfigured = !anyAlternativeChatProviderConfigured && !ollamaConfigured;
         bool ollamaOnlyProviderConfigured = ollamaConfigured && !anyAlternativeChatProviderConfigured;
@@ -67,7 +70,7 @@ internal static class StartupSetupPolicy
     private static string BuildSkipMessage(bool noChatProviderConfigured, bool isContainer)
     {
         string environmentDescription = isContainer ? "a container" : "a non-interactive environment";
-        const string configurationHelp = "Configure AI settings via appsettings.json or environment variables before starting. Supported settings include AI__OpenAI__Enabled / AI__OpenAI__ApiKey, AI__Anthropic__Enabled / AI__Anthropic__ApiKey, AI__AugmentChat__Enabled / AI__AugmentChat__ApiKey, AI__Ollama__Enabled / AI__Ollama__Model / AI__Ollama__Endpoint, and AI__LLamaSharp__Enabled / AI__LLamaSharp__ModelPath.";
+        const string configurationHelp = "Configure AI settings via appsettings.json or environment variables before starting. Supported settings include AI__OpenAI__Enabled / AI__OpenAI__ApiKey, AI__Anthropic__Enabled / AI__Anthropic__ApiKey, AI__AugmentChat__Enabled / AI__AugmentChat__ApiKey, AI__Copilot__Enabled / AI__Copilot__ApiKey, AI__Ollama__Enabled / AI__Ollama__Model / AI__Ollama__Endpoint, and AI__LLamaSharp__Enabled / AI__LLamaSharp__ModelPath.";
 
         return noChatProviderConfigured
             ? $"No AI provider is configured, but interactive first-run setup was skipped because the host is running in {environmentDescription}. {configurationHelp}"

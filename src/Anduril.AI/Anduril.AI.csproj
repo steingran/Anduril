@@ -6,6 +6,7 @@
 
   <ItemGroup>
     <PackageReference Include="Anthropic.SDK" />
+    <PackageReference Include="GitHub.Copilot.SDK" />
     <PackageReference Include="LLamaSharp" />
     <PackageReference Include="Microsoft.Extensions.AI" />
     <PackageReference Include="Microsoft.Extensions.AI.OpenAI" />

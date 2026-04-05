@@ -4,6 +4,7 @@ publish/
 releases/
 bin/
 obj/
+.claude/
 .dotnet/
 .gradle/
 .nuget/

@@ -1,0 +1,22 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:Anduril.App.ViewModels"
+             x:Class="Anduril.App.Views.ModelSelectorView"
+             x:DataType="vm:ModelSelectorViewModel">
+
+    <ComboBox ItemsSource="{Binding Models}"
+              SelectedItem="{Binding SelectedModel}"
+              HorizontalAlignment="Stretch"
+              PlaceholderText="Select model...">
+        <ComboBox.ItemTemplate>
+            <DataTemplate>
+                <StackPanel Orientation="Horizontal" Spacing="8">
+                    <TextBlock Text="{Binding DisplayName}" />
+                    <TextBlock Text="{Binding ModelName}"
+                               Opacity="0.5"
+                               FontSize="11" />
+                </StackPanel>
+            </DataTemplate>
+        </ComboBox.ItemTemplate>
+    </ComboBox>
+</UserControl>

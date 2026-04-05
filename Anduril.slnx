@@ -7,6 +7,7 @@
     <Project Path="src/Anduril.Integrations/Anduril.Integrations.csproj" />
     <Project Path="src/Anduril.Skills/Anduril.Skills.csproj" />
     <Project Path="src/Anduril.Setup/Anduril.Setup.csproj" />
+    <Project Path="src/Anduril.App/Anduril.App.csproj" />
   </Folder>
   <Folder Name="/tests/">
     <Project Path="tests/Anduril.AI.Tests/Anduril.AI.Tests.csproj" />
@@ -16,5 +17,6 @@
     <Project Path="tests/Anduril.Integrations.Tests/Anduril.Integrations.Tests.csproj" />
     <Project Path="tests/Anduril.Setup.Tests/Anduril.Setup.Tests.csproj" />
     <Project Path="tests/Anduril.Skills.Tests/Anduril.Skills.Tests.csproj" />
+    <Project Path="tests/Anduril.App.Tests/Anduril.App.Tests.csproj" />
   </Folder>
 </Solution>

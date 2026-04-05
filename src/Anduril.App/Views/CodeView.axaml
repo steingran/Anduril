@@ -1,0 +1,409 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:Anduril.App.ViewModels"
+             xmlns:models="using:Anduril.App.Models"
+             xmlns:controls="using:Anduril.App.Views.Controls"
+             xmlns:converters="using:Anduril.App.Converters"
+             x:Class="Anduril.App.Views.CodeView"
+             x:DataType="vm:CodeViewModel"
+             xmlns:md="using:Markdown.Avalonia"
+             xmlns:ctxt="using:ColorTextBlock.Avalonia"
+             Background="#0F1525">
+
+    <UserControl.Styles>
+        <Style Selector="TextBox.code-input">
+            <Setter Property="CornerRadius" Value="20" />
+            <Setter Property="Padding" Value="16,10" />
+            <Setter Property="Background" Value="#0D1328" />
+            <Setter Property="BorderBrush" Value="#1E2E50" />
+            <Setter Property="BorderThickness" Value="1" />
+            <Setter Property="Foreground" Value="#D0DCFF" />
+            <Setter Property="FontSize" Value="14" />
+            <Setter Property="CaretBrush" Value="#6090D0" />
+        </Style>
+        <Style Selector="TextBox.code-input:focus">
+            <Setter Property="BorderBrush" Value="#3A5898" />
+        </Style>
+        <Style Selector="Button.send">
+            <Setter Property="CornerRadius" Value="20" />
+            <Setter Property="Padding" Value="20,10" />
+            <Setter Property="Background" Value="#1E3A6E" />
+            <Setter Property="Foreground" Value="#CCDEFF" />
+            <Setter Property="BorderThickness" Value="0" />
+            <Setter Property="FontSize" Value="13" />
+            <Setter Property="FontWeight" Value="Medium" />
+            <Setter Property="Cursor" Value="Hand" />
+        </Style>
+        <Style Selector="Button.send:pointerover /template/ ContentPresenter">
+            <Setter Property="Background" Value="#264A8A" />
+        </Style>
+        <Style Selector="Button.send:disabled /template/ ContentPresenter">
+            <Setter Property="Background" Value="#111A2E" />
+            <Setter Property="Opacity" Value="0.5" />
+        </Style>
+        <!-- Stop button -->
+        <Style Selector="Button.stop">
+            <Setter Property="CornerRadius" Value="8" />
+            <Setter Property="Padding" Value="0" />
+            <Setter Property="Background" Value="Transparent" />
+            <Setter Property="Foreground" Value="#5A6A8A" />
+            <Setter Property="BorderThickness" Value="0" />
+            <Setter Property="Width" Value="36" />
+            <Setter Property="Height" Value="36" />
+            <Setter Property="Cursor" Value="Hand" />
+        </Style>
+        <Style Selector="Button.stop:pointerover /template/ ContentPresenter">
+            <Setter Property="Background" Value="#1A2845" />
+        </Style>
+        <Style Selector="Button.stop:pointerover">
+            <Setter Property="Foreground" Value="#C8A8A8" />
+        </Style>
+        <Style Selector="Button.accept">
+            <Setter Property="CornerRadius" Value="12" />
+            <Setter Property="Padding" Value="12,5" />
+            <Setter Property="Background" Value="#163A1E" />
+            <Setter Property="Foreground" Value="#7EC894" />
+            <Setter Property="BorderThickness" Value="0" />
+            <Setter Property="FontSize" Value="12" />
+            <Setter Property="FontWeight" Value="Medium" />
+            <Setter Property="Cursor" Value="Hand" />
+        </Style>
+        <Style Selector="Button.accept:pointerover /template/ ContentPresenter">
+            <Setter Property="Background" Value="#1A4A26" />
+        </Style>
+        <Style Selector="Button.reject">
+            <Setter Property="CornerRadius" Value="12" />
+            <Setter Property="Padding" Value="12,5" />
+            <Setter Property="Background" Value="#3A1616" />
+            <Setter Property="Foreground" Value="#E88080" />
+            <Setter Property="BorderThickness" Value="0" />
+            <Setter Property="FontSize" Value="12" />
+            <Setter Property="FontWeight" Value="Medium" />
+            <Setter Property="Cursor" Value="Hand" />
+        </Style>
+        <Style Selector="Button.reject:pointerover /template/ ContentPresenter">
+            <Setter Property="Background" Value="#4A1C1C" />
+        </Style>
+        <Style Selector="Button.repo-browse">
+            <Setter Property="CornerRadius" Value="8" />
+            <Setter Property="Padding" Value="10,4" />
+            <Setter Property="Background" Value="#131E38" />
+            <Setter Property="Foreground" Value="#7090C0" />
+            <Setter Property="BorderBrush" Value="#1E2E50" />
+            <Setter Property="BorderThickness" Value="1" />
+            <Setter Property="FontSize" Value="12" />
+            <Setter Property="Cursor" Value="Hand" />
+        </Style>
+        <Style Selector="Button.repo-browse:pointerover /template/ ContentPresenter">
+            <Setter Property="Background" Value="#1A2848" />
+        </Style>
+        <Style Selector="md|MarkdownScrollViewer ctxt|CTextBlock">
+            <Setter Property="Foreground" Value="#B8D4F8" />
+            <Setter Property="FontSize" Value="13" />
+        </Style>
+        <!-- Show more / Show less link -->
+        <Style Selector="Button.show-more">
+            <Setter Property="Background" Value="Transparent" />
+            <Setter Property="BorderThickness" Value="0" />
+            <Setter Property="Padding" Value="0,6,0,0" />
+            <Setter Property="Foreground" Value="#5A7AAA" />
+            <Setter Property="FontSize" Value="13" />
+            <Setter Property="Cursor" Value="Hand" />
+            <Setter Property="HorizontalAlignment" Value="Left" />
+        </Style>
+        <Style Selector="Button.show-more:pointerover /template/ ContentPresenter">
+            <Setter Property="Background" Value="Transparent" />
+        </Style>
+        <Style Selector="Button.show-more:pointerover">
+            <Setter Property="Foreground" Value="#7A9FCC" />
+        </Style>
+        <Style Selector="ComboBox.branch-selector">
+            <Setter Property="Padding" Value="10,4" />
+            <Setter Property="Background" Value="#131E38" />
+            <Setter Property="BorderBrush" Value="#1E2E50" />
+            <Setter Property="BorderThickness" Value="1" />
+            <Setter Property="Foreground" Value="#7AABDA" />
+            <Setter Property="FontSize" Value="12" />
+        </Style>
+    </UserControl.Styles>
+
+    <Grid ColumnDefinitions="*,Auto">
+
+        <!-- ══════════════════════════════════════════════
+             LEFT PANEL — code-agent conversation
+             ══════════════════════════════════════════════ -->
+        <DockPanel Grid.Column="0">
+
+            <!-- Repo context bar -->
+            <Border DockPanel.Dock="Top"
+                    Background="#09111F"
+                    BorderBrush="#161E35"
+                    BorderThickness="0,0,0,1"
+                    Padding="12,7">
+                <StackPanel Orientation="Horizontal" Spacing="6" VerticalAlignment="Center">
+
+                    <!-- Browse button -->
+                    <Button x:Name="BrowseRepoButton"
+                            Classes="repo-browse"
+                            Content="📁 Browse repo…"
+                            VerticalAlignment="Center" />
+
+                    <!-- Repo + branch group — only shown after a folder is picked -->
+                    <StackPanel Orientation="Horizontal"
+                                Spacing="0"
+                                IsVisible="{Binding HasSelectedRepo}"
+                                VerticalAlignment="Center">
+
+                        <!-- Repo name chip -->
+                        <Border Background="#0D1A30"
+                                BorderBrush="#1E2E50"
+                                BorderThickness="1"
+                                CornerRadius="6,0,0,6"
+                                Padding="9,4">
+                            <StackPanel Orientation="Horizontal" Spacing="5">
+                                <TextBlock Text="⎇"
+                                           FontSize="11"
+                                           Foreground="#4A6080"
+                                           VerticalAlignment="Center" />
+                                <TextBlock Text="{Binding RepoDisplayName}"
+                                           FontSize="12"
+                                           FontWeight="SemiBold"
+                                           Foreground="#7AABDA"
+                                           VerticalAlignment="Center"
+                                           TextTrimming="CharacterEllipsis"
+                                           MaxWidth="200" />
+                            </StackPanel>
+                        </Border>
+
+                        <!-- Branch selector — flush against repo chip -->
+                        <ComboBox Classes="branch-selector"
+                                  ItemsSource="{Binding AvailableBranches}"
+                                  SelectedItem="{Binding SelectedBranch}"
+                                  PlaceholderText="branch…"
+                                  CornerRadius="0,6,6,0"
+                                  VerticalAlignment="Center"
+                                  MinWidth="100"
+                                  MaxWidth="200" />
+                    </StackPanel>
+
+                </StackPanel>
+            </Border>
+
+            <!-- Input bar -->
+            <Border DockPanel.Dock="Bottom"
+                    Background="#0B0F1E"
+                    BorderBrush="#161E35"
+                    BorderThickness="0,1,0,0"
+                    Padding="20,12,20,16">
+                <Grid ColumnDefinitions="*,Auto">
+                    <TextBox Grid.Row="0" Grid.Column="0"
+                             Classes="code-input"
+                             Text="{Binding InputText}"
+                             Watermark="Ask the code agent..."
+                             AcceptsReturn="True"
+                             MaxHeight="160"
+                             VerticalContentAlignment="Top"
+                             TextWrapping="Wrap">
+                        <TextBox.KeyBindings>
+                            <KeyBinding Gesture="Ctrl+Return" Command="{Binding SendCommand}" />
+                        </TextBox.KeyBindings>
+                    </TextBox>
+                    <Button Grid.Row="0" Grid.Column="1"
+                            Classes="send"
+                            Content="Send"
+                            Command="{Binding SendCommand}"
+                            IsVisible="{Binding !IsStreaming}"
+                            Margin="10,0,0,0"
+                            MinWidth="80" />
+                    <Button Grid.Row="0" Grid.Column="1"
+                            Classes="stop"
+                            Command="{Binding StopCommand}"
+                            IsVisible="{Binding IsStreaming}"
+                            Margin="10,0,0,0"
+                            ToolTip.Tip="Stop generation">
+                        <Rectangle Width="11" Height="11" RadiusX="2" RadiusY="2"
+                                   Fill="{Binding $parent[Button].Foreground}" />
+                    </Button>
+                </Grid>
+            </Border>
+
+            <!-- Messages -->
+            <ScrollViewer x:Name="MessagesScroll"
+                          VerticalScrollBarVisibility="Auto"
+                          HorizontalScrollBarVisibility="Disabled"
+                          Padding="0,0,4,0">
+                <ItemsControl ItemsSource="{Binding Messages}"
+                              Margin="20,16,20,8">
+                    <ItemsControl.ItemTemplate>
+                        <DataTemplate x:DataType="models:CodeMessageModel">
+                            <Grid Margin="0,4">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="Auto" MaxWidth="600" />
+                                    <ColumnDefinition Width="*" />
+                                </Grid.ColumnDefinitions>
+
+                                <!-- Assistant bubble: left-aligned, monospace -->
+                                <Border Grid.Column="0" Grid.ColumnSpan="3"
+                                        IsVisible="{Binding IsAssistant}"
+                                        Background="#0D1A2E"
+                                        BorderBrush="#1A2E4E"
+                                        BorderThickness="1"
+                                        CornerRadius="4,18,18,18"
+                                        Padding="16,12"
+                                        HorizontalAlignment="Stretch">
+                                    <StackPanel>
+                                        <Panel>
+                                            <controls:StreamingDotIndicator IsStreaming="{Binding IsLoading}" />
+                                            <Border MaxHeight="{Binding ContentMaxHeight}"
+                                                    ClipToBounds="True"
+                                                    IsVisible="{Binding !IsLoading}">
+                                                <md:MarkdownScrollViewer Markdown="{Binding Content}" />
+                                            </Border>
+                                        </Panel>
+                                        <Button Classes="show-more"
+                                                IsVisible="{Binding IsCollapsible}"
+                                                Command="{Binding ToggleExpandCommand}"
+                                                Content="{Binding ShowMoreLabel}" />
+                                    </StackPanel>
+                                </Border>
+
+                                <!-- User bubble: right-aligned -->
+                                <Border Grid.Column="1" Grid.ColumnSpan="2"
+                                        IsVisible="{Binding IsUser}"
+                                        Background="#1A3360"
+                                        CornerRadius="18,4,18,18"
+                                        Padding="14,10"
+                                        MaxWidth="560"
+                                        HorizontalAlignment="Right">
+                                    <StackPanel>
+                                        <Border MaxHeight="{Binding ContentMaxHeight}"
+                                                ClipToBounds="True">
+                                            <TextBlock Text="{Binding Content}"
+                                                       TextWrapping="Wrap"
+                                                       FontSize="14"
+                                                       Foreground="#DCE8FF"
+                                                       LineHeight="21" />
+                                        </Border>
+                                        <Button Classes="show-more"
+                                                IsVisible="{Binding IsCollapsible}"
+                                                Command="{Binding ToggleExpandCommand}"
+                                                Content="{Binding ShowMoreLabel}" />
+                                    </StackPanel>
+                                </Border>
+
+                                <!-- Stopped indicator (left) -->
+                                <StackPanel Grid.Column="0" Grid.ColumnSpan="3"
+                                            IsVisible="{Binding IsStopped}"
+                                            Orientation="Horizontal"
+                                            Spacing="7"
+                                            HorizontalAlignment="Left">
+                                    <Rectangle Width="10" Height="10" RadiusX="1.5" RadiusY="1.5"
+                                               Fill="#3A4A62" VerticalAlignment="Center" />
+                                    <TextBlock Text="Stopped"
+                                               FontSize="12"
+                                               Foreground="#3A4A62"
+                                               VerticalAlignment="Center" />
+                                </StackPanel>
+                            </Grid>
+                        </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                </ItemsControl>
+            </ScrollViewer>
+        </DockPanel>
+
+        <!-- ══════════════════════════════════════════════
+             RIGHT PANEL — staged file actions / diff view
+             Collapses automatically when HasStagedActions=false
+             ══════════════════════════════════════════════ -->
+        <Border Grid.Column="1"
+                IsVisible="{Binding HasStagedActions}"
+                Width="400"
+                Background="#08111E"
+                BorderBrush="#161E35"
+                BorderThickness="1,0,0,0">
+            <DockPanel>
+
+                <!-- Header: title + action buttons -->
+                <Border DockPanel.Dock="Top"
+                        Background="#0B0F1E"
+                        BorderBrush="#161E35"
+                        BorderThickness="0,0,0,1"
+                        Padding="14,10">
+                    <Grid ColumnDefinitions="*,Auto,Auto">
+                        <TextBlock Text="Staged Changes"
+                                   FontSize="13"
+                                   FontWeight="SemiBold"
+                                   Foreground="#8A9BBB"
+                                   VerticalAlignment="Center" />
+                        <Button Grid.Column="1"
+                                Classes="reject"
+                                Content="Reject All"
+                                Command="{Binding RejectAllCommand}"
+                                Margin="0,0,6,0" />
+                        <Button Grid.Column="2"
+                                Classes="accept"
+                                Content="Accept All"
+                                Command="{Binding AcceptAllCommand}" />
+                    </Grid>
+                </Border>
+
+                <!-- Staged actions list -->
+                <ScrollViewer VerticalScrollBarVisibility="Auto"
+                              HorizontalScrollBarVisibility="Disabled">
+                    <ItemsControl ItemsSource="{Binding StagedActions}"
+                                  Margin="0,8,0,16">
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate x:DataType="models:StagedActionModel">
+                                <StackPanel Margin="0,0,0,12">
+
+                                    <!-- File header: action kind badge + file path -->
+                                    <Border Background="#0D1630"
+                                            BorderBrush="#1A2848"
+                                            BorderThickness="0,0,0,1"
+                                            Padding="12,7">
+                                        <StackPanel Orientation="Horizontal" Spacing="8">
+                                            <Border Background="#1A2848"
+                                                    CornerRadius="4"
+                                                    Padding="6,2">
+                                                <TextBlock Text="{Binding Kind}"
+                                                           FontSize="10"
+                                                           FontWeight="Bold"
+                                                           Foreground="#6090D0" />
+                                            </Border>
+                                            <TextBlock Text="{Binding FilePath}"
+                                                       FontFamily="Cascadia Code,Consolas,Menlo,monospace"
+                                                       FontSize="12"
+                                                       Foreground="#A0B8D8"
+                                                       VerticalAlignment="Center"
+                                                       TextTrimming="CharacterEllipsis" />
+                                        </StackPanel>
+                                    </Border>
+
+                                    <!-- Diff lines -->
+                                    <ItemsControl ItemsSource="{Binding DiffLines}">
+                                        <ItemsControl.ItemTemplate>
+                                            <DataTemplate x:DataType="models:DiffLine">
+                                                <Border Background="{Binding Kind, Converter={x:Static converters:DiffLineBackgroundConverter.Instance}}"
+                                                        Padding="12,1">
+                                                    <TextBlock Text="{Binding Content}"
+                                                               FontFamily="Cascadia Code,Consolas,Menlo,monospace"
+                                                               FontSize="12"
+                                                               Foreground="#C0D4EE"
+                                                               LineHeight="18" />
+                                                </Border>
+                                            </DataTemplate>
+                                        </ItemsControl.ItemTemplate>
+                                    </ItemsControl>
+
+                                </StackPanel>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                </ScrollViewer>
+
+            </DockPanel>
+        </Border>
+
+    </Grid>
+</UserControl>
