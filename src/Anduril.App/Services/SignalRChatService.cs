@@ -55,9 +55,14 @@ public sealed class SignalRChatService : IChatService, IAsyncDisposable
             }
             if (_connection.State == HubConnectionState.Connected)
                 return;
+            // State is Disconnected after a failed reconnect — fall through to StartAsync.
         }
 
         await _connection.StartAsync();
+
+        if (_connection.State != HubConnectionState.Connected)
+            throw new InvalidOperationException(
+                $"SignalR connection is in unexpected state '{_connection.State}' after StartAsync.");
     }
 
     public async Task<List<ProviderInfo>> GetAvailableProvidersAsync()

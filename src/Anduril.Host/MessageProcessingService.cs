@@ -105,7 +105,7 @@ public sealed class MessageProcessingService(
         if (chatCount == 0)
             logger.LogWarning(
                 "No chat-capable AI provider is available. " +
-                "Fallback AI chat will not work. Configure OpenAI, Anthropic, Augment Chat, Ollama, or LLamaSharp with valid credentials.");
+                "Fallback AI chat will not work. Configure OpenAI, Anthropic, Copilot, Augment Chat, Ollama, or LLamaSharp with valid credentials.");
     }
 
     private async Task InitializeToolsAsync(CancellationToken cancellationToken)

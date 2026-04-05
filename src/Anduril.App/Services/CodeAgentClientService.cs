@@ -7,7 +7,7 @@ using Microsoft.AspNetCore.SignalR.Client;
 namespace Anduril.App.Services;
 
 /// <summary>
-/// SignalR client that connects to the code-agent hub (/hubs/codeagent).
+/// SignalR client that connects to the chat hub for code-agent operations.
 /// Delivers streamed text tokens and staged file-action proposals to the UI.
 /// </summary>
 public sealed class CodeAgentClientService : IAsyncDisposable
@@ -27,7 +27,7 @@ public sealed class CodeAgentClientService : IAsyncDisposable
     public CodeAgentClientService(string baseUrl)
     {
         _connection = new HubConnectionBuilder()
-            .WithUrl($"{baseUrl}/hubs/codeagent")
+            .WithUrl($"{baseUrl}/hubs/chat")
             .WithAutomaticReconnect()
             .Build();
 
@@ -53,9 +53,14 @@ public sealed class CodeAgentClientService : IAsyncDisposable
             }
             if (_connection.State == HubConnectionState.Connected)
                 return;
+            // State is Disconnected after a failed reconnect — fall through to StartAsync.
         }
 
         await _connection.StartAsync();
+
+        if (_connection.State != HubConnectionState.Connected)
+            throw new InvalidOperationException(
+                $"SignalR connection is in unexpected state '{_connection.State}' after StartAsync.");
     }
 
     public async Task SelectModelAsync(string providerId)
