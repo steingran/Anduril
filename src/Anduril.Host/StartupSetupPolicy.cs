@@ -25,7 +25,9 @@ internal static class StartupSetupPolicy
         bool augmentChatConfigured = augmentChatEnabled && HasValue(augmentChatApiKey);
         bool ollamaConfigured = ollamaEnabled && HasValue(ollamaModel);
         bool llamaSharpConfigured = llamaSharpEnabled && HasValue(llamaSharpModelPath);
-        bool copilotConfigured = copilotEnabled && HasValue(copilotApiKey);
+        // Copilot can authenticate via the local Copilot CLI daemon without an explicit API key,
+        // so treat it as configured whenever it is enabled, regardless of whether an ApiKey is set.
+        bool copilotConfigured = copilotEnabled;
 
         bool anyAlternativeChatProviderConfigured =
             openAiConfigured || anthropicConfigured || augmentChatConfigured || llamaSharpConfigured || copilotConfigured;
