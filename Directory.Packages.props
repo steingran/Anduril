@@ -34,6 +34,13 @@
     <PackageVersion Include="SlackNet" Version="0.17.10" />
     <PackageVersion Include="SlackNet.Extensions.DependencyInjection" Version="0.17.10" />
     <PackageVersion Include="Spectre.Console" Version="0.54.0" />
+    <!--
+      Pinned to 0.21.3 to mitigate GHSA-xrw6-gwf8-vvr9 (CVE-2026-39959, high severity).
+      Tmds.DBus.Protocol is a transitive dep of Avalonia's Linux (X11) stack. The 0.21.x
+      line's patched release is 0.21.3; the 0.22.0–0.91.x range is also vulnerable, and
+      the next fully-patched line is 0.92.0 which is incompatible with Avalonia 11.3.2.
+    -->
+    <PackageVersion Include="Tmds.DBus.Protocol" Version="0.21.3" />
     <PackageVersion Include="TUnit" Version="1.22.3" />
     <PackageVersion Include="TUnit.Engine" Version="1.22.3" />
     <PackageVersion Include="Velopack" Version="0.0.1298" />
