@@ -103,9 +103,19 @@ public sealed class MessageProcessingService(
             chatCount, toolCount);
 
         if (chatCount == 0)
+        {
+            var chatProviderNames = aiProviders
+                .Where(p => p.SupportsChatCompletion)
+                .Select(p => p.Name)
+                .ToArray();
+            var providerList = chatProviderNames.Length > 0
+                ? string.Join(", ", chatProviderNames)
+                : "a chat-capable provider";
             logger.LogWarning(
                 "No chat-capable AI provider is available. " +
-                "Fallback AI chat will not work. Configure OpenAI, Anthropic, Copilot, Augment Chat, Ollama, or LLamaSharp with valid credentials.");
+                "Fallback AI chat will not work. Configure {Providers} with valid credentials.",
+                providerList);
+        }
     }
 
     private async Task InitializeToolsAsync(CancellationToken cancellationToken)

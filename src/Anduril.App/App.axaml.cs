@@ -9,6 +9,14 @@ namespace Anduril.App;
 
 public class App : Application
 {
+    /// <summary>
+    /// The chat service created when the desktop lifetime is initialized.
+    /// Exposed so the bootstrap (Program.cs) can dispose it asynchronously
+    /// after the UI lifetime has exited, avoiding a blocking dispose on the
+    /// UI thread during shutdown.
+    /// </summary>
+    public SignalRChatService? ChatService { get; private set; }
+
     public override void Initialize()
     {
         AvaloniaXamlLoader.Load(this);
@@ -18,16 +26,11 @@ public class App : Application
     {
         if (ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop)
         {
-            var chatService  = new SignalRChatService(HostService.BaseUrl);
+            ChatService     = new SignalRChatService(HostService.BaseUrl);
             var prefsService = new UserPreferencesService();
-            var mainVm       = new MainWindowViewModel(chatService, prefsService);
+            var mainVm       = new MainWindowViewModel(ChatService, prefsService);
 
             desktop.MainWindow = new MainWindow { DataContext = mainVm };
-
-            desktop.Exit += (_, _) =>
-            {
-                chatService.DisposeAsync().AsTask().GetAwaiter().GetResult();
-            };
         }
 
         base.OnFrameworkInitializationCompleted();
