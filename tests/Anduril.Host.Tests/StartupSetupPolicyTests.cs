@@ -114,6 +114,57 @@ public class StartupSetupPolicyTests
         await Assert.That(result.SkipMessage).IsNull();
     }
 
+    // CopilotProvider can authenticate via the local Copilot CLI daemon without an explicit API key,
+    // so enabling Copilot alone must be enough to skip first-run setup.
+    [Test]
+    public async Task Evaluate_CopilotEnabledWithoutApiKey_DoesNotRequireSetup()
+    {
+        var result = StartupSetupPolicy.Evaluate(
+            null, null, null, null, null,
+            ollamaMissing: false,
+            isContainer: true,
+            isUserInteractive: false,
+            isInputRedirected: true,
+            copilotApiKey: null,
+            copilotEnabled: true);
+
+        await Assert.That(result.RequiresSetup).IsFalse();
+        await Assert.That(result.ShouldLaunchSetup).IsFalse();
+        await Assert.That(result.SkipMessage).IsNull();
+    }
+
+    [Test]
+    public async Task Evaluate_CopilotEnabledWithEmptyApiKey_DoesNotRequireSetup()
+    {
+        var result = StartupSetupPolicy.Evaluate(
+            null, null, null, null, null,
+            ollamaMissing: false,
+            isContainer: true,
+            isUserInteractive: false,
+            isInputRedirected: true,
+            copilotApiKey: "",
+            copilotEnabled: true);
+
+        await Assert.That(result.RequiresSetup).IsFalse();
+        await Assert.That(result.ShouldLaunchSetup).IsFalse();
+        await Assert.That(result.SkipMessage).IsNull();
+    }
+
+    [Test]
+    public async Task Evaluate_CopilotDisabled_WithApiKey_StillRequiresSetup()
+    {
+        var result = StartupSetupPolicy.Evaluate(
+            null, null, null, null, null,
+            ollamaMissing: false,
+            isContainer: true,
+            isUserInteractive: false,
+            isInputRedirected: true,
+            copilotApiKey: "test-copilot-placeholder",
+            copilotEnabled: false);
+
+        await Assert.That(result.RequiresSetup).IsTrue();
+    }
+
     [Test]
     public async Task IsRunningInContainer_DetectsDotnetEnvironmentVariable()
     {
