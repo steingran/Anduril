@@ -24,15 +24,20 @@ public sealed class SmokeTests : AvaloniaHeadlessTestBase
                 Content = textBlock,
             };
 
-            window.Show();
+            try
+            {
+                window.Show();
 
-            await Assert.That(window.IsVisible).IsTrue();
-            await Assert.That(window.Bounds.Width).IsGreaterThan(0);
-            await Assert.That(window.Bounds.Height).IsGreaterThan(0);
-            await Assert.That(textBlock.Bounds.Width).IsGreaterThan(0);
-            await Assert.That(textBlock.Bounds.Height).IsGreaterThan(0);
-
-            window.Close();
+                await Assert.That(window.IsVisible).IsTrue();
+                await Assert.That(window.Bounds.Width).IsGreaterThan(0);
+                await Assert.That(window.Bounds.Height).IsGreaterThan(0);
+                await Assert.That(textBlock.Bounds.Width).IsGreaterThan(0);
+                await Assert.That(textBlock.Bounds.Height).IsGreaterThan(0);
+            }
+            finally
+            {
+                window.Close();
+            }
         });
     }
 }

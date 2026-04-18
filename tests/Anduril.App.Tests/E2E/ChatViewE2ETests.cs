@@ -27,13 +27,18 @@ public sealed class ChatViewE2ETests : AvaloniaHeadlessTestBase
 
             var view = new ChatView { DataContext = vm };
             var window = new Window { Width = 800, Height = 600, Content = view };
-            window.Show();
+            try
+            {
+                window.Show();
 
-            var input = FindInput(view);
+                var input = FindInput(view);
 
-            await Assert.That(input.Text).IsEqualTo("hello world");
-
-            window.Close();
+                await Assert.That(input.Text).IsEqualTo("hello world");
+            }
+            finally
+            {
+                window.Close();
+            }
         });
     }
 
@@ -47,17 +52,22 @@ public sealed class ChatViewE2ETests : AvaloniaHeadlessTestBase
 
             var view = new ChatView { DataContext = vm };
             var window = new Window { Width = 800, Height = 600, Content = view };
-            window.Show();
+            try
+            {
+                window.Show();
 
-            // Flush the ReactiveCommand CanExecute pipeline so the button's IsEnabled
-            // reflects the initial empty InputText before we assert.
-            Dispatcher.UIThread.RunJobs();
+                // Flush the ReactiveCommand CanExecute pipeline so the button's IsEnabled
+                // reflects the initial empty InputText before we assert.
+                Dispatcher.UIThread.RunJobs();
 
-            var sendButton = FindSendButton(view);
+                var sendButton = FindSendButton(view);
 
-            await Assert.That(sendButton.IsEffectivelyEnabled).IsFalse();
-
-            window.Close();
+                await Assert.That(sendButton.IsEffectivelyEnabled).IsFalse();
+            }
+            finally
+            {
+                window.Close();
+            }
         });
     }
 
@@ -74,30 +84,42 @@ public sealed class ChatViewE2ETests : AvaloniaHeadlessTestBase
 
             var view = new ChatView { DataContext = vm };
             var window = new Window { Width = 800, Height = 600, Content = view };
-            window.Show();
-
-            Dispatcher.UIThread.RunJobs();
-
-            var sendButton = FindSendButton(view);
-            await Assert.That(sendButton.IsEffectivelyEnabled).IsTrue();
-            await Assert.That(sendButton.Command).IsNotNull();
-
-            sendButton.Command!.Execute(sendButton.CommandParameter);
-
-            // ReactiveCommand.CreateFromTask schedules execution on the main RX scheduler;
-            // run pending dispatcher jobs until SendMessageAsync has been observed by the
-            // fake service (bounded loop to avoid hanging the test).
-            for (var i = 0; i < 20 && fake.SentMessages.Count == 0; i++)
+            try
             {
+                window.Show();
+
                 Dispatcher.UIThread.RunJobs();
-                await Task.Yield();
+
+                var sendButton = FindSendButton(view);
+                await Assert.That(sendButton.IsEffectivelyEnabled).IsTrue();
+                await Assert.That(sendButton.Command).IsNotNull();
+
+                sendButton.Command!.Execute(sendButton.CommandParameter);
+
+                // ReactiveCommand.CreateFromTask schedules execution on the main RX scheduler;
+                // run pending dispatcher jobs until SendMessageAsync has been observed by the
+                // fake service (bounded loop to avoid hanging the test).
+                var iterations = 0;
+                for (; iterations < 20 && fake.SentMessages.Count == 0; iterations++)
+                {
+                    Dispatcher.UIThread.RunJobs();
+                    await Task.Yield();
+                }
+
+                if (fake.SentMessages.Count == 0)
+                {
+                    throw new TimeoutException(
+                        $"SendCommand did not dispatch to FakeChatService after {iterations} dispatcher flushes.");
+                }
+
+                await Assert.That(fake.SentMessages.Count).IsEqualTo(1);
+                await Assert.That(fake.SentMessages[0].Text).IsEqualTo("Hello agent");
+                await Assert.That(fake.SentMessages[0].ConversationId).IsEqualTo("conv-1");
             }
-
-            await Assert.That(fake.SentMessages.Count).IsEqualTo(1);
-            await Assert.That(fake.SentMessages[0].Text).IsEqualTo("Hello agent");
-            await Assert.That(fake.SentMessages[0].ConversationId).IsEqualTo("conv-1");
-
-            window.Close();
+            finally
+            {
+                window.Close();
+            }
         });
     }
 
