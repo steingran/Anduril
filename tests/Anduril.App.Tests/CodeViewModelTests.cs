@@ -115,9 +115,11 @@ public sealed class CodeViewModelTests
     public async Task AvailableBranches_WhenRepoPathCleared_IsEmpty()
     {
         var vm = new CodeViewModel();
-        // Set a path that is not a valid git repo — branches won't load, but
-        // clearing the path should empty the collection and null the selection.
-        vm.SelectedRepoPath = "/nonexistent/path";
+        // Seed non-empty branch state so the clearing logic is genuinely exercised
+        // (otherwise this could pass with an always-empty collection).
+        vm.AvailableBranches.Add("main");
+        vm.SelectedBranch = "main";
+
         vm.SelectedRepoPath = null;
 
         await Assert.That(vm.AvailableBranches).IsEmpty();
