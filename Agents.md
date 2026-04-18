@@ -42,7 +42,7 @@ Anduril is a personal AI assistant built from scratch in C#. It connects to Slac
 - **AI**: `Microsoft.Extensions.AI` (10.4.1), `Microsoft.Extensions.AI.Abstractions` (10.4.1), `Microsoft.Extensions.AI.OpenAI` (10.4.1), `Anthropic.SDK` (5.10.0), `OllamaSharp` (5.4.25), `LLamaSharp` (0.26.0), `ModelContextProtocol` (1.1.0), `GitHub.Copilot.SDK` (0.1.25)
 - **Desktop**: `Avalonia` (11.3.2) — plus `Avalonia.Desktop`, `Avalonia.Fonts.Inter`, `Avalonia.ReactiveUI`, `Avalonia.Themes.Fluent` at the same version. `Markdown.Avalonia` (11.0.2), `Microsoft.AspNetCore.SignalR.Client` (10.0.5)
 - **Communication**: `SlackNet` (0.17.10), `SlackNet.Extensions.DependencyInjection` (0.17.10) — Socket Mode is built into the base package, no separate `SlackNet.SocketMode` needed. `Microsoft.Bot.Builder.Integration.AspNet.Core` (4.23.1)
-- **Integrations**: `Octokit` (14.0.0), `Sentry` (6.2.0), `Microsoft.Graph` (5.103.0), `Google.Apis.Gmail.v1` (1.73.0.4029), `MailKit` (4.15.1), `Azure.Identity` (1.19.0)
+- **Integrations**: `Octokit` (14.0.0), `Sentry` (6.2.0), `Microsoft.Graph` (5.103.0), `Google.Apis.Gmail.v1` (1.73.0.4029), `MailKit` (4.16.0), `Azure.Identity` (1.19.0)
 - **Infrastructure**: `Serilog.AspNetCore` (10.0.0), `Velopack` (0.0.1298), `Microsoft.EntityFrameworkCore.Sqlite` (10.0.5), `Spectre.Console` (0.54.0)
 - **Testing**: `TUnit` (1.22.3) + `TUnit.Engine` (1.22.3), `Microsoft.Playwright` (1.58.0)
 

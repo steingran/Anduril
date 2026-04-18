@@ -197,7 +197,13 @@ internal sealed class MailKitProtonMailImapClient : IProtonMailImapClient
     private Task<IMailFolder> GetFolderAsync(string mailbox, CancellationToken cancellationToken)
     {
         if (mailbox.Equals("INBOX", StringComparison.OrdinalIgnoreCase))
-            return Task.FromResult<IMailFolder>(_client.Inbox);
+        {
+            // MailKit 4.16+ annotates ImapClient.Inbox as nullable. In practice it is populated
+            // once the client is authenticated; surface a clear error if that invariant is broken.
+            var inbox = _client.Inbox
+                ?? throw new InvalidOperationException("IMAP client has no INBOX folder available; ensure the client is authenticated before fetching mail.");
+            return Task.FromResult<IMailFolder>(inbox);
+        }
 
         return GetFolderFromNamespaceAsync(mailbox, cancellationToken);
     }
