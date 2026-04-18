@@ -69,7 +69,10 @@ public static class HostBuilderExtensions
         builder.Services.Configure<AiProviderOptions>("openai", openAiSection);
         builder.Services.Configure<AiProviderOptions>("anthropic", anthropicSection);
         builder.Services.Configure<AiProviderOptions>("augment", augmentSection);
-        builder.Services.Configure<AiProviderOptions>("augmentchat", augmentChatSection);
+        // Keep the named-options key aligned with AugmentChatProvider.Name so the hub's
+        // providerOptions.Get(p.Name) lookup resolves to the configured section rather than
+        // falling back to defaults.
+        builder.Services.Configure<AiProviderOptions>("augment-chat", augmentChatSection);
         builder.Services.Configure<AiProviderOptions>("ollama", ollamaSection);
         builder.Services.Configure<AiProviderOptions>("llamasharp", llamaSharpSection);
         builder.Services.Configure<AiProviderOptions>("copilot", copilotSection);
@@ -102,7 +105,7 @@ public static class HostBuilderExtensions
         {
             builder.Services.AddSingleton<IAiProvider>(sp =>
                 new AugmentChatProvider(
-                    Options.Create(sp.GetRequiredService<IOptionsMonitor<AiProviderOptions>>().Get("augmentchat")),
+                    Options.Create(sp.GetRequiredService<IOptionsMonitor<AiProviderOptions>>().Get("augment-chat")),
                     sp.GetRequiredService<ILogger<AugmentChatProvider>>()));
         }
 
