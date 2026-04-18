@@ -92,18 +92,10 @@ public sealed class CodeViewE2ETests : AvaloniaHeadlessTestBase
 
                 window.PressKey(PhysicalKey.Enter, RawInputModifiers.Control);
 
-                var iterations = 0;
-                for (; iterations < 20 && fake.SentMessages.Count == 0; iterations++)
-                {
-                    Dispatcher.UIThread.RunJobs();
-                    await Task.Yield();
-                }
-
-                if (fake.SentMessages.Count == 0)
-                {
-                    throw new TimeoutException(
-                        $"Ctrl+Return did not dispatch CodeView SendCommand after {iterations} dispatcher flushes.");
-                }
+                await HeadlessInputHelpers.FlushUntilAsync(
+                    () => fake.SentMessages.Count > 0,
+                    maxIterations: 20,
+                    timeoutMessage: "Ctrl+Return did not dispatch CodeView SendCommand");
 
                 await Assert.That(fake.SentMessages.Count).IsEqualTo(1);
                 await Assert.That(fake.SentMessages[0].Text).IsEqualTo("review diff");
