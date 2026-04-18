@@ -116,6 +116,10 @@ public sealed class CopilotProvider(IOptions<AiProviderOptions> options, ILogger
     private async Task CleanupAsync()
     {
         _chatClient = null;
+        // Reset model cache so a later InitializeAsync refetches, rather than serving stale data
+        // from a partially-initialised prior attempt.
+        _cachedModels = null;
+        _modelsLoaded = false;
 
         if (_client is not null)
         {

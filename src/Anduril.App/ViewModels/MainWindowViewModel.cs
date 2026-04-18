@@ -215,16 +215,16 @@ public sealed class MainWindowViewModel : ViewModelBase
     {
         try
         {
-            // Create a conversation for the Chat view
+            // Create both conversations before mutating UI state, so a failure on the second
+            // call doesn't leave the Chat view initialised while the Code view is not.
             var conv = await _chatService.CreateConversationAsync();
+            var codeConv = await _chatService.CreateConversationAsync();
+
             var entry = new ConversationEntry { Id = conv.Id, Title = conv.Title ?? "New conversation" };
             Conversations.Insert(0, entry);
             ChatVm.SetConversation(conv.Id, _chatService);
-            CurrentView = ChatVm;
-
-            // Create a separate conversation for the Code view
-            var codeConv = await _chatService.CreateConversationAsync();
             CodeVm.SetConversation(codeConv.Id, _chatService);
+            CurrentView = ChatVm;
         }
         catch
         {
