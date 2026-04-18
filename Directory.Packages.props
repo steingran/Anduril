@@ -43,7 +43,7 @@
     -->
     <PackageVersion Include="Tmds.DBus.Protocol" Version="0.21.3" />
     <PackageVersion Include="TUnit" Version="1.22.3" />
-    <PackageVersion Include="TUnit.Engine" Version="1.22.3" />
+    <PackageVersion Include="TUnit.Engine" Version="1.37.0" />
     <PackageVersion Include="Velopack" Version="0.0.1298" />
   </ItemGroup>
 </Project>
