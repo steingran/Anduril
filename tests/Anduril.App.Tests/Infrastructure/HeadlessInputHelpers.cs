@@ -2,6 +2,7 @@ using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Headless;
 using Avalonia.Input;
+using Avalonia.Threading;
 using Avalonia.VisualTree;
 
 namespace Anduril.App.Tests.Infrastructure;
@@ -27,7 +28,12 @@ internal static class HeadlessInputHelpers
     public static void PressKey(this Window window, PhysicalKey key, RawInputModifiers modifiers = RawInputModifiers.None) =>
         window.KeyPressQwerty(key, modifiers);
 
-    /// <summary>Performs a full mouse click (down + up) at the given window-space point.</summary>
+    /// <summary>
+    /// Performs a single mouse click (move + down + up) at the given window-space point.
+    /// No modifiers, no prior-button release, and no pause between down/up — sufficient for the
+    /// single-click interactions these tests need. If a future test needs double-click,
+    /// modifiers, or a drag, extend this with overloads rather than papering over it here.
+    /// </summary>
     public static void Click(this Window window, Point point, MouseButton button = MouseButton.Left)
     {
         window.MouseMove(point);
@@ -78,4 +84,27 @@ internal static class HeadlessInputHelpers
         root.GetVisualDescendants().OfType<T>().FirstOrDefault(predicate)
             ?? throw new InvalidOperationException(
                 $"No descendant of type {typeof(T).Name} matched the predicate under {root.GetType().Name}.");
+
+    /// <summary>
+    /// Pumps the Avalonia UI dispatcher up to <paramref name="maxIterations"/> times, yielding
+    /// between each iteration so Task-returning continuations (e.g. a <c>ReactiveCommand</c>'s
+    /// async body, or a fire-and-forget init method on a view model) get scheduler time to run.
+    /// Returns as soon as <paramref name="condition"/> becomes <c>true</c>; throws
+    /// <see cref="TimeoutException"/> with the attempted iteration count if it never does so the
+    /// failure mode is loud rather than a flaky hang.
+    /// </summary>
+    public static async Task FlushUntilAsync(Func<bool> condition, int maxIterations, string timeoutMessage)
+    {
+        var i = 0;
+        for (; i < maxIterations && !condition(); i++)
+        {
+            Dispatcher.UIThread.RunJobs();
+            await Task.Yield();
+        }
+
+        if (!condition())
+        {
+            throw new TimeoutException($"{timeoutMessage} after {i} dispatcher flushes.");
+        }
+    }
 }

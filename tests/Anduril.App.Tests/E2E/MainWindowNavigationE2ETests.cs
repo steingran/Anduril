@@ -23,7 +23,7 @@ public sealed class MainWindowNavigationE2ETests : AvaloniaHeadlessTestBase
             try
             {
                 window.Show();
-                FlushUntilStable();
+                await FlushUntilStableAsync();
 
                 await Assert.That(vm.IsChatActive).IsTrue();
                 await Assert.That(vm.IsCodeActive).IsFalse();
@@ -33,7 +33,8 @@ public sealed class MainWindowNavigationE2ETests : AvaloniaHeadlessTestBase
                 await Assert.That(chatTab.Classes.Contains("active")).IsTrue();
                 await Assert.That(codeTab.Classes.Contains("active")).IsFalse();
 
-                _ = window.FindDescendant<ChatView>(_ => true);
+                var chatView = window.FindDescendant<ChatView>(_ => true);
+                await Assert.That(chatView).IsNotNull();
             }
             finally
             {
@@ -51,23 +52,15 @@ public sealed class MainWindowNavigationE2ETests : AvaloniaHeadlessTestBase
             try
             {
                 window.Show();
-                FlushUntilStable();
+                await FlushUntilStableAsync();
 
                 var codeTab = FindTabButton(window, "Code");
                 window.ClickCenterOf(codeTab);
 
-                var iterations = 0;
-                for (; iterations < 20 && !vm.IsCodeActive; iterations++)
-                {
-                    Dispatcher.UIThread.RunJobs();
-                    await Task.Yield();
-                }
-
-                if (!vm.IsCodeActive)
-                {
-                    throw new TimeoutException(
-                        $"Clicking the Code tab did not activate CodeVm after {iterations} dispatcher flushes.");
-                }
+                await HeadlessInputHelpers.FlushUntilAsync(
+                    () => vm.IsCodeActive,
+                    maxIterations: 20,
+                    timeoutMessage: "Clicking the Code tab did not activate CodeVm");
 
                 await Assert.That(vm.IsChatActive).IsFalse();
                 await Assert.That(vm.IsCodeActive).IsTrue();
@@ -76,7 +69,8 @@ public sealed class MainWindowNavigationE2ETests : AvaloniaHeadlessTestBase
                 await Assert.That(codeTab.Classes.Contains("active")).IsTrue();
                 await Assert.That(chatTab.Classes.Contains("active")).IsFalse();
 
-                _ = window.FindDescendant<CodeView>(_ => true);
+                var codeView = window.FindDescendant<CodeView>(_ => true);
+                await Assert.That(codeView).IsNotNull();
             }
             finally
             {
@@ -93,15 +87,19 @@ public sealed class MainWindowNavigationE2ETests : AvaloniaHeadlessTestBase
     }
 
     /// <summary>
-    /// Pumps dispatcher jobs a few times so layout, the initial <c>LoadModelsCommand</c>
-    /// subscription, and the fire-and-forget <c>CreateNewConversationAsync</c> follow-up all
-    /// settle before the test asserts visual state.
+    /// Pumps dispatcher jobs with yields between iterations so layout, the initial
+    /// <c>LoadModelsCommand</c> subscription, and the fire-and-forget
+    /// <c>CreateNewConversationAsync</c> follow-up on <see cref="MainWindowViewModel"/> all
+    /// settle before the test asserts visual state. Synchronous <c>RunJobs</c> calls alone
+    /// don't give Task-returning continuations a chance to run — the <c>await Task.Yield()</c>
+    /// is what lets the async chain make progress.
     /// </summary>
-    private static void FlushUntilStable()
+    private static async Task FlushUntilStableAsync()
     {
         for (var i = 0; i < 5; i++)
         {
             Dispatcher.UIThread.RunJobs();
+            await Task.Yield();
         }
     }
 

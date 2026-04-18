@@ -75,18 +75,10 @@ public sealed class ChatViewInputE2ETests : AvaloniaHeadlessTestBase
 
                 window.PressKey(PhysicalKey.Enter, RawInputModifiers.Control);
 
-                var iterations = 0;
-                for (; iterations < 20 && fake.SentMessages.Count == 0; iterations++)
-                {
-                    Dispatcher.UIThread.RunJobs();
-                    await Task.Yield();
-                }
-
-                if (fake.SentMessages.Count == 0)
-                {
-                    throw new TimeoutException(
-                        $"Ctrl+Return did not dispatch SendCommand after {iterations} dispatcher flushes.");
-                }
+                await HeadlessInputHelpers.FlushUntilAsync(
+                    () => fake.SentMessages.Count > 0,
+                    maxIterations: 20,
+                    timeoutMessage: "Ctrl+Return did not dispatch ChatView SendCommand");
 
                 await Assert.That(fake.SentMessages.Count).IsEqualTo(1);
                 await Assert.That(fake.SentMessages[0].Text).IsEqualTo("via keybinding");
@@ -122,18 +114,10 @@ public sealed class ChatViewInputE2ETests : AvaloniaHeadlessTestBase
 
                 window.ClickCenterOf(sendButton);
 
-                var iterations = 0;
-                for (; iterations < 20 && fake.SentMessages.Count == 0; iterations++)
-                {
-                    Dispatcher.UIThread.RunJobs();
-                    await Task.Yield();
-                }
-
-                if (fake.SentMessages.Count == 0)
-                {
-                    throw new TimeoutException(
-                        $"Send button click did not dispatch SendCommand after {iterations} dispatcher flushes.");
-                }
+                await HeadlessInputHelpers.FlushUntilAsync(
+                    () => fake.SentMessages.Count > 0,
+                    maxIterations: 20,
+                    timeoutMessage: "Send button click did not dispatch SendCommand");
 
                 await Assert.That(fake.SentMessages.Count).IsEqualTo(1);
                 await Assert.That(fake.SentMessages[0].Text).IsEqualTo("clicked send");
