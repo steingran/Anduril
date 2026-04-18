@@ -100,7 +100,7 @@ public sealed class AnthropicProvider(IOptions<AiProviderOptions> options, ILogg
     private async Task<IReadOnlyList<ModelInfo>> FetchModelsAsync(CancellationToken cancellationToken)
     {
         if (_client is null)
-            return [];
+            return Array.Empty<ModelInfo>();
         try
         {
             // Fetch up to 1000 models — well above Anthropic's current catalog size.
@@ -117,10 +117,10 @@ public sealed class AnthropicProvider(IOptions<AiProviderOptions> options, ILogg
             logger.LogDebug("Anthropic Models API returned {Count} model(s)", models.Count);
             return models;
         }
-        catch (Exception ex)
+        catch (Exception ex) when (ex is not OperationCanceledException)
         {
             logger.LogWarning(ex, "Failed to fetch Anthropic model list.");
-            return [];
+            return Array.Empty<ModelInfo>();
         }
     }
 }

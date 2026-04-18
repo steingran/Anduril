@@ -485,13 +485,16 @@ public sealed class AndurilChatHub(
             var full = Path.GetFullPath(Path.Combine(basePath, path));
             if (!full.StartsWith(basePath, StringComparison.OrdinalIgnoreCase))
                 return "Error: path is outside the repository.";
-            // Resolve symlinks/reparse points to prevent traversal via symlink targets
-            var resolved = Path.GetFullPath(new FileInfo(full).LinkTarget ?? full);
-            if (!resolved.StartsWith(basePath, StringComparison.OrdinalIgnoreCase))
-                return "Error: path resolves outside the repository.";
             if (!File.Exists(full))
                 return $"File not found: {path}";
-            var content = File.ReadAllText(full);
+            // File.ResolveLinkTarget follows chains and resolves relative targets against the
+            // symlink's own directory — safer than FileInfo.LinkTarget + Path.GetFullPath, which
+            // resolves relative targets against the process CWD.
+            var finalTarget = File.ResolveLinkTarget(full, returnFinalTarget: true);
+            var resolved = Path.GetFullPath(finalTarget?.FullName ?? full);
+            if (!resolved.StartsWith(basePath, StringComparison.OrdinalIgnoreCase))
+                return "Error: path resolves outside the repository.";
+            var content = File.ReadAllText(resolved);
             return content.Length > 100_000
                 ? content[..100_000] + "\n\n... (file truncated at 100 000 characters)"
                 : content;
@@ -510,15 +513,17 @@ public sealed class AndurilChatHub(
             if (!dir.StartsWith(baseWithSep, StringComparison.OrdinalIgnoreCase)
                 && !string.Equals(dir + Path.DirectorySeparatorChar, baseWithSep, StringComparison.OrdinalIgnoreCase))
                 return "Error: path is outside the repository.";
-            // Resolve symlinks/reparse points to prevent traversal via symlink targets
-            var resolvedDir = Path.GetFullPath(new DirectoryInfo(dir).LinkTarget ?? dir);
+            if (!Directory.Exists(dir))
+                return $"Directory not found: {subdirectory}";
+            // Directory.ResolveLinkTarget follows chains and resolves relative targets against the
+            // symlink's own directory — safer than DirectoryInfo.LinkTarget + Path.GetFullPath.
+            var finalTarget = Directory.ResolveLinkTarget(dir, returnFinalTarget: true);
+            var resolvedDir = Path.GetFullPath(finalTarget?.FullName ?? dir);
             if (!resolvedDir.StartsWith(baseWithSep, StringComparison.OrdinalIgnoreCase)
                 && !string.Equals(resolvedDir + Path.DirectorySeparatorChar, baseWithSep, StringComparison.OrdinalIgnoreCase))
                 return "Error: path resolves outside the repository.";
-            if (!Directory.Exists(dir))
-                return $"Directory not found: {subdirectory}";
 
-            var entries = Directory.EnumerateFileSystemEntries(dir)
+            var entries = Directory.EnumerateFileSystemEntries(resolvedDir)
                 .Select(e => Directory.Exists(e) ? Path.GetFileName(e) + "/" : Path.GetFileName(e))
                 .Order(StringComparer.OrdinalIgnoreCase);
 
