@@ -34,7 +34,7 @@
     <PackageVersion Include="Serilog.AspNetCore" Version="10.0.0" />
     <PackageVersion Include="SlackNet" Version="0.17.10" />
     <PackageVersion Include="SlackNet.Extensions.DependencyInjection" Version="0.17.10" />
-    <PackageVersion Include="Spectre.Console" Version="0.54.0" />
+    <PackageVersion Include="Spectre.Console" Version="0.55.2" />
     <!--
       Pinned to 0.21.3 to mitigate GHSA-xrw6-gwf8-vvr9 (CVE-2026-39959, high severity).
       Tmds.DBus.Protocol is a transitive dep of Avalonia's Linux (X11) stack. The 0.21.x
