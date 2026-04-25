@@ -11,7 +11,9 @@
         "TUnit",
         "TUnit.Engine",
         "TUnit.Core",
-        "TUnit.Assertions"
+        "TUnit.Assertions",
+        "TUnit.Playwright",
+        "TUnit.AspNetCore"
       ]
     }
   ]
