@@ -2,5 +2,19 @@
   "$schema": "https://docs.renovatebot.com/renovate-schema.json",
   "extends": [
     "config:recommended"
+  ],
+  "packageRules": [
+    {
+      "description": "Group TUnit family packages so coupled versions bump together. Split PRs leave one package behind and the other ahead, causing NU1605 (downgrade) in CI.",
+      "groupName": "tunit",
+      "matchPackageNames": [
+        "TUnit",
+        "TUnit.Engine",
+        "TUnit.Core",
+        "TUnit.Assertions",
+        "TUnit.Playwright",
+        "TUnit.AspNetCore"
+      ]
+    }
   ]
 }
