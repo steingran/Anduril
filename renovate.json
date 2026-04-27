@@ -5,8 +5,12 @@
   ],
   "packageRules": [
     {
-      "description": "Group TUnit family packages so coupled versions bump together. Split PRs leave one package behind and the other ahead, causing NU1605 (downgrade) in CI.",
+      "description": "Group TUnit family packages so coupled versions bump together. Split PRs leave one package behind and the other ahead, causing NU1605 (downgrade) in CI. groupSlug pins the branch to renovate/tunit so a stale per-package branch cannot prevent regrouping.",
       "groupName": "tunit",
+      "groupSlug": "tunit",
+      "matchManagers": [
+        "nuget"
+      ],
       "matchPackageNames": [
         "TUnit",
         "TUnit.Engine",
