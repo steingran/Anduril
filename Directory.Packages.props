@@ -27,7 +27,7 @@
     <PackageVersion Include="Microsoft.Extensions.Options" Version="10.0.7" />
     <PackageVersion Include="Microsoft.Graph" Version="5.104.0" />
     <PackageVersion Include="Microsoft.Playwright" Version="1.59.0" />
-    <PackageVersion Include="ModelContextProtocol" Version="1.1.0" />
+    <PackageVersion Include="ModelContextProtocol" Version="1.2.0" />
     <PackageVersion Include="Octokit" Version="14.0.0" />
     <PackageVersion Include="OllamaSharp" Version="5.4.25" />
     <PackageVersion Include="Sentry" Version="6.4.1" />
