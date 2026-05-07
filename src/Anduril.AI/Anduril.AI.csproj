@@ -11,6 +11,11 @@
     <PackageReference Include="Microsoft.Extensions.AI" />
     <PackageReference Include="Microsoft.Extensions.AI.OpenAI" />
     <PackageReference Include="ModelContextProtocol" />
+    <!--
+      Direct reference to override the transitive 1.0.2 brought in by ModelContextProtocol.
+      1.1.62 is the patched release for GHSA-2cwq-pwfr-wcw3. Pinned in Directory.Packages.props.
+    -->
+    <PackageReference Include="Nerdbank.MessagePack" />
     <PackageReference Include="OllamaSharp" />
   </ItemGroup>
 

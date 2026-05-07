@@ -12,6 +12,11 @@
     <PackageReference Include="Microsoft.Extensions.AI" />
     <PackageReference Include="Microsoft.Extensions.Options" />
     <PackageReference Include="Microsoft.Graph" />
+    <!--
+      Direct reference to override the transitive 1.21.1 brought in by Microsoft.Graph.
+      1.22.0 is the patched release for GHSA-7j59-v9qr-6fq9. Pinned in Directory.Packages.props.
+    -->
+    <PackageReference Include="Microsoft.Kiota.Abstractions" />
     <PackageReference Include="Microsoft.Playwright" />
     <PackageReference Include="Octokit" />
   </ItemGroup>
