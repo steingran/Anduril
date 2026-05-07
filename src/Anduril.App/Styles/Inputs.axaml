@@ -1,0 +1,31 @@
+<Styles xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+
+    <!-- composer — transparent, no border (used inside the composer card) -->
+    <Style Selector="TextBox.composer">
+        <Setter Property="Background" Value="Transparent" />
+        <Setter Property="BorderBrush" Value="Transparent" />
+        <Setter Property="BorderThickness" Value="0" />
+        <Setter Property="Foreground" Value="{DynamicResource AndurilTextPrimaryBrush}" />
+        <Setter Property="FontFamily" Value="{DynamicResource AndurilFontFamilyUi}" />
+        <Setter Property="FontSize" Value="{DynamicResource AndurilFontSizeBody}" />
+        <Setter Property="Padding" Value="0" />
+    </Style>
+
+    <!-- standard — Fluent default with Anduril stroke -->
+    <Style Selector="TextBox.standard">
+        <Setter Property="Background" Value="{DynamicResource AndurilSurfaceAltBrush}" />
+        <Setter Property="BorderBrush" Value="{DynamicResource AndurilStrokeBrush}" />
+        <Setter Property="BorderThickness" Value="{DynamicResource AndurilStrokeThickness}" />
+        <Setter Property="CornerRadius" Value="{DynamicResource AndurilRadiusM}" />
+        <Setter Property="Foreground" Value="{DynamicResource AndurilTextPrimaryBrush}" />
+        <Setter Property="FontFamily" Value="{DynamicResource AndurilFontFamilyUi}" />
+        <Setter Property="FontSize" Value="{DynamicResource AndurilFontSizeBody}" />
+        <Setter Property="Padding" Value="{DynamicResource AndurilPaddingButton}" />
+    </Style>
+    <Style Selector="TextBox.standard:focus-visible">
+        <Setter Property="BorderBrush" Value="{DynamicResource AndurilAccentBrush}" />
+        <Setter Property="BorderThickness" Value="{DynamicResource AndurilFocusVisibleThickness}" />
+    </Style>
+
+</Styles>

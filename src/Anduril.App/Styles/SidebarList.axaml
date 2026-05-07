@@ -1,0 +1,38 @@
+<Styles xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+
+    <!-- Sidebar ListBox — transparent surface, no border. Full bodies land  -->
+    <!-- with the MainWindow shell rebuild (ANDA-73).                        -->
+    <Style Selector="ListBox.sidebar">
+        <Setter Property="Background" Value="Transparent" />
+        <Setter Property="BorderBrush" Value="Transparent" />
+        <Setter Property="BorderThickness" Value="0" />
+        <Setter Property="Padding" Value="{DynamicResource AndurilPaddingSidebar}" />
+    </Style>
+
+    <Style Selector="ListBox.sidebar ListBoxItem">
+        <Setter Property="Padding" Value="{DynamicResource AndurilPaddingButton}" />
+        <Setter Property="CornerRadius" Value="{DynamicResource AndurilRadiusM}" />
+        <Setter Property="Foreground" Value="{DynamicResource AndurilTextPrimaryBrush}" />
+    </Style>
+
+    <Style Selector="ListBox.sidebar ListBoxItem:pointerover /template/ ContentPresenter">
+        <Setter Property="Background" Value="{DynamicResource AndurilSurfaceSubtleBrush}" />
+    </Style>
+
+    <Style Selector="ListBox.sidebar ListBoxItem:selected /template/ ContentPresenter">
+        <Setter Property="Background" Value="{DynamicResource AndurilAccentSubtleBrush}" />
+        <Setter Property="TextElement.Foreground" Value="{DynamicResource AndurilTextPrimaryBrush}" />
+    </Style>
+
+    <!-- Section header (e.g. "TODAY", "YESTERDAY") -->
+    <Style Selector="TextBlock.SidebarGroupHeader">
+        <Setter Property="FontFamily" Value="{DynamicResource AndurilFontFamilyUi}" />
+        <Setter Property="FontSize" Value="{DynamicResource AndurilFontSizeOverline}" />
+        <Setter Property="FontWeight" Value="SemiBold" />
+        <Setter Property="LetterSpacing" Value="0.6" />
+        <Setter Property="Foreground" Value="{DynamicResource AndurilTextSecondaryBrush}" />
+        <Setter Property="Margin" Value="{DynamicResource AndurilPaddingButton}" />
+    </Style>
+
+</Styles>
