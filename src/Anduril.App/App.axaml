@@ -2,7 +2,25 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              x:Class="Anduril.App.App"
              RequestedThemeVariant="Default">
+
+    <Application.Resources>
+        <ResourceDictionary>
+            <ResourceDictionary.MergedDictionaries>
+                <ResourceInclude Source="/Styles/Tokens.axaml" />
+                <ResourceInclude Source="/Styles/Brushes.axaml" />
+                <ResourceInclude Source="/Styles/Motion.axaml" />
+            </ResourceDictionary.MergedDictionaries>
+        </ResourceDictionary>
+    </Application.Resources>
+
     <Application.Styles>
         <FluentTheme />
+        <StyleInclude Source="/Styles/Type.axaml" />
+        <StyleInclude Source="/Styles/Buttons.axaml" />
+        <StyleInclude Source="/Styles/Inputs.axaml" />
+        <StyleInclude Source="/Styles/SidebarList.axaml" />
+        <StyleInclude Source="/Styles/SegmentedControl.axaml" />
+        <StyleInclude Source="/Styles/Markdown.axaml" />
     </Application.Styles>
+
 </Application>
