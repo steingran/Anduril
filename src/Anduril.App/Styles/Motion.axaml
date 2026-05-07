@@ -3,7 +3,9 @@
                     xmlns:sys="clr-namespace:System;assembly=System.Runtime"
                     xmlns:anim="clr-namespace:Avalonia.Animation.Easings;assembly=Avalonia.Base">
 
-    <!-- Durations (Doherty: feedback 100 ms, transitions 250 ms, panel slides 300 ms) -->
+    <!-- Durations (Doherty: keep tactile feedback under the 400 ms threshold).   -->
+    <!-- Fast 120 ms = button/hover feedback, Default 200 ms = state transitions, -->
+    <!-- Slow 300 ms = panel slides / mode swaps, Zero = reduced-motion fallback. -->
     <sys:TimeSpan x:Key="AndurilMotionDurationFast">0:0:0.12</sys:TimeSpan>
     <sys:TimeSpan x:Key="AndurilMotionDurationDefault">0:0:0.20</sys:TimeSpan>
     <sys:TimeSpan x:Key="AndurilMotionDurationSlow">0:0:0.30</sys:TimeSpan>

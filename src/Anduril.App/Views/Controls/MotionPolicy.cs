@@ -28,10 +28,12 @@ public static class MotionPolicy
         => IsReducedMotion ? TimeSpan.Zero : duration;
 
     /// <summary>
-    /// Attached property mirroring <see cref="IsReducedMotion"/> so XAML
-    /// triggers can react. Surfaces typically bind via DynamicResource on
-    /// the duration tokens; this attached property exists for cases where
-    /// a Style needs a per-control switch.
+    /// Per-control reduced-motion override that XAML triggers can react to.
+    /// Independent of the global <see cref="IsReducedMotion"/> flag — surfaces
+    /// typically bind via DynamicResource on the duration tokens, but a Style
+    /// may opt a specific subtree into reduced-motion via this attached
+    /// property. ANDA-76 will introduce the binding that fans the global
+    /// policy out to controls when needed.
     /// </summary>
     public static readonly AttachedProperty<bool> IsReducedMotionProperty =
         AvaloniaProperty.RegisterAttached<Control, bool>(

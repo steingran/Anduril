@@ -13,7 +13,7 @@ namespace Anduril.App.Tests;
 /// Dark theme variants.
 ///
 /// <see cref="TestApp"/> mirrors the production <c>App.axaml</c> resource
-/// wiring so this test exercises the same Fluent-aliased static-resource
+/// wiring so this test exercises the same Fluent-aliased DynamicResource
 /// forwarding that the live app does.
 /// </summary>
 public sealed class DesignSystemResourceTests : AvaloniaHeadlessTestBase

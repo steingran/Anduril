@@ -29,4 +29,11 @@
         <Setter Property="Background" Value="{DynamicResource AndurilSurfaceAltBrush}" />
     </Style>
 
+    <!-- :selected:pointerover declared after :pointerover so the selected -->
+    <!-- visuals win at equal specificity (declaration order tie-break).   -->
+    <Style Selector="ListBox.segmented ListBoxItem:selected:pointerover /template/ ContentPresenter">
+        <Setter Property="Background" Value="{DynamicResource AndurilSurfaceElevatedBrush}" />
+        <Setter Property="TextElement.Foreground" Value="{DynamicResource AndurilTextPrimaryBrush}" />
+    </Style>
+
 </Styles>
