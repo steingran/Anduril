@@ -31,7 +31,7 @@
       1.22.0 is the patched release for GHSA-7j59-v9qr-6fq9 (RedirectHandler header leakage).
       Referenced explicitly from Anduril.Integrations so the override propagates to Host/App.
     -->
-    <PackageVersion Include="Microsoft.Kiota.Abstractions" Version="1.22.0" />
+    <PackageVersion Include="Microsoft.Kiota.Abstractions" Version="1.22.2" />
     <PackageVersion Include="Microsoft.Playwright" Version="1.59.0" />
     <PackageVersion Include="ModelContextProtocol" Version="1.2.0" />
     <!--
