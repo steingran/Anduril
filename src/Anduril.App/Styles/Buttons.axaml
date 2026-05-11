@@ -133,8 +133,9 @@
     </Style>
 
     <!-- ================================================================== -->
-    <!-- :focus-visible outline (fixes plan issue C9) — applies to all five  -->
-    <!-- canonical classes for keyboard navigation visibility.               -->
+    <!-- :focus-visible outline (fixes plan issue C9) — applies to the four  -->
+    <!-- visual button classes. `block` is layout-only and composes with one -->
+    <!-- of these styles rather than defining its own chrome.                -->
     <!-- ================================================================== -->
     <Style Selector="Button.accent:focus-visible /template/ ContentPresenter,
                      Button.ghost:focus-visible /template/ ContentPresenter,
