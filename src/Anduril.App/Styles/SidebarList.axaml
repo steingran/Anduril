@@ -25,6 +25,11 @@
         <Setter Property="TextElement.Foreground" Value="{DynamicResource AndurilTextPrimaryBrush}" />
     </Style>
 
+    <Style Selector="ListBox.sidebar ListBoxItem:selected:pointerover /template/ ContentPresenter">
+        <Setter Property="Background" Value="{DynamicResource AndurilAccentSubtleBrush}" />
+        <Setter Property="TextElement.Foreground" Value="{DynamicResource AndurilTextPrimaryBrush}" />
+    </Style>
+
     <!-- Section header (e.g. "TODAY", "YESTERDAY") -->
     <Style Selector="TextBlock.SidebarGroupHeader">
         <Setter Property="FontFamily" Value="{DynamicResource AndurilFontFamilyUi}" />
