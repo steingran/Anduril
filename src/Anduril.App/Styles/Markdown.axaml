@@ -1,0 +1,34 @@
+<Styles xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+
+    <!-- Markdown.Avalonia overrides. Full body lands with the ChatView      -->
+    <!-- rebuild (ANDA-74); this stub establishes the inline-code chip and   -->
+    <!-- code-block surface so views can opt in today.                        -->
+
+    <!-- Inline code chip -->
+    <Style Selector="TextBlock.MarkdownInlineCode">
+        <Setter Property="FontFamily" Value="{DynamicResource AndurilFontFamilyMono}" />
+        <Setter Property="FontSize" Value="{DynamicResource AndurilFontSizeMonoSmall}" />
+        <Setter Property="Background" Value="{DynamicResource AndurilCodeSurfaceBrush}" />
+        <Setter Property="Foreground" Value="{DynamicResource AndurilTextPrimaryBrush}" />
+        <Setter Property="Padding" Value="{DynamicResource AndurilPaddingChip}" />
+    </Style>
+
+    <!-- Code-block surface -->
+    <Style Selector="Border.MarkdownCodeBlock">
+        <Setter Property="Background" Value="{DynamicResource AndurilCodeSurfaceBrush}" />
+        <Setter Property="BorderBrush" Value="{DynamicResource AndurilStrokeBrush}" />
+        <Setter Property="BorderThickness" Value="{DynamicResource AndurilStrokeThickness}" />
+        <Setter Property="CornerRadius" Value="{DynamicResource AndurilRadiusM}" />
+        <Setter Property="Padding" Value="{DynamicResource AndurilPaddingCard}" />
+    </Style>
+
+    <!-- Blockquote -->
+    <Style Selector="Border.MarkdownBlockquote">
+        <Setter Property="Background" Value="{DynamicResource AndurilSurfaceSubtleBrush}" />
+        <Setter Property="BorderBrush" Value="{DynamicResource AndurilAccentBrush}" />
+        <Setter Property="BorderThickness" Value="3,0,0,0" />
+        <Setter Property="Padding" Value="{DynamicResource AndurilPaddingCard}" />
+    </Style>
+
+</Styles>

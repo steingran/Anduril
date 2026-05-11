@@ -1,0 +1,51 @@
+<ResourceDictionary xmlns="https://github.com/avaloniaui"
+                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+                    xmlns:sys="clr-namespace:System;assembly=System.Runtime">
+
+    <!-- Spacing scale (4 px base) -->
+    <x:Double x:Key="AndurilSpacingXxs">2</x:Double>
+    <x:Double x:Key="AndurilSpacingXs">4</x:Double>
+    <x:Double x:Key="AndurilSpacingS">8</x:Double>
+    <x:Double x:Key="AndurilSpacingM">12</x:Double>
+    <x:Double x:Key="AndurilSpacingL">16</x:Double>
+    <x:Double x:Key="AndurilSpacingXl">24</x:Double>
+    <x:Double x:Key="AndurilSpacingXxl">32</x:Double>
+    <x:Double x:Key="AndurilSpacingXxxl">48</x:Double>
+
+    <!-- Radius scale -->
+    <CornerRadius x:Key="AndurilRadiusS">4</CornerRadius>
+    <CornerRadius x:Key="AndurilRadiusM">8</CornerRadius>
+    <CornerRadius x:Key="AndurilRadiusL">12</CornerRadius>
+    <CornerRadius x:Key="AndurilRadiusXl">20</CornerRadius>
+    <CornerRadius x:Key="AndurilRadiusPill">999</CornerRadius>
+
+    <!-- Stroke thicknesses -->
+    <Thickness x:Key="AndurilStrokeThickness">1</Thickness>
+    <Thickness x:Key="AndurilStrokeThicknessStrong">2</Thickness>
+    <Thickness x:Key="AndurilFocusVisibleThickness">2</Thickness>
+
+    <!-- Common padding combinations -->
+    <Thickness x:Key="AndurilPaddingCard">16</Thickness>
+    <Thickness x:Key="AndurilPaddingPanel">24</Thickness>
+    <Thickness x:Key="AndurilPaddingButton">12,8</Thickness>
+    <Thickness x:Key="AndurilPaddingButtonLarge">16,10</Thickness>
+    <Thickness x:Key="AndurilPaddingComposer">20,12,20,16</Thickness>
+    <Thickness x:Key="AndurilPaddingTopBar">16,8</Thickness>
+    <Thickness x:Key="AndurilPaddingSidebar">12,8</Thickness>
+    <Thickness x:Key="AndurilPaddingChip">8,2</Thickness>
+
+    <!-- Layout dimensions (§2.8) -->
+    <x:Double x:Key="AndurilSidebarWidth">280</x:Double>
+    <x:Double x:Key="AndurilTopBarHeight">48</x:Double>
+    <x:Double x:Key="AndurilContentMaxWidth">760</x:Double>
+    <x:Double x:Key="AndurilToolInspectorWidth">360</x:Double>
+    <x:Double x:Key="AndurilDiffPanelWidth">480</x:Double>
+    <x:Double x:Key="AndurilWindowMinWidth">1024</x:Double>
+    <x:Double x:Key="AndurilWindowMinHeight">720</x:Double>
+
+    <!-- Icon sizes -->
+    <x:Double x:Key="AndurilIconSizeS">16</x:Double>
+    <x:Double x:Key="AndurilIconSizeM">20</x:Double>
+    <x:Double x:Key="AndurilIconSizeL">24</x:Double>
+
+</ResourceDictionary>

@@ -1,0 +1,39 @@
+<Styles xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+
+    <!-- SegmentedControl pill-tabs styling. The custom control itself lands  -->
+    <!-- with ANDA-73; this stub provides the shared item style so consumers  -->
+    <!-- can compose with Classes="segmented" today.                          -->
+    <Style Selector="ListBox.segmented">
+        <Setter Property="Background" Value="{DynamicResource AndurilSurfaceSubtleBrush}" />
+        <Setter Property="BorderBrush" Value="{DynamicResource AndurilStrokeBrush}" />
+        <Setter Property="BorderThickness" Value="{DynamicResource AndurilStrokeThickness}" />
+        <Setter Property="CornerRadius" Value="{DynamicResource AndurilRadiusPill}" />
+        <Setter Property="Padding" Value="2" />
+    </Style>
+
+    <Style Selector="ListBox.segmented ListBoxItem">
+        <Setter Property="Padding" Value="{DynamicResource AndurilPaddingButton}" />
+        <Setter Property="CornerRadius" Value="{DynamicResource AndurilRadiusPill}" />
+        <Setter Property="FontSize" Value="{DynamicResource AndurilFontSizeUi}" />
+        <Setter Property="FontWeight" Value="SemiBold" />
+        <Setter Property="Foreground" Value="{DynamicResource AndurilTextSecondaryBrush}" />
+    </Style>
+
+    <Style Selector="ListBox.segmented ListBoxItem:selected /template/ ContentPresenter">
+        <Setter Property="Background" Value="{DynamicResource AndurilSurfaceElevatedBrush}" />
+        <Setter Property="TextElement.Foreground" Value="{DynamicResource AndurilTextPrimaryBrush}" />
+    </Style>
+
+    <Style Selector="ListBox.segmented ListBoxItem:pointerover /template/ ContentPresenter">
+        <Setter Property="Background" Value="{DynamicResource AndurilSurfaceAltBrush}" />
+    </Style>
+
+    <!-- :selected:pointerover declared after :pointerover so the selected -->
+    <!-- visuals win at equal specificity (declaration order tie-break).   -->
+    <Style Selector="ListBox.segmented ListBoxItem:selected:pointerover /template/ ContentPresenter">
+        <Setter Property="Background" Value="{DynamicResource AndurilSurfaceElevatedBrush}" />
+        <Setter Property="TextElement.Foreground" Value="{DynamicResource AndurilTextPrimaryBrush}" />
+    </Style>
+
+</Styles>

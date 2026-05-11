@@ -1,0 +1,148 @@
+<Styles xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+
+    <!-- ================================================================== -->
+    <!-- accent — primary CTA (Send, New conversation, Accept-all)           -->
+    <!-- ================================================================== -->
+    <Style Selector="Button.accent">
+        <Setter Property="Background" Value="{DynamicResource AndurilAccentBrush}" />
+        <Setter Property="Foreground" Value="{DynamicResource AndurilOnAccentBrush}" />
+        <Setter Property="BorderBrush" Value="{DynamicResource AndurilAccentBrush}" />
+        <Setter Property="BorderThickness" Value="{DynamicResource AndurilStrokeThickness}" />
+        <Setter Property="CornerRadius" Value="{DynamicResource AndurilRadiusM}" />
+        <Setter Property="Padding" Value="{DynamicResource AndurilPaddingButton}" />
+        <Setter Property="FontSize" Value="{DynamicResource AndurilFontSizeUi}" />
+        <Setter Property="FontWeight" Value="SemiBold" />
+    </Style>
+    <Style Selector="Button.accent:pointerover /template/ ContentPresenter">
+        <Setter Property="Background" Value="{DynamicResource AndurilAccentHoverBrush}" />
+        <Setter Property="BorderBrush" Value="{DynamicResource AndurilAccentHoverBrush}" />
+        <Setter Property="TextElement.Foreground" Value="{DynamicResource AndurilOnAccentBrush}" />
+    </Style>
+    <Style Selector="Button.accent:pressed /template/ ContentPresenter">
+        <Setter Property="Background" Value="{DynamicResource AndurilAccentPressedBrush}" />
+        <Setter Property="BorderBrush" Value="{DynamicResource AndurilAccentPressedBrush}" />
+        <Setter Property="TextElement.Foreground" Value="{DynamicResource AndurilOnAccentBrush}" />
+    </Style>
+    <Style Selector="Button.accent:disabled /template/ ContentPresenter">
+        <Setter Property="Background" Value="{DynamicResource AndurilSurfaceSubtleBrush}" />
+        <Setter Property="BorderBrush" Value="{DynamicResource AndurilStrokeBrush}" />
+        <Setter Property="TextElement.Foreground" Value="{DynamicResource AndurilTextDisabledBrush}" />
+    </Style>
+
+    <!-- ================================================================== -->
+    <!-- ghost — secondary text/icon button                                  -->
+    <!-- ================================================================== -->
+    <Style Selector="Button.ghost">
+        <Setter Property="Background" Value="Transparent" />
+        <Setter Property="Foreground" Value="{DynamicResource AndurilTextPrimaryBrush}" />
+        <Setter Property="BorderBrush" Value="Transparent" />
+        <Setter Property="BorderThickness" Value="{DynamicResource AndurilStrokeThickness}" />
+        <Setter Property="CornerRadius" Value="{DynamicResource AndurilRadiusM}" />
+        <Setter Property="Padding" Value="{DynamicResource AndurilPaddingButton}" />
+        <Setter Property="FontSize" Value="{DynamicResource AndurilFontSizeUi}" />
+    </Style>
+    <Style Selector="Button.ghost:pointerover /template/ ContentPresenter">
+        <Setter Property="Background" Value="{DynamicResource AndurilSurfaceSubtleBrush}" />
+        <Setter Property="TextElement.Foreground" Value="{DynamicResource AndurilTextPrimaryBrush}" />
+    </Style>
+    <Style Selector="Button.ghost:pressed /template/ ContentPresenter">
+        <Setter Property="Background" Value="{DynamicResource AndurilSurfaceAltBrush}" />
+        <Setter Property="TextElement.Foreground" Value="{DynamicResource AndurilTextPrimaryBrush}" />
+    </Style>
+    <Style Selector="Button.ghost:disabled /template/ ContentPresenter">
+        <Setter Property="Background" Value="Transparent" />
+        <Setter Property="TextElement.Foreground" Value="{DynamicResource AndurilTextDisabledBrush}" />
+    </Style>
+
+    <!-- ghost icon — square 36×36 icon-only -->
+    <Style Selector="Button.ghost.icon">
+        <Setter Property="Width" Value="36" />
+        <Setter Property="Height" Value="36" />
+        <Setter Property="MinWidth" Value="36" />
+        <Setter Property="MinHeight" Value="36" />
+        <Setter Property="Padding" Value="0" />
+        <Setter Property="HorizontalContentAlignment" Value="Center" />
+        <Setter Property="VerticalContentAlignment" Value="Center" />
+    </Style>
+
+    <!-- ================================================================== -->
+    <!-- destructive — Reject                                                -->
+    <!-- ================================================================== -->
+    <Style Selector="Button.destructive">
+        <Setter Property="Background" Value="{DynamicResource AndurilDangerSubtleBrush}" />
+        <Setter Property="Foreground" Value="{DynamicResource AndurilDangerBrush}" />
+        <Setter Property="BorderBrush" Value="{DynamicResource AndurilDangerBrush}" />
+        <Setter Property="BorderThickness" Value="{DynamicResource AndurilStrokeThickness}" />
+        <Setter Property="CornerRadius" Value="{DynamicResource AndurilRadiusM}" />
+        <Setter Property="Padding" Value="{DynamicResource AndurilPaddingButton}" />
+        <Setter Property="FontSize" Value="{DynamicResource AndurilFontSizeUi}" />
+        <Setter Property="FontWeight" Value="SemiBold" />
+    </Style>
+    <Style Selector="Button.destructive:pointerover /template/ ContentPresenter">
+        <Setter Property="Background" Value="{DynamicResource AndurilDangerBrush}" />
+        <Setter Property="BorderBrush" Value="{DynamicResource AndurilDangerBrush}" />
+        <Setter Property="TextElement.Foreground" Value="{DynamicResource AndurilOnAccentBrush}" />
+    </Style>
+    <Style Selector="Button.destructive:pressed /template/ ContentPresenter">
+        <Setter Property="Background" Value="{DynamicResource AndurilDangerBrush}" />
+        <Setter Property="BorderBrush" Value="{DynamicResource AndurilDangerBrush}" />
+        <Setter Property="TextElement.Foreground" Value="{DynamicResource AndurilOnAccentBrush}" />
+    </Style>
+    <Style Selector="Button.destructive:disabled /template/ ContentPresenter">
+        <Setter Property="Background" Value="{DynamicResource AndurilSurfaceSubtleBrush}" />
+        <Setter Property="BorderBrush" Value="{DynamicResource AndurilStrokeBrush}" />
+        <Setter Property="TextElement.Foreground" Value="{DynamicResource AndurilTextDisabledBrush}" />
+    </Style>
+
+    <!-- ================================================================== -->
+    <!-- success — Accept                                                    -->
+    <!-- ================================================================== -->
+    <Style Selector="Button.success">
+        <Setter Property="Background" Value="{DynamicResource AndurilSuccessSubtleBrush}" />
+        <Setter Property="Foreground" Value="{DynamicResource AndurilSuccessBrush}" />
+        <Setter Property="BorderBrush" Value="{DynamicResource AndurilSuccessBrush}" />
+        <Setter Property="BorderThickness" Value="{DynamicResource AndurilStrokeThickness}" />
+        <Setter Property="CornerRadius" Value="{DynamicResource AndurilRadiusM}" />
+        <Setter Property="Padding" Value="{DynamicResource AndurilPaddingButton}" />
+        <Setter Property="FontSize" Value="{DynamicResource AndurilFontSizeUi}" />
+        <Setter Property="FontWeight" Value="SemiBold" />
+    </Style>
+    <Style Selector="Button.success:pointerover /template/ ContentPresenter">
+        <Setter Property="Background" Value="{DynamicResource AndurilSuccessBrush}" />
+        <Setter Property="BorderBrush" Value="{DynamicResource AndurilSuccessBrush}" />
+        <Setter Property="TextElement.Foreground" Value="{DynamicResource AndurilOnAccentBrush}" />
+    </Style>
+    <Style Selector="Button.success:pressed /template/ ContentPresenter">
+        <Setter Property="Background" Value="{DynamicResource AndurilSuccessBrush}" />
+        <Setter Property="BorderBrush" Value="{DynamicResource AndurilSuccessBrush}" />
+        <Setter Property="TextElement.Foreground" Value="{DynamicResource AndurilOnAccentBrush}" />
+    </Style>
+    <Style Selector="Button.success:disabled /template/ ContentPresenter">
+        <Setter Property="Background" Value="{DynamicResource AndurilSurfaceSubtleBrush}" />
+        <Setter Property="BorderBrush" Value="{DynamicResource AndurilStrokeBrush}" />
+        <Setter Property="TextElement.Foreground" Value="{DynamicResource AndurilTextDisabledBrush}" />
+    </Style>
+
+    <!-- ================================================================== -->
+    <!-- block — full-width modifier                                         -->
+    <!-- ================================================================== -->
+    <Style Selector="Button.block">
+        <Setter Property="HorizontalAlignment" Value="Stretch" />
+        <Setter Property="HorizontalContentAlignment" Value="Center" />
+    </Style>
+
+    <!-- ================================================================== -->
+    <!-- :focus-visible outline (fixes plan issue C9) — applies to the four  -->
+    <!-- visual button classes. `block` is layout-only and composes with one -->
+    <!-- of these styles rather than defining its own chrome.                -->
+    <!-- ================================================================== -->
+    <Style Selector="Button.accent:focus-visible /template/ ContentPresenter,
+                     Button.ghost:focus-visible /template/ ContentPresenter,
+                     Button.destructive:focus-visible /template/ ContentPresenter,
+                     Button.success:focus-visible /template/ ContentPresenter">
+        <Setter Property="BorderBrush" Value="{DynamicResource AndurilAccentBrush}" />
+        <Setter Property="BorderThickness" Value="{DynamicResource AndurilFocusVisibleThickness}" />
+    </Style>
+
+</Styles>
