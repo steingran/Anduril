@@ -20,7 +20,6 @@
     <PackageReference Include="Avalonia.ReactiveUI" />
     <PackageReference Include="Avalonia.Themes.Fluent" />
     <PackageReference Include="Microsoft.AspNetCore.SignalR.Client" />
-    <PackageReference Include="Markdown.Avalonia" />
     <PackageReference Include="Velopack" />
 
     <!--

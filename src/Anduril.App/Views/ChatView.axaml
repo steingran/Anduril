@@ -5,8 +5,6 @@
              xmlns:controls="using:Anduril.App.Views.Controls"
              x:Class="Anduril.App.Views.ChatView"
              x:DataType="vm:ChatViewModel"
-             xmlns:md="using:Markdown.Avalonia"
-             xmlns:ctxt="using:ColorTextBlock.Avalonia"
              Background="#0F1525">
 
     <UserControl.Styles>
@@ -59,7 +57,7 @@
         <Style Selector="Button.stop:pointerover">
             <Setter Property="Foreground" Value="#C8A8A8" />
         </Style>
-        <Style Selector="md|MarkdownScrollViewer ctxt|CTextBlock">
+        <Style Selector="TextBlock.markdown-fallback">
             <Setter Property="Foreground" Value="#C8D8F4" />
             <Setter Property="FontSize" Value="14" />
         </Style>
@@ -149,7 +147,10 @@
                                         <Border MaxHeight="{Binding ContentMaxHeight}"
                                                 ClipToBounds="True"
                                                 IsVisible="{Binding !IsLoading}">
-                                            <md:MarkdownScrollViewer Markdown="{Binding Content}" />
+                                            <TextBlock Text="{Binding Content}"
+                                                       Classes="markdown-fallback"
+                                                       TextWrapping="Wrap"
+                                                       LineHeight="21" />
                                         </Border>
                                     </Panel>
                                     <Button Classes="show-more"
