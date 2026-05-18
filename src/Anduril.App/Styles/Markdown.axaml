@@ -1,9 +1,8 @@
 <Styles xmlns="https://github.com/avaloniaui"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
 
-    <!-- Markdown.Avalonia overrides. Full body lands with the ChatView      -->
-    <!-- rebuild (ANDA-74); this stub establishes the inline-code chip and   -->
-    <!-- code-block surface so views can opt in today.                        -->
+    <!-- Markdown fallback styles. Full markdown rendering via md controls is -->
+    <!-- intentionally removed to keep the desktop layer Avalonia-12-safe.   -->
 
     <!-- Inline code chip -->
     <Style Selector="TextBlock.MarkdownInlineCode">
