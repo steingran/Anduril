@@ -145,8 +145,17 @@
                     <!-- Browse button -->
                     <Button x:Name="BrowseRepoButton"
                             Classes="repo-browse"
-                            Content="📁 Browse repo…"
-                            VerticalAlignment="Center" />
+                            VerticalAlignment="Center">
+                        <StackPanel Orientation="Horizontal" Spacing="6">
+                            <PathIcon Width="14"
+                                      Height="14"
+                                      Data="{StaticResource FluentFolderOpen16Geometry}"
+                                      Foreground="#7090C0"
+                                      VerticalAlignment="Center" />
+                            <TextBlock Text="Browse repo..."
+                                       VerticalAlignment="Center" />
+                        </StackPanel>
+                    </Button>
 
                     <!-- Repo + branch group — only shown after a folder is picked -->
                     <StackPanel Orientation="Horizontal"
@@ -161,10 +170,11 @@
                                 CornerRadius="6,0,0,6"
                                 Padding="9,4">
                             <StackPanel Orientation="Horizontal" Spacing="5">
-                                <TextBlock Text="⎇"
-                                           FontSize="11"
-                                           Foreground="#4A6080"
-                                           VerticalAlignment="Center" />
+                                <PathIcon Width="12"
+                                          Height="12"
+                                          Data="{StaticResource FluentBranchFork16Geometry}"
+                                          Foreground="#4A6080"
+                                          VerticalAlignment="Center" />
                                 <TextBlock Text="{Binding RepoDisplayName}"
                                            FontSize="12"
                                            FontWeight="SemiBold"

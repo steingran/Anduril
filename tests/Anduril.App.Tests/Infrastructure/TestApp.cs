@@ -62,6 +62,10 @@ public sealed class TestApp : Application
         });
         Resources.MergedDictionaries.Add(new ResourceInclude(new Uri("avares://Anduril.App.Tests/"))
         {
+            Source = new Uri("avares://Anduril.App/Styles/Icons.axaml"),
+        });
+        Resources.MergedDictionaries.Add(new ResourceInclude(new Uri("avares://Anduril.App.Tests/"))
+        {
             Source = new Uri("avares://Anduril.App/Styles/Motion.axaml"),
         });
 
