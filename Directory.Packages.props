@@ -31,7 +31,7 @@
       Referenced explicitly from Anduril.Integrations so the override propagates to Host/App.
     -->
     <PackageVersion Include="Microsoft.Kiota.Abstractions" Version="2.0.0" />
-    <PackageVersion Include="Microsoft.Playwright" Version="1.59.0" />
+    <PackageVersion Include="Microsoft.Playwright" Version="1.60.0" />
     <PackageVersion Include="ModelContextProtocol" Version="1.3.0" />
     <!--
       Direct pin to override the transitive 1.0.2 brought in by ModelContextProtocol 1.3.0.
