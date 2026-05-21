@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 240 180" fill="none">
+  <title>Empty conversation</title>
+  <path d="M52 48h136c13.3 0 24 10.7 24 24v44c0 13.3-10.7 24-24 24H113l-33 22v-22H52c-13.3 0-24-10.7-24-24V72c0-13.3 10.7-24 24-24Z" stroke="currentColor" stroke-width="8" stroke-linejoin="round"/>
+  <circle cx="88" cy="94" r="8" fill="currentColor"/>
+  <circle cx="120" cy="94" r="8" fill="currentColor"/>
+  <circle cx="152" cy="94" r="8" fill="currentColor"/>
+</svg>

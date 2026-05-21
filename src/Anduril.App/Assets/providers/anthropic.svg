@@ -1,0 +1,5 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" fill="none">
+  <title>Anthropic</title>
+  <rect x="6" y="6" width="52" height="52" rx="14" stroke="currentColor" stroke-width="4"/>
+  <path d="M32 16 18 48h7l2.5-6h9l2.5 6h7L32 16Zm-1 19 2-5 2 5h-4Z" fill="currentColor"/>
+</svg>

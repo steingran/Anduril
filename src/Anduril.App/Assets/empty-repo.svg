@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 240 180" fill="none">
+  <title>Empty repository</title>
+  <path d="M36 58c0-11 9-20 20-20h30l18 18h80c11 0 20 9 20 20v44c0 11-9 20-20 20H56c-11 0-20-9-20-20V58Z" stroke="currentColor" stroke-width="8" stroke-linejoin="round"/>
+  <path d="M92 86h56" stroke="currentColor" stroke-width="8" stroke-linecap="round"/>
+  <path d="M92 114h32" stroke="currentColor" stroke-width="8" stroke-linecap="round"/>
+</svg>
