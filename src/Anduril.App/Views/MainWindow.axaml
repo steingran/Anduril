@@ -14,10 +14,8 @@
         Height="800"
         MinWidth="{DynamicResource AndurilWindowMinWidth}"
         MinHeight="{DynamicResource AndurilWindowMinHeight}"
-        Background="Transparent"
+        Background="{DynamicResource AndurilSurfaceBrush}"
         WindowStartupLocation="CenterScreen"
-        TransparencyLevelHint="Mica,AcrylicBlur,Blur"
-        ExtendClientAreaToDecorationsHint="True"
         KeyDown="OnWindowKeyDown">
 
     <Window.Styles>
