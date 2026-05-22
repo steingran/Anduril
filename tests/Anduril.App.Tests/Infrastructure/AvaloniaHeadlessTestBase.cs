@@ -15,6 +15,7 @@ namespace Anduril.App.Tests.Infrastructure;
 /// static <see cref="Lazy{T}"/> and shared across every test class that inherits from this base.
 /// </para>
 /// </summary>
+[NotInParallel]
 public abstract class AvaloniaHeadlessTestBase
 {
     private static readonly Lazy<HeadlessUnitTestSession> _session = new(

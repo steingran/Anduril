@@ -13,6 +13,7 @@ public partial class CodeView : UserControl
     {
         InitializeComponent();
         BrowseRepoButton.Click += OnBrowseRepoClicked;
+        SizeChanged += OnSizeChanged;
     }
 
     protected override void OnDataContextChanged(EventArgs e)
@@ -25,11 +26,27 @@ public partial class CodeView : UserControl
         _subscribedVm = DataContext as CodeViewModel;
 
         if (_subscribedVm is not null)
+        {
             _subscribedVm.Messages.CollectionChanged += OnMessagesChanged;
+            UpdateViewportWidth(_subscribedVm);
+        }
     }
 
     private void OnMessagesChanged(object? sender, System.Collections.Specialized.NotifyCollectionChangedEventArgs e)
         => Dispatcher.UIThread.Post(() => MessagesScroll.ScrollToEnd());
+
+    private void OnSizeChanged(object? sender, SizeChangedEventArgs e)
+    {
+        if (DataContext is CodeViewModel vm)
+            UpdateViewportWidth(vm, e.NewSize.Width);
+    }
+
+    private void UpdateViewportWidth(CodeViewModel vm, double? widthOverride = null)
+    {
+        var width = widthOverride ?? Bounds.Width;
+        if (width > 0)
+            vm.ViewportWidth = width;
+    }
 
     private async void OnBrowseRepoClicked(object? sender, Avalonia.Interactivity.RoutedEventArgs e)
     {

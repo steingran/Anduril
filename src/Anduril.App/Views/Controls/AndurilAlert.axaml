@@ -1,0 +1,128 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             x:Class="Anduril.App.Views.Controls.AndurilAlert"
+             x:Name="Root">
+
+    <UserControl.Styles>
+        <Style Selector="Border.alert-root">
+            <Setter Property="Background" Value="{DynamicResource AndurilSurfaceElevatedBrush}" />
+            <Setter Property="BorderBrush" Value="{DynamicResource AndurilStrokeBrush}" />
+            <Setter Property="BorderThickness" Value="{DynamicResource AndurilStrokeThickness}" />
+            <Setter Property="CornerRadius" Value="{DynamicResource AndurilRadiusL}" />
+            <Setter Property="Padding" Value="{DynamicResource AndurilPaddingCard}" />
+        </Style>
+
+        <Style Selector="Border.alert-root.info">
+            <Setter Property="Background" Value="{DynamicResource AndurilAccentSubtleBrush}" />
+            <Setter Property="BorderBrush" Value="{DynamicResource AndurilAccentBorderBrush}" />
+        </Style>
+
+        <Style Selector="Border.alert-root.success">
+            <Setter Property="Background" Value="{DynamicResource AndurilSuccessSubtleBrush}" />
+            <Setter Property="BorderBrush" Value="{DynamicResource AndurilSuccessBrush}" />
+        </Style>
+
+        <Style Selector="Border.alert-root.warning">
+            <Setter Property="Background" Value="{DynamicResource AndurilWarningSubtleBrush}" />
+            <Setter Property="BorderBrush" Value="{DynamicResource AndurilWarningBrush}" />
+        </Style>
+
+        <Style Selector="Border.alert-root.danger">
+            <Setter Property="Background" Value="{DynamicResource AndurilDangerSubtleBrush}" />
+            <Setter Property="BorderBrush" Value="{DynamicResource AndurilDangerBrush}" />
+        </Style>
+
+        <Style Selector="Border.alert-icon">
+            <Setter Property="Width" Value="28" />
+            <Setter Property="Height" Value="28" />
+            <Setter Property="CornerRadius" Value="{DynamicResource AndurilRadiusPill}" />
+            <Setter Property="Background" Value="{DynamicResource AndurilSurfaceBrush}" />
+            <Setter Property="BorderBrush" Value="{DynamicResource AndurilStrokeBrush}" />
+            <Setter Property="BorderThickness" Value="{DynamicResource AndurilStrokeThickness}" />
+        </Style>
+
+        <Style Selector="Border.alert-icon.info">
+            <Setter Property="Background" Value="{DynamicResource AndurilAccentBrush}" />
+            <Setter Property="BorderBrush" Value="{DynamicResource AndurilAccentBrush}" />
+        </Style>
+
+        <Style Selector="Border.alert-icon.success">
+            <Setter Property="Background" Value="{DynamicResource AndurilSuccessBrush}" />
+            <Setter Property="BorderBrush" Value="{DynamicResource AndurilSuccessBrush}" />
+        </Style>
+
+        <Style Selector="Border.alert-icon.warning">
+            <Setter Property="Background" Value="{DynamicResource AndurilWarningBrush}" />
+            <Setter Property="BorderBrush" Value="{DynamicResource AndurilWarningBrush}" />
+        </Style>
+
+        <Style Selector="Border.alert-icon.danger">
+            <Setter Property="Background" Value="{DynamicResource AndurilDangerBrush}" />
+            <Setter Property="BorderBrush" Value="{DynamicResource AndurilDangerBrush}" />
+        </Style>
+
+        <Style Selector="TextBlock.alert-icon-glyph">
+            <Setter Property="Foreground" Value="{DynamicResource AndurilOnAccentBrush}" />
+            <Setter Property="FontSize" Value="{DynamicResource AndurilFontSizeBody}" />
+            <Setter Property="FontWeight" Value="Bold" />
+            <Setter Property="HorizontalAlignment" Value="Center" />
+            <Setter Property="VerticalAlignment" Value="Center" />
+        </Style>
+
+        <Style Selector="TextBlock.alert-title">
+            <Setter Property="FontSize" Value="{DynamicResource AndurilFontSizeBody}" />
+            <Setter Property="FontWeight" Value="SemiBold" />
+            <Setter Property="Foreground" Value="{DynamicResource AndurilTextPrimaryBrush}" />
+        </Style>
+
+        <Style Selector="TextBlock.alert-body">
+            <Setter Property="FontSize" Value="{DynamicResource AndurilFontSizeUi}" />
+            <Setter Property="Foreground" Value="{DynamicResource AndurilTextSecondaryBrush}" />
+            <Setter Property="TextWrapping" Value="Wrap" />
+        </Style>
+
+        <Style Selector="Button.alert-action">
+            <Setter Property="Background" Value="{DynamicResource AndurilAccentBrush}" />
+            <Setter Property="BorderBrush" Value="{DynamicResource AndurilAccentBrush}" />
+            <Setter Property="BorderThickness" Value="{DynamicResource AndurilStrokeThickness}" />
+            <Setter Property="CornerRadius" Value="{DynamicResource AndurilRadiusM}" />
+            <Setter Property="Padding" Value="{DynamicResource AndurilPaddingButton}" />
+            <Setter Property="Foreground" Value="{DynamicResource AndurilOnAccentBrush}" />
+            <Setter Property="HorizontalAlignment" Value="Left" />
+        </Style>
+
+        <Style Selector="Button.alert-action:focus-visible">
+            <Setter Property="BorderBrush" Value="{DynamicResource AndurilTextPrimaryBrush}" />
+            <Setter Property="BorderThickness" Value="{DynamicResource AndurilFocusVisibleThickness}" />
+        </Style>
+    </UserControl.Styles>
+
+    <Border x:Name="AlertRoot"
+            Classes="alert-root info">
+        <Grid ColumnDefinitions="Auto,*"
+              ColumnSpacing="{DynamicResource AndurilSpacingM}">
+            <Border x:Name="IconRoot"
+                    Classes="alert-icon info">
+                <TextBlock x:Name="IconGlyphBlock"
+                           Classes="alert-icon-glyph"
+                           Text="{Binding IconGlyph, ElementName=Root}" />
+            </Border>
+
+            <StackPanel Grid.Column="1"
+                        Spacing="{DynamicResource AndurilSpacingS}">
+                <TextBlock x:Name="TitleBlock"
+                           Classes="alert-title"
+                           Text="{Binding Title, ElementName=Root}" />
+                <TextBlock x:Name="BodyBlock"
+                           Classes="alert-body"
+                           Text="{Binding Body, ElementName=Root}" />
+                <Button x:Name="PrimaryActionButton"
+                        Classes="alert-action"
+                        Content="{Binding PrimaryActionLabel, ElementName=Root}"
+                        Command="{Binding PrimaryActionCommand, ElementName=Root}"
+                        IsVisible="False" />
+            </StackPanel>
+        </Grid>
+    </Border>
+
+</UserControl>

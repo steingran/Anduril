@@ -1,0 +1,49 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:controls="using:Anduril.App.Views.Controls"
+             x:Class="Anduril.App.Views.Controls.PathBreadcrumb"
+             x:Name="Root">
+
+    <UserControl.Styles>
+        <Style Selector="ItemsControl.breadcrumb-items">
+            <Setter Property="HorizontalAlignment" Value="Left" />
+        </Style>
+
+        <Style Selector="StackPanel.breadcrumb-row">
+            <Setter Property="Orientation" Value="Horizontal" />
+            <Setter Property="Spacing" Value="6" />
+        </Style>
+
+        <Style Selector="TextBlock.breadcrumb-separator">
+            <Setter Property="Foreground" Value="{DynamicResource AndurilTextTertiaryBrush}" />
+            <Setter Property="FontSize" Value="11" />
+        </Style>
+
+        <Style Selector="TextBlock.breadcrumb-label">
+            <Setter Property="Foreground" Value="{DynamicResource AndurilTextSecondaryBrush}" />
+            <Setter Property="FontSize" Value="11" />
+            <Setter Property="TextTrimming" Value="CharacterEllipsis" />
+        </Style>
+    </UserControl.Styles>
+
+    <ItemsControl Classes="breadcrumb-items"
+                  ItemsSource="{Binding Segments, ElementName=Root}">
+        <ItemsControl.ItemsPanel>
+            <ItemsPanelTemplate>
+                <StackPanel Orientation="Horizontal"
+                            Spacing="6" />
+            </ItemsPanelTemplate>
+        </ItemsControl.ItemsPanel>
+        <ItemsControl.ItemTemplate>
+            <DataTemplate x:DataType="controls:BreadcrumbSegment">
+                <StackPanel Classes="breadcrumb-row">
+                    <TextBlock Classes="breadcrumb-separator"
+                               IsVisible="{Binding !IsFirst}"
+                               Text="/" />
+                    <TextBlock Classes="breadcrumb-label"
+                               Text="{Binding Label}" />
+                </StackPanel>
+            </DataTemplate>
+        </ItemsControl.ItemTemplate>
+    </ItemsControl>
+</UserControl>

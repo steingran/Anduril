@@ -142,4 +142,62 @@ public sealed class ChatViewModelTests
         // IsStreaming remains true here — validating the initial transition.
         await Assert.That(vm.IsStreaming).IsTrue();
     }
+
+    [Test]
+    public async Task StarterPrompts_AreSeeded()
+    {
+        var vm = new ChatViewModel();
+        await Assert.That(vm.StarterPrompts.Count).IsEqualTo(3);
+    }
+
+    [Test]
+    public async Task InputText_WhenSlashPrefix_ShowsFilteredSuggestions()
+    {
+        var vm = new ChatViewModel();
+        vm.InputText = "/re";
+
+        await Assert.That(vm.IsSlashCommandMenuOpen).IsTrue();
+        await Assert.That(vm.VisibleSlashCommandSuggestions.Count).IsEqualTo(1);
+        await Assert.That(vm.VisibleSlashCommandSuggestions[0].Command).IsEqualTo("/review");
+    }
+
+    [Test]
+    public async Task ApplySelectedSlashCommand_ReplacesInputText()
+    {
+        var vm = new ChatViewModel();
+        vm.InputText = "/pl";
+
+        vm.ApplySelectedSlashCommand();
+
+        await Assert.That(vm.InputText).IsEqualTo("/plan ");
+    }
+
+    [Test]
+    public async Task RetryCommand_AfterProviderError_ReissuesLastUserMessage()
+    {
+        var vm = new ChatViewModel();
+        var fake = new FakeChatService();
+        vm.SetConversation("conv-1", fake);
+        vm.Messages.Add(new ChatMessageModel { Role = "user", Content = "Hello" });
+        vm.Messages.Add(new ChatMessageModel { Role = "assistant", Content = "provider unavailable" });
+        vm.LastError = new ChatErrorState
+        {
+            Kind = ChatErrorKind.ProviderDown,
+            Message = "provider unavailable"
+        };
+
+        await vm.RetryCommand.Execute().ToTask();
+
+        await Assert.That(fake.SentMessages.Count).IsEqualTo(1);
+        await Assert.That(fake.SentMessages[0].Text).IsEqualTo("Hello");
+    }
+
+    [Test]
+    public async Task CopyCommand_StoresLastCopiedText()
+    {
+        var vm = new ChatViewModel();
+        await vm.CopyCommand.Execute("copied text").ToTask();
+
+        await Assert.That(vm.LastCopiedText).IsEqualTo("copied text");
+    }
 }

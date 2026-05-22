@@ -1,0 +1,118 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             x:Class="Anduril.App.Views.Controls.InlineStatus"
+             x:Name="Root">
+
+    <UserControl.Styles>
+        <Style Selector="Border.status-root">
+            <Setter Property="Background" Value="#111A2E" />
+            <Setter Property="BorderBrush" Value="#1A2845" />
+            <Setter Property="BorderThickness" Value="1" />
+            <Setter Property="CornerRadius" Value="999" />
+            <Setter Property="Padding" Value="10,5" />
+        </Style>
+
+        <Style Selector="Border.status-root.info">
+            <Setter Property="Background" Value="#111A2E" />
+            <Setter Property="BorderBrush" Value="#1A2845" />
+        </Style>
+
+        <Style Selector="Border.status-root.stopped">
+            <Setter Property="Background" Value="#101725" />
+            <Setter Property="BorderBrush" Value="#2A3448" />
+        </Style>
+
+        <Style Selector="Border.status-root.cancelled">
+            <Setter Property="Background" Value="#2B1A12" />
+            <Setter Property="BorderBrush" Value="#5B3324" />
+        </Style>
+
+        <Style Selector="Border.status-root.failed">
+            <Setter Property="Background" Value="#341818" />
+            <Setter Property="BorderBrush" Value="#6A2E2E" />
+        </Style>
+
+        <Style Selector="Ellipse.status-dot">
+            <Setter Property="Width" Value="8" />
+            <Setter Property="Height" Value="8" />
+            <Setter Property="VerticalAlignment" Value="Center" />
+            <Setter Property="Fill" Value="#7A9FCC" />
+        </Style>
+
+        <Style Selector="Ellipse.status-dot.info">
+            <Setter Property="Fill" Value="#7A9FCC" />
+        </Style>
+
+        <Style Selector="Ellipse.status-dot.stopped">
+            <Setter Property="Fill" Value="#5F6E84" />
+        </Style>
+
+        <Style Selector="Ellipse.status-dot.cancelled">
+            <Setter Property="Fill" Value="#C98E63" />
+        </Style>
+
+        <Style Selector="Ellipse.status-dot.failed">
+            <Setter Property="Fill" Value="#D67C7C" />
+        </Style>
+
+        <Style Selector="TextBlock.status-label">
+            <Setter Property="FontSize" Value="12" />
+            <Setter Property="FontWeight" Value="Medium" />
+            <Setter Property="Foreground" Value="#C8D8F4" />
+            <Setter Property="VerticalAlignment" Value="Center" />
+        </Style>
+
+        <Style Selector="TextBlock.status-label.info">
+            <Setter Property="Foreground" Value="#C8D8F4" />
+        </Style>
+
+        <Style Selector="TextBlock.status-label.stopped">
+            <Setter Property="Foreground" Value="#8A99AF" />
+        </Style>
+
+        <Style Selector="TextBlock.status-label.cancelled">
+            <Setter Property="Foreground" Value="#E0B18A" />
+        </Style>
+
+        <Style Selector="TextBlock.status-label.failed">
+            <Setter Property="Foreground" Value="#E59A9A" />
+        </Style>
+
+        <Style Selector="Button.status-action">
+            <Setter Property="Background" Value="Transparent" />
+            <Setter Property="BorderThickness" Value="0" />
+            <Setter Property="Padding" Value="2,0,0,0" />
+            <Setter Property="FontSize" Value="12" />
+            <Setter Property="FontWeight" Value="SemiBold" />
+            <Setter Property="Foreground" Value="#8EB4F2" />
+            <Setter Property="Cursor" Value="Hand" />
+        </Style>
+
+        <Style Selector="Button.status-action:focus-visible /template/ ContentPresenter">
+            <Setter Property="Background" Value="#17253F" />
+        </Style>
+
+        <Style Selector="Button.status-action:pointerover">
+            <Setter Property="Foreground" Value="#B3D0FF" />
+        </Style>
+    </UserControl.Styles>
+
+    <Border x:Name="StatusRoot"
+            Classes="status-root info">
+        <StackPanel Orientation="Horizontal"
+                    Spacing="7"
+                    HorizontalAlignment="Left">
+            <Ellipse x:Name="StatusDot"
+                     Classes="status-dot info" />
+            <TextBlock x:Name="StatusLabel"
+                       Classes="status-label info"
+                       Text="{Binding Text, ElementName=Root}" />
+            <Button x:Name="ActionButton"
+                    Classes="status-action"
+                    Content="{Binding ActionLabel, ElementName=Root}"
+                    Command="{Binding ActionCommand, ElementName=Root}"
+                    IsVisible="{Binding HasAction, ElementName=Root}" />
+        </StackPanel>
+    </Border>
+
+</UserControl>

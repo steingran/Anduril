@@ -39,4 +39,8 @@
     <AvaloniaResource Include="Assets\**" />
   </ItemGroup>
 
+  <ItemGroup>
+    <AvaloniaResource Include="..\..\assets\icon-*.png" Link="Assets\%(Filename)%(Extension)" />
+  </ItemGroup>
+
 </Project>

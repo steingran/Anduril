@@ -1,0 +1,151 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:models="using:Anduril.App.Models"
+             xmlns:converters="using:Anduril.App.Converters"
+             x:Class="Anduril.App.Views.Controls.DiffCard"
+             x:Name="Root"
+             x:DataType="models:StagedActionModel">
+
+    <UserControl.Styles>
+        <Style Selector="Border.diff-card-root">
+            <Setter Property="Background" Value="{DynamicResource AndurilSurfaceBrush}" />
+            <Setter Property="BorderBrush" Value="{DynamicResource AndurilStrokeBrush}" />
+            <Setter Property="BorderThickness" Value="{DynamicResource AndurilStrokeThickness}" />
+            <Setter Property="CornerRadius" Value="{DynamicResource AndurilRadiusL}" />
+            <Setter Property="Padding" Value="{DynamicResource AndurilPaddingCard}" />
+        </Style>
+
+        <Style Selector="Border.diff-kind-badge">
+            <Setter Property="CornerRadius" Value="{DynamicResource AndurilRadiusPill}" />
+            <Setter Property="Padding" Value="8,3" />
+            <Setter Property="BorderBrush" Value="{DynamicResource AndurilStrokeBrush}" />
+            <Setter Property="BorderThickness" Value="{DynamicResource AndurilStrokeThickness}" />
+            <Setter Property="Background" Value="{DynamicResource AndurilSurfaceSubtleBrush}" />
+        </Style>
+
+        <Style Selector="TextBlock.diff-kind-badge-text">
+            <Setter Property="FontSize" Value="10" />
+            <Setter Property="FontWeight" Value="Bold" />
+            <Setter Property="Foreground" Value="{DynamicResource AndurilTextPrimaryBrush}" />
+        </Style>
+
+        <Style Selector="TextBlock.diff-header-path">
+            <Setter Property="FontSize" Value="12" />
+            <Setter Property="FontFamily" Value="Cascadia Code,Consolas,Menlo,monospace" />
+            <Setter Property="Foreground" Value="{DynamicResource AndurilTextSecondaryBrush}" />
+            <Setter Property="FontWeight" Value="SemiBold" />
+        </Style>
+
+        <Style Selector="Border.diff-viewport">
+            <Setter Property="Background" Value="{DynamicResource AndurilSurfaceAltBrush}" />
+            <Setter Property="BorderBrush" Value="{DynamicResource AndurilStrokeBrush}" />
+            <Setter Property="BorderThickness" Value="{DynamicResource AndurilStrokeThickness}" />
+            <Setter Property="CornerRadius" Value="{DynamicResource AndurilRadiusM}" />
+        </Style>
+
+        <Style Selector="Border.diff-line">
+            <Setter Property="Padding" Value="8,4" />
+        </Style>
+
+        <Style Selector="TextBlock.diff-line-number">
+            <Setter Property="FontFamily" Value="Cascadia Code,Consolas,Menlo,monospace" />
+            <Setter Property="FontSize" Value="11" />
+            <Setter Property="Foreground" Value="{DynamicResource AndurilTextTertiaryBrush}" />
+            <Setter Property="HorizontalAlignment" Value="Right" />
+        </Style>
+
+        <Style Selector="TextBlock.diff-line-marker">
+            <Setter Property="FontFamily" Value="Cascadia Code,Consolas,Menlo,monospace" />
+            <Setter Property="FontSize" Value="12" />
+            <Setter Property="FontWeight" Value="Bold" />
+        </Style>
+
+        <Style Selector="TextBlock.diff-line-content">
+            <Setter Property="FontFamily" Value="Cascadia Code,Consolas,Menlo,monospace" />
+            <Setter Property="FontSize" Value="12" />
+            <Setter Property="TextWrapping" Value="NoWrap" />
+            <Setter Property="TextTrimming" Value="CharacterEllipsis" />
+        </Style>
+
+        <Style Selector="Button.diff-link">
+            <Setter Property="Background" Value="Transparent" />
+            <Setter Property="BorderThickness" Value="0" />
+            <Setter Property="Padding" Value="0" />
+            <Setter Property="HorizontalAlignment" Value="Left" />
+            <Setter Property="Foreground" Value="{DynamicResource AndurilAccentBrush}" />
+            <Setter Property="FontSize" Value="12" />
+        </Style>
+
+        <Style Selector="StackPanel.diff-actions">
+            <Setter Property="Orientation" Value="Horizontal" />
+            <Setter Property="HorizontalAlignment" Value="Right" />
+            <Setter Property="Spacing" Value="{DynamicResource AndurilSpacingS}" />
+        </Style>
+    </UserControl.Styles>
+
+    <Border Classes="diff-card-root">
+        <StackPanel Spacing="{DynamicResource AndurilSpacingM}">
+            <Grid ColumnDefinitions="Auto,*"
+                  ColumnSpacing="{DynamicResource AndurilSpacingS}">
+                <Border Classes="diff-kind-badge">
+                    <TextBlock Classes="diff-kind-badge-text"
+                               Text="{Binding DiffKindLabel, ElementName=Root}" />
+                </Border>
+
+                <TextBlock Grid.Column="1"
+                           x:Name="DiffPath"
+                           Classes="diff-header-path"
+                           Text="{Binding FilePath, ElementName=Root}"
+                           TextWrapping="Wrap" />
+            </Grid>
+
+            <Border Classes="diff-viewport">
+                <ScrollViewer MaxHeight="320"
+                              HorizontalScrollBarVisibility="Auto"
+                              VerticalScrollBarVisibility="Disabled">
+                    <ItemsControl ItemsSource="{Binding DiffLines, ElementName=Root}">
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate x:DataType="models:DiffLine">
+                                <Border Background="{Binding Kind, Converter={x:Static converters:DiffLineBackgroundConverter.Instance}}"
+                                        Classes="diff-line">
+                                    <Grid ColumnDefinitions="42,42,20,*"
+                                          ColumnSpacing="8">
+                                        <TextBlock Classes="diff-line-number"
+                                                   Text="{Binding OldLineNumber}" />
+                                        <TextBlock Grid.Column="1"
+                                                   Classes="diff-line-number"
+                                                   Text="{Binding NewLineNumber}" />
+                                        <TextBlock Grid.Column="2"
+                                                   Classes="diff-line-marker"
+                                                   Foreground="{Binding Kind, Converter={x:Static converters:DiffLineForegroundBrushConverter.Instance}}"
+                                                   Text="{Binding Marker}" />
+                                        <TextBlock Grid.Column="3"
+                                                   Classes="diff-line-content"
+                                                   Foreground="{Binding Kind, Converter={x:Static converters:DiffLineForegroundBrushConverter.Instance}}"
+                                                   Text="{Binding Content}" />
+                                    </Grid>
+                                </Border>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                </ScrollViewer>
+            </Border>
+
+            <Button Classes="diff-link"
+                    IsVisible="{Binding HasDiffOverflow}"
+                    Command="{Binding ToggleDiffExpansionCommand}"
+                    Content="{Binding ShowDiffExpansionLabel}" />
+
+            <StackPanel Classes="diff-actions">
+                <Button Classes="reject"
+                        Command="{Binding RejectCommand, ElementName=Root}"
+                        CommandParameter="{Binding}"
+                        Content="Reject" />
+                <Button Classes="accept"
+                        Command="{Binding AcceptCommand, ElementName=Root}"
+                        CommandParameter="{Binding}"
+                        Content="Accept" />
+            </StackPanel>
+        </StackPanel>
+    </Border>
+</UserControl>

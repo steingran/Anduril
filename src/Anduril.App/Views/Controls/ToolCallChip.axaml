@@ -1,0 +1,96 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:models="using:Anduril.App.Models"
+             x:Class="Anduril.App.Views.Controls.ToolCallChip"
+             x:Name="Root">
+
+    <UserControl.Styles>
+        <Style Selector="Border.tool-chip">
+            <Setter Property="Background" Value="{DynamicResource AndurilSurfaceElevatedBrush}" />
+            <Setter Property="BorderBrush" Value="{DynamicResource AndurilStrokeBrush}" />
+            <Setter Property="BorderThickness" Value="{DynamicResource AndurilStrokeThickness}" />
+            <Setter Property="CornerRadius" Value="{DynamicResource AndurilRadiusPill}" />
+            <Setter Property="Padding" Value="8,6" />
+        </Style>
+
+        <Style Selector="Button.tool-chip-toggle">
+            <Setter Property="Background" Value="Transparent" />
+            <Setter Property="BorderThickness" Value="0" />
+            <Setter Property="HorizontalContentAlignment" Value="Stretch" />
+            <Setter Property="Padding" Value="0" />
+            <Setter Property="Cursor" Value="Hand" />
+        </Style>
+
+        <Style Selector="Button.tool-chip-toggle:focus-visible /template/ ContentPresenter">
+            <Setter Property="BorderBrush" Value="{DynamicResource AndurilStrokeStrongBrush}" />
+            <Setter Property="BorderThickness" Value="{DynamicResource AndurilFocusVisibleThickness}" />
+        </Style>
+
+        <Style Selector="TextBlock.tool-chip-name">
+            <Setter Property="Foreground" Value="{DynamicResource AndurilTextPrimaryBrush}" />
+            <Setter Property="FontWeight" Value="SemiBold" />
+            <Setter Property="FontSize" Value="12" />
+            <Setter Property="VerticalAlignment" Value="Center" />
+            <Setter Property="TextTrimming" Value="CharacterEllipsis" />
+        </Style>
+
+        <Style Selector="TextBlock.tool-chip-icon">
+            <Setter Property="Foreground" Value="{DynamicResource AndurilTextSecondaryBrush}" />
+            <Setter Property="FontSize" Value="12" />
+            <Setter Property="FontWeight" Value="Bold" />
+            <Setter Property="VerticalAlignment" Value="Center" />
+        </Style>
+
+        <Style Selector="TextBlock.tool-chip-detail">
+            <Setter Property="Foreground" Value="{DynamicResource AndurilTextSecondaryBrush}" />
+            <Setter Property="FontSize" Value="11" />
+            <Setter Property="TextWrapping" Value="Wrap" />
+        </Style>
+
+        <Style Selector="TextBlock.tool-chip-chevron">
+            <Setter Property="Foreground" Value="{DynamicResource AndurilTextTertiaryBrush}" />
+            <Setter Property="FontWeight" Value="Bold" />
+            <Setter Property="FontSize" Value="11" />
+            <Setter Property="VerticalAlignment" Value="Center" />
+        </Style>
+
+        <Style Selector="TextBlock.tool-chip-chevron.expanded">
+            <Setter Property="RenderTransform">
+                <Setter.Value>
+                    <RotateTransform Angle="90" />
+                </Setter.Value>
+            </Setter>
+        </Style>
+    </UserControl.Styles>
+
+    <Border x:Name="ChipRoot"
+            Classes="tool-chip">
+        <StackPanel Spacing="6">
+            <Button x:Name="HeaderButton"
+                    Classes="tool-chip-toggle"
+                    HorizontalAlignment="Stretch"
+                    Click="OnToggleClicked">
+                <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="6" HorizontalAlignment="Stretch">
+                    <TextBlock Text="{Binding Summary.ToolIcon, ElementName=Root}"
+                               Classes="tool-chip-icon"
+                               TextTrimming="CharacterEllipsis"
+                               Width="14"
+                               HorizontalAlignment="Left" />
+                    <TextBlock Grid.Column="1"
+                               x:Name="NameText"
+                               Text="{Binding Summary.ToolName, ElementName=Root}"
+                               Classes="tool-chip-name" />
+                    <TextBlock Grid.Column="2"
+                               x:Name="Chevron"
+                               Classes="tool-chip-chevron"
+                               Text="▸" />
+                </Grid>
+            </Button>
+
+            <TextBlock x:Name="ToolDetail"
+                       Text="{Binding Summary.Detail, ElementName=Root}"
+                       Classes="tool-chip-detail"
+                       IsVisible="False" />
+        </StackPanel>
+    </Border>
+</UserControl>

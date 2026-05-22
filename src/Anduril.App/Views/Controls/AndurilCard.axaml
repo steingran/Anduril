@@ -1,0 +1,55 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             x:Class="Anduril.App.Views.Controls.AndurilCard"
+             x:Name="Root">
+
+    <UserControl.Styles>
+        <Style Selector="Border.anduril-card">
+            <Setter Property="Background" Value="{DynamicResource AndurilSurfaceElevatedBrush}" />
+            <Setter Property="BorderBrush" Value="{DynamicResource AndurilStrokeBrush}" />
+            <Setter Property="BorderThickness" Value="{DynamicResource AndurilStrokeThickness}" />
+            <Setter Property="CornerRadius" Value="{DynamicResource AndurilRadiusL}" />
+            <Setter Property="Padding" Value="{DynamicResource AndurilPaddingCard}" />
+        </Style>
+
+        <Style Selector="Border.anduril-card.emphasis">
+            <Setter Property="Background" Value="{DynamicResource AndurilAccentSubtleBrush}" />
+            <Setter Property="BorderBrush" Value="{DynamicResource AndurilAccentBorderBrush}" />
+        </Style>
+
+        <Style Selector="TextBlock.anduril-card-title">
+            <Setter Property="FontSize" Value="{DynamicResource AndurilFontSizeBody}" />
+            <Setter Property="FontWeight" Value="SemiBold" />
+            <Setter Property="Foreground" Value="{DynamicResource AndurilTextPrimaryBrush}" />
+        </Style>
+
+        <Style Selector="TextBlock.anduril-card-subtitle">
+            <Setter Property="FontSize" Value="{DynamicResource AndurilFontSizeCaption}" />
+            <Setter Property="Foreground" Value="{DynamicResource AndurilTextSecondaryBrush}" />
+            <Setter Property="TextWrapping" Value="Wrap" />
+        </Style>
+    </UserControl.Styles>
+
+    <Border x:Name="CardRoot"
+            Classes="anduril-card">
+        <StackPanel Spacing="{DynamicResource AndurilSpacingM}">
+            <StackPanel x:Name="HeaderPanel"
+                        Spacing="{DynamicResource AndurilSpacingXs}"
+                        IsVisible="False">
+                <TextBlock x:Name="TitleBlock"
+                           Classes="anduril-card-title"
+                           Text="{Binding Title, ElementName=Root}" />
+                <TextBlock x:Name="SubtitleBlock"
+                           Classes="anduril-card-subtitle"
+                           Text="{Binding Subtitle, ElementName=Root}" />
+            </StackPanel>
+
+            <ContentPresenter Content="{Binding Body, ElementName=Root}" />
+
+            <ContentPresenter x:Name="FooterPresenter"
+                              Content="{Binding Footer, ElementName=Root}"
+                              IsVisible="False" />
+        </StackPanel>
+    </Border>
+
+</UserControl>

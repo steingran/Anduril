@@ -8,6 +8,7 @@
             <ResourceDictionary.MergedDictionaries>
                 <ResourceInclude Source="/Styles/Tokens.axaml" />
                 <ResourceInclude Source="/Styles/Brushes.axaml" />
+                <ResourceInclude Source="/Styles/Icons.axaml" />
                 <ResourceInclude Source="/Styles/Motion.axaml" />
             </ResourceDictionary.MergedDictionaries>
         </ResourceDictionary>
