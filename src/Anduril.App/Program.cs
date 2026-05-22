@@ -1,6 +1,6 @@
 using Anduril.App.Services;
 using Avalonia;
-using Avalonia.ReactiveUI;
+using ReactiveUI.Avalonia;
 using Velopack;
 
 // ---------------------------------------------------------------------------
@@ -35,5 +35,5 @@ static AppBuilder BuildAvaloniaApp()
     => AppBuilder.Configure<Anduril.App.App>()
         .UsePlatformDetect()
         .WithInterFont()
-        .UseReactiveUI()
+        .UseReactiveUI(_ => { })
         .LogToTrace();

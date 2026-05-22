@@ -1,6 +1,6 @@
 using Avalonia;
 using Avalonia.Markup.Xaml.Styling;
-using Avalonia.ReactiveUI;
+using ReactiveUI.Avalonia;
 using Avalonia.Themes.Fluent;
 using ReactiveUI;
 
@@ -12,7 +12,7 @@ namespace Anduril.App.Tests.Infrastructure;
 /// <c>HostService.BaseUrl</c> in <c>OnFrameworkInitializationCompleted</c> — we must not
 /// boot that here. This subclass loads the same design-system resources that
 /// <c>App.axaml</c> wires up so brush/style lookups behave like production, and pins
-/// <see cref="RxApp.MainThreadScheduler"/> to the Avalonia dispatcher so
+/// <see cref="RxSchedulers.MainThreadScheduler"/> to the Avalonia dispatcher so
 /// ReactiveCommand's <c>CanExecuteChanged</c> notifications flow through the UI thread
 /// instead of the default long-running thread pool scheduler. Without this pin the
 /// production app is fine (it calls <c>UseReactiveUI</c> on the AppBuilder), but
@@ -69,6 +69,6 @@ public sealed class TestApp : Application
             Source = new Uri("avares://Anduril.App/Styles/Motion.axaml"),
         });
 
-        RxApp.MainThreadScheduler = AvaloniaScheduler.Instance;
+        RxSchedulers.MainThreadScheduler = AvaloniaScheduler.Instance;
     }
 }
