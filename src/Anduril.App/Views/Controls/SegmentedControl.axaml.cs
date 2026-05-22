@@ -41,7 +41,6 @@ public partial class SegmentedControl : UserControl
         Segments.LayoutUpdated += _layoutUpdatedHandler;
         Segments.KeyDown += OnListKeyDown;
         Segments.AddHandler(KeyDownEvent, OnListKeyDown, RoutingStrategies.Tunnel);
-        Segments.SelectionChanged += OnSelectionChanged;
         RepositionThumb();
     }
 
@@ -121,7 +120,6 @@ public partial class SegmentedControl : UserControl
         Segments.LayoutUpdated -= _layoutUpdatedHandler;
         Segments.KeyDown -= OnListKeyDown;
         Segments.RemoveHandler(KeyDownEvent, OnListKeyDown);
-        Segments.SelectionChanged -= OnSelectionChanged;
         base.OnDetachedFromVisualTree(e);
     }
 

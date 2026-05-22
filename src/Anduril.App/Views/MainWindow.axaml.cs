@@ -58,7 +58,9 @@ public partial class MainWindow : Window
         if (property is null || !property.PropertyType.IsEnum)
             return;
 
-        var parsed = Enum.Parse(property.PropertyType, enumValue, ignoreCase: false);
+        if (!Enum.TryParse(property.PropertyType, enumValue, ignoreCase: false, out var parsed))
+            return;
+
         property.SetValue(this, parsed);
     }
 
@@ -69,7 +71,9 @@ public partial class MainWindow : Window
         if (propertyType is null || roleType is null)
             return;
 
-        var titleBarRole = Enum.Parse(roleType, "TitleBar", ignoreCase: false);
+        if (!Enum.TryParse(roleType, "TitleBar", ignoreCase: false, out var titleBarRole))
+            return;
+
         var setMethod = propertyType.GetMethod("SetElementRole", [typeof(Visual), roleType]);
         setMethod?.Invoke(null, [visual, titleBarRole]);
     }

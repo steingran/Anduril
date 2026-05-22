@@ -22,7 +22,11 @@ public sealed class MainWindowViewModelTests
     {
         var deadline = DateTime.UtcNow.AddSeconds(2);
         while (vm.Conversations.Count < expectedCount && DateTime.UtcNow < deadline)
-            await Task.Yield();
+            await Task.Delay(10);
+
+        if (vm.Conversations.Count < expectedCount)
+            throw new TimeoutException(
+                $"Expected at least {expectedCount} conversations, but only observed {vm.Conversations.Count} before timeout.");
     }
 
     [Test]

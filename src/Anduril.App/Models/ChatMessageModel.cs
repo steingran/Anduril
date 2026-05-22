@@ -101,6 +101,14 @@ public sealed class ChatMessageModel : ReactiveObject
         if (string.IsNullOrWhiteSpace(content))
             return [new TextChatContentBlock(string.Empty)];
 
+        // Streaming chat responses are usually plain text. Avoid reparsing the full payload
+        // into markdown/table structures unless it contains markers that need richer rendering.
+        if (!content.Contains("```", StringComparison.Ordinal) &&
+            !content.Contains('|', StringComparison.Ordinal))
+        {
+            return [new TextChatContentBlock(content)];
+        }
+
         var blocks = new List<ChatContentBlock>();
         var lines = content.Replace("\r\n", "\n", StringComparison.Ordinal).Split('\n');
         var index = 0;

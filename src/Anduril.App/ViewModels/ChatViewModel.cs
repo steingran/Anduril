@@ -21,6 +21,7 @@ public sealed class ChatViewModel : ViewModelBase
     private SlashCommandSuggestion? _selectedSlashCommandSuggestion;
     private IEnumerable<ModelOption>? _availableModels;
     private ModelOption? _selectedModel;
+    private bool _isApplyingSlashCommand;
 
     public ChatViewModel()
     {
@@ -162,7 +163,11 @@ public sealed class ChatViewModel : ViewModelBase
     public bool HasError => LastError is not null;
     public bool CanAttach => true;
     public bool CanRegenerate => !IsStreaming && Messages.Any(message => message.IsAssistant) && Messages.Any(message => message.IsUser);
-    public bool IsSlashCommandMenuOpen => InputText.StartsWith("/", StringComparison.Ordinal) && VisibleSlashCommandSuggestions.Count > 0;
+    public bool IsSlashCommandMenuOpen =>
+        !_isApplyingSlashCommand &&
+        InputText.StartsWith("/", StringComparison.Ordinal) &&
+        !ContainsSlashTermTerminator(InputText.AsSpan(1)) &&
+        VisibleSlashCommandSuggestions.Count > 0;
 
     public ReactiveCommand<Unit, Unit> SendCommand { get; }
     public ReactiveCommand<Unit, Unit> StopCommand { get; }
@@ -347,8 +352,18 @@ public sealed class ChatViewModel : ViewModelBase
         if (suggestion is null)
             return;
 
-        InputText = suggestion.InsertText;
-        SelectedSlashCommandSuggestion = suggestion;
+        _isApplyingSlashCommand = true;
+        try
+        {
+            InputText = suggestion.InsertText;
+            SelectedSlashCommandSuggestion = suggestion;
+            VisibleSlashCommandSuggestions.Clear();
+        }
+        finally
+        {
+            _isApplyingSlashCommand = false;
+            this.RaisePropertyChanged(nameof(IsSlashCommandMenuOpen));
+        }
     }
 
     private void CopyMessage(string? content)
@@ -363,7 +378,8 @@ public sealed class ChatViewModel : ViewModelBase
     {
         VisibleSlashCommandSuggestions.Clear();
 
-        if (!InputText.StartsWith("/", StringComparison.Ordinal))
+        if (!InputText.StartsWith("/", StringComparison.Ordinal) ||
+            ContainsSlashTermTerminator(InputText.AsSpan(1)))
         {
             this.RaisePropertyChanged(nameof(IsSlashCommandMenuOpen));
             SelectedSlashCommandSuggestion = null;
@@ -432,4 +448,7 @@ public sealed class ChatViewModel : ViewModelBase
             Message = error
         };
     }
+
+    private static bool ContainsSlashTermTerminator(ReadOnlySpan<char> span) =>
+        span.IndexOfAny(stackalloc[] { ' ', '\n', '\r', '\t' }) >= 0;
 }

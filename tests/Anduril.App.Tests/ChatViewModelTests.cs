@@ -170,6 +170,8 @@ public sealed class ChatViewModelTests
         vm.ApplySelectedSlashCommand();
 
         await Assert.That(vm.InputText).IsEqualTo("/plan ");
+        await Assert.That(vm.IsSlashCommandMenuOpen).IsFalse();
+        await Assert.That(vm.VisibleSlashCommandSuggestions).IsEmpty();
     }
 
     [Test]
