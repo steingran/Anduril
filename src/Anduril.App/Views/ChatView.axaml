@@ -229,7 +229,7 @@
                                  Text="{Binding InputText}"
                                  AcceptsReturn="True"
                                  TextWrapping="Wrap"
-                                 Watermark="Message Anduril..."
+                                 PlaceholderText="Message Anduril..."
                                  KeyDown="OnComposerKeyDown">
                             <TextBox.KeyBindings>
                                 <KeyBinding Gesture="Ctrl+Return" Command="{Binding SendCommand}" />

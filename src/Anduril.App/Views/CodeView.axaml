@@ -240,7 +240,7 @@
                                      Classes="code-input"
                                      Text="{Binding InputText}"
                                      AcceptsReturn="True"
-                                     Watermark="Ask Anduril to inspect, patch, or explain this repo...">
+                                     PlaceholderText="Ask Anduril to inspect, patch, or explain this repo...">
                                 <TextBox.KeyBindings>
                                     <KeyBinding Gesture="Ctrl+Return" Command="{Binding SendCommand}" />
                                 </TextBox.KeyBindings>
