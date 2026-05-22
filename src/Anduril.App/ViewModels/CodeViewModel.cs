@@ -173,7 +173,7 @@ public sealed class CodeViewModel : ViewModelBase
     public ReactiveCommand<string, Unit> InsertSlashCommandCommand { get; }
 
     /// <summary>Wires the view-model to a conversation on the shared chat service.</summary>
-    public void SetConversation(string conversationId, IChatService chatService)
+    public void SetConversation(string conversationId, IChatService chatService, IReadOnlyList<SessionMessage>? history = null)
     {
         if (_chatService is not null)
         {
@@ -193,6 +193,16 @@ public sealed class CodeViewModel : ViewModelBase
             IsStreaming = false;
 
         Messages.Clear();
+        foreach (var message in history ?? [])
+        {
+            Messages.Add(new CodeMessageModel
+            {
+                Role = message.Role,
+                Content = message.Content,
+                Timestamp = message.Timestamp
+            });
+        }
+
         StagedActions.Clear();
         IsStagedPanelOpen = false;
         RefreshStagedActionState();
@@ -334,6 +344,7 @@ public sealed class CodeViewModel : ViewModelBase
     private void RefreshStagedActionState()
     {
         HasStagedActions = StagedActions.Count > 0;
+        this.RaisePropertyChanged(nameof(StagedActionsOverlayLabel));
 
         if (!HasStagedActions)
         {

@@ -89,7 +89,7 @@ public sealed class ChatMessageModel : ReactiveObject
         set => this.RaiseAndSetIfChanged(ref _isStreamingMessage, value);
     }
 
-    public int EstimatedTokenCount => Math.Max(1, (int)Math.Ceiling(Content.Length / 4.0));
+    public int EstimatedTokenCount => string.IsNullOrWhiteSpace(Content) ? 0 : (int)Math.Ceiling(Content.Length / 4.0);
     public string TokenCountLabel => $"{EstimatedTokenCount} tok";
     public double ContentMaxHeight => IsCollapsible && !IsExpanded ? CollapsedMaxHeight : double.PositiveInfinity;
     public string ShowMoreLabel => IsExpanded ? "Show less" : "Show more";

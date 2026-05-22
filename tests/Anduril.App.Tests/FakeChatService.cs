@@ -16,6 +16,7 @@ public sealed class FakeChatService : IChatService
 
     public List<ProviderInfo> Providers { get; set; } = [];
     public Queue<ConversationInfo> Conversations { get; set; } = new();
+    public Dictionary<string, List<SessionMessage>> ConversationHistory { get; } = [];
 
     public List<string> SelectedProviderIds { get; } = [];
     public List<(string ConversationId, string Text, string? ProviderId, string? RepoPath, string? Branch)> SentMessages { get; } = [];
@@ -39,7 +40,10 @@ public sealed class FakeChatService : IChatService
     }
 
     public Task<List<SessionMessage>> GetConversationHistoryAsync(string conversationId) =>
-        Task.FromResult(new List<SessionMessage>());
+        Task.FromResult(
+            ConversationHistory.TryGetValue(conversationId, out var history)
+                ? history.ToList()
+                : new List<SessionMessage>());
 
     public Task SendMessageAsync(string conversationId, string text, string? providerId = null, string? repoPath = null, string? branchName = null)
     {

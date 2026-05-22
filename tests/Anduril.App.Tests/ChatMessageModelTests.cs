@@ -190,4 +190,12 @@ public sealed class ChatMessageModelTests
         var msg = new ChatMessageModel { Role = "assistant", Content = "12345678" };
         await Assert.That(msg.TokenCountLabel).IsEqualTo("2 tok");
     }
+
+    [Test]
+    public async Task EstimatedTokenCount_WhenContentIsEmpty_ReturnsZero()
+    {
+        var msg = new ChatMessageModel { Role = "assistant", Content = string.Empty };
+        await Assert.That(msg.EstimatedTokenCount).IsEqualTo(0);
+        await Assert.That(msg.TokenCountLabel).IsEqualTo("0 tok");
+    }
 }

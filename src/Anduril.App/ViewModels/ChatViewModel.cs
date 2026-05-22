@@ -22,6 +22,7 @@ public sealed class ChatViewModel : ViewModelBase
     private IEnumerable<ModelOption>? _availableModels;
     private ModelOption? _selectedModel;
     private bool _isApplyingSlashCommand;
+    private ChatMessageModel? _latestAssistantMessage;
 
     public ChatViewModel()
     {
@@ -179,7 +180,7 @@ public sealed class ChatViewModel : ViewModelBase
     public ReactiveCommand<StarterPrompt?, Unit> UseStarterPromptCommand { get; }
     public ReactiveCommand<SlashCommandSuggestion?, Unit> ApplySlashCommandCommand { get; }
 
-    public void SetConversation(string conversationId, IChatService chatService)
+    public void SetConversation(string conversationId, IChatService chatService, IReadOnlyList<SessionMessage>? history = null)
     {
         // Unsubscribe from previous
         if (_chatService is not null)
@@ -198,6 +199,15 @@ public sealed class ChatViewModel : ViewModelBase
             IsStreaming = false;
 
         Messages.Clear();
+        foreach (var message in history ?? [])
+        {
+            Messages.Add(new ChatMessageModel
+            {
+                Role = message.Role,
+                Content = message.Content,
+                Timestamp = message.Timestamp
+            });
+        }
         LastError = null;
         this.RaisePropertyChanged(nameof(HasMessages));
         this.RaisePropertyChanged(nameof(CanRegenerate));
@@ -403,22 +413,22 @@ public sealed class ChatViewModel : ViewModelBase
 
     private void UpdateMessageStates()
     {
-        ChatMessageModel? latestAssistant = null;
-
-        for (var index = Messages.Count - 1; index >= 0; index--)
+        var latestAssistant = Messages.LastOrDefault(message => message.IsAssistant);
+        if (!ReferenceEquals(_latestAssistantMessage, latestAssistant))
         {
-            if (Messages[index].IsAssistant)
+            if (_latestAssistantMessage is not null)
             {
-                latestAssistant = Messages[index];
-                break;
+                _latestAssistantMessage.IsLatestAssistant = false;
+                _latestAssistantMessage.IsStreamingMessage = false;
             }
+
+            _latestAssistantMessage = latestAssistant;
+            if (_latestAssistantMessage is not null)
+                _latestAssistantMessage.IsLatestAssistant = true;
         }
 
-        foreach (var message in Messages)
-        {
-            message.IsLatestAssistant = ReferenceEquals(message, latestAssistant);
-            message.IsStreamingMessage = ReferenceEquals(message, latestAssistant) && IsStreaming && message.IsAssistant;
-        }
+        if (_latestAssistantMessage is not null)
+            _latestAssistantMessage.IsStreamingMessage = IsStreaming;
 
         this.RaisePropertyChanged(nameof(HasMessages));
         this.RaisePropertyChanged(nameof(CanRegenerate));

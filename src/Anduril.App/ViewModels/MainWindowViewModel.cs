@@ -23,6 +23,7 @@ public sealed class MainWindowViewModel : ViewModelBase
     private bool _isToolInspectorOpen;
     private bool _isSettingsOpen;
     private int _selectedNavigationIndex;
+    private bool _isSwitchingConversation;
 
     public MainWindowViewModel(
         IChatService chatService,
@@ -66,6 +67,9 @@ public sealed class MainWindowViewModel : ViewModelBase
                 if (!Equals(_selectedModel, model))
                     SelectedModel = model;
             });
+        this.WhenAnyValue(vm => vm.SelectedConversation)
+            .Where(conversation => conversation is not null)
+            .Subscribe(conversation => _ = SwitchConversationAsync(conversation!));
 
         // Load models, then create independent conversations for Chat and Code views
         LoadModelsCommand.Execute().Subscribe(
@@ -320,20 +324,44 @@ public sealed class MainWindowViewModel : ViewModelBase
 
             var entry = new ConversationEntry
             {
-                Id = conv.Id,
+                ChatConversationId = conv.Id,
+                CodeConversationId = codeConv.Id,
                 Title = conv.Title ?? "New conversation",
                 CreatedAt = conv.CreatedAt
             };
             Conversations.Insert(0, entry);
             SelectedConversation = entry;
             RebuildConversationGroups();
-            ChatVm.SetConversation(conv.Id, _chatService);
-            CodeVm.SetConversation(codeConv.Id, _chatService);
             SelectedNavigationIndex = 0;
         }
         catch
         {
             // Will retry on next attempt
+        }
+    }
+
+    private async Task SwitchConversationAsync(ConversationEntry conversation)
+    {
+        if (_isSwitchingConversation)
+            return;
+
+        _isSwitchingConversation = true;
+        try
+        {
+            var chatHistoryTask = _chatService.GetConversationHistoryAsync(conversation.ChatConversationId);
+            var codeHistoryTask = _chatService.GetConversationHistoryAsync(conversation.CodeConversationId);
+            await Task.WhenAll(chatHistoryTask, codeHistoryTask);
+
+            ChatVm.SetConversation(conversation.ChatConversationId, _chatService, chatHistoryTask.Result);
+            CodeVm.SetConversation(conversation.CodeConversationId, _chatService, codeHistoryTask.Result);
+        }
+        catch
+        {
+            // Keep the current conversation if history loading fails.
+        }
+        finally
+        {
+            _isSwitchingConversation = false;
         }
     }
 
@@ -401,7 +429,9 @@ public sealed class ConversationEntry : ReactiveObject
 {
     private string _title = string.Empty;
 
-    public required string Id { get; init; }
+    public string Id => ChatConversationId;
+    public required string ChatConversationId { get; init; }
+    public required string CodeConversationId { get; init; }
     public required DateTimeOffset CreatedAt { get; init; }
 
     public required string Title

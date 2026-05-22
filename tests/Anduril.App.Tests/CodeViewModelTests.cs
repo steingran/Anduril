@@ -164,4 +164,24 @@ public sealed class CodeViewModelTests
         await Assert.That(vm.AvailableBranches).IsEmpty();
         await Assert.That(vm.SelectedBranch).IsNull();
     }
+
+    [Test]
+    public async Task StagedActionsOverlayLabel_UpdatesWhenCountChangesWithoutClearingAllActions()
+    {
+        var vm = new CodeViewModel
+        {
+            ViewportWidth = 900
+        };
+
+        var first = new StagedActionModel { Kind = StagedActionKind.Create, FilePath = "first.cs" };
+        var second = new StagedActionModel { Kind = StagedActionKind.Edit, FilePath = "second.cs" };
+        vm.StagedActions.Add(first);
+        vm.StagedActions.Add(second);
+
+        await Assert.That(vm.StagedActionsOverlayLabel).IsEqualTo("Show staged changes (2)");
+
+        await vm.AcceptCommand.Execute(first).ToTask();
+
+        await Assert.That(vm.StagedActionsOverlayLabel).IsEqualTo("Show staged changes (1)");
+    }
 }

@@ -301,4 +301,46 @@ public sealed class MainWindowViewModelTests
         await Assert.That(vm.Conversations.Count).IsEqualTo(0);
         await Assert.That(vm.GroupedConversations.Count).IsEqualTo(0);
     }
+
+    [Test]
+    public async Task SelectedConversation_WhenChanged_SwitchesChatAndCodeConversationTargets()
+    {
+        var fake = new FakeChatService
+        {
+            Conversations = new Queue<ConversationInfo>(
+            [
+                new ConversationInfo { Id = "chat-1", CreatedAt = DateTimeOffset.UtcNow, Title = "First" },
+                new ConversationInfo { Id = "code-1", CreatedAt = DateTimeOffset.UtcNow, Title = "First" },
+                new ConversationInfo { Id = "chat-2", CreatedAt = DateTimeOffset.UtcNow.AddMinutes(1), Title = "Second" },
+                new ConversationInfo { Id = "code-2", CreatedAt = DateTimeOffset.UtcNow.AddMinutes(1), Title = "Second" }
+            ])
+        };
+
+        fake.ConversationHistory["chat-2"] = [new SessionMessage("assistant", "chat history", DateTimeOffset.UtcNow)];
+        fake.ConversationHistory["code-2"] = [new SessionMessage("assistant", "code history", DateTimeOffset.UtcNow)];
+
+        var vm = new MainWindowViewModel(fake, new FakeUserPreferencesService());
+        await WaitForConversationCountAsync(vm, 1);
+        await vm.NewConversationCommand.Execute().ToTask();
+        await WaitForConversationCountAsync(vm, 2);
+
+        var secondConversation = vm.Conversations.First(conversation => conversation.ChatConversationId == "chat-2");
+        vm.SelectedConversation = secondConversation;
+
+        var deadline = DateTime.UtcNow.AddSeconds(2);
+        while ((vm.ChatVm.Messages.LastOrDefault()?.Content != "chat history" ||
+                vm.CodeVm.Messages.LastOrDefault()?.Content != "code history") &&
+               DateTime.UtcNow < deadline)
+        {
+            await Task.Delay(10);
+        }
+
+        vm.ChatVm.InputText = "chat question";
+        await vm.ChatVm.SendCommand.Execute().ToTask();
+        vm.CodeVm.InputText = "code question";
+        await vm.CodeVm.SendCommand.Execute().ToTask();
+
+        await Assert.That(fake.SentMessages.Select(message => message.ConversationId)).Contains("chat-2");
+        await Assert.That(fake.SentMessages.Select(message => message.ConversationId)).Contains("code-2");
+    }
 }
