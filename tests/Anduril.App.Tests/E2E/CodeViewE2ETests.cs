@@ -1,4 +1,5 @@
 using Anduril.App.Tests.Infrastructure;
+using Anduril.App.Models;
 using Anduril.App.ViewModels;
 using Anduril.App.Views;
 using Avalonia.Controls;
@@ -74,6 +75,7 @@ public sealed class CodeViewE2ETests : AvaloniaHeadlessTestBase
         {
             var vm = new CodeViewModel();
             vm.SetConversation("conv-code-ctrl", fake);
+            vm.SelectedRepoPath = "/tmp";
 
             var view = new CodeView { DataContext = vm };
             var window = new Window { Width = 800, Height = 600, Content = view };
@@ -100,6 +102,71 @@ public sealed class CodeViewE2ETests : AvaloniaHeadlessTestBase
                 await Assert.That(fake.SentMessages.Count).IsEqualTo(1);
                 await Assert.That(fake.SentMessages[0].Text).IsEqualTo("review diff");
                 await Assert.That(fake.SentMessages[0].ConversationId).IsEqualTo("conv-code-ctrl");
+            }
+            finally
+            {
+                window.Close();
+            }
+        });
+    }
+
+    [Test]
+    public async Task WithoutRepo_EmptyStateIsVisible_AndComposerIsDisabled()
+    {
+        await RunOnUIThread(async () =>
+        {
+            var vm = new CodeViewModel();
+            vm.SetConversation("conv-code-empty", new FakeChatService());
+
+            var view = new CodeView { DataContext = vm };
+            var window = new Window { Width = 1024, Height = 720, Content = view };
+            try
+            {
+                window.Show();
+                Dispatcher.UIThread.RunJobs();
+
+                var browseButton = view.FindDescendant<Button>(button => Equals(button.Content, "Browse…"));
+                var input = view.FindDescendant<TextBox>(t => t.Classes.Contains("code-input"));
+
+                await Assert.That(browseButton.IsVisible).IsTrue();
+                await Assert.That(input.IsEffectivelyEnabled).IsFalse();
+            }
+            finally
+            {
+                window.Close();
+            }
+        });
+    }
+
+    [Test]
+    public async Task CompactWidth_ShowsOverlayInsteadOfStagedPanel()
+    {
+        await RunOnUIThread(async () =>
+        {
+            var vm = new CodeViewModel
+            {
+                SelectedRepoPath = "/repos/anduril"
+            };
+            vm.SetConversation("conv-code-compact", new FakeChatService());
+            vm.StagedActions.Add(new StagedActionModel
+            {
+                FilePath = "src/Code.cs",
+                Kind = StagedActionKind.Edit,
+                DiffLines = [new DiffLine(DiffLineKind.Context, "line", 1, 1)]
+            });
+
+            var view = new CodeView { DataContext = vm };
+            var window = new Window { Width = 1024, Height = 720, Content = view };
+            try
+            {
+                window.Show();
+                Dispatcher.UIThread.RunJobs();
+
+                var overlay = view.FindDescendant<Button>(button => Equals(button.Content, "Show staged changes (1)"));
+
+                await Assert.That(overlay.IsVisible).IsTrue();
+                await Assert.That(vm.ShowStagedActionsOverlay).IsTrue();
+                await Assert.That(vm.IsStagedPanelVisible).IsFalse();
             }
             finally
             {

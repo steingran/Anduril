@@ -13,12 +13,27 @@ namespace Anduril.App.Views.Controls;
 /// </summary>
 public static class MotionPolicy
 {
+    public static event EventHandler<bool>? ReducedMotionChanged;
+
     /// <summary>
     /// True when motion should be suppressed. Defaults to false; ANDA-76
     /// will wire this to <c>Application.Current.PlatformSettings</c> and
     /// <c>UserPreferences</c>.
     /// </summary>
-    public static bool IsReducedMotion { get; set; }
+    public static bool IsReducedMotion
+    {
+        get => _isReducedMotion;
+        set
+        {
+            if (_isReducedMotion == value)
+                return;
+
+            _isReducedMotion = value;
+            ReducedMotionChanged?.Invoke(null, value);
+        }
+    }
+
+    private static bool _isReducedMotion;
 
     /// <summary>
     /// Returns <see cref="TimeSpan.Zero"/> when reduced-motion is in

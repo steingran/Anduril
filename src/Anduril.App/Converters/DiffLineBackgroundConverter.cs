@@ -1,7 +1,9 @@
 using System.Globalization;
 using Anduril.App.Models;
+using Avalonia;
 using Avalonia.Data.Converters;
 using Avalonia.Media;
+using Avalonia.Styling;
 
 namespace Anduril.App.Converters;
 
@@ -13,19 +15,25 @@ public sealed class DiffLineBackgroundConverter : IValueConverter
 {
     public static readonly DiffLineBackgroundConverter Instance = new();
 
-    // Subtle dark-mode palette: green tint for added, red tint for removed, transparent for context
-    private static readonly SolidColorBrush AddedBrush   = new(Color.FromRgb(0x0E, 0x2A, 0x14));
-    private static readonly SolidColorBrush RemovedBrush = new(Color.FromRgb(0x2A, 0x0E, 0x0E));
-
     public object? Convert(object? value, Type targetType, object? parameter, CultureInfo culture) =>
         value is DiffLineKind kind ? kind switch
         {
-            DiffLineKind.Added   => AddedBrush,
-            DiffLineKind.Removed => RemovedBrush,
-            _                    => Brushes.Transparent
-        } : Brushes.Transparent;
+            DiffLineKind.Added => GetBrush("AndurilDiffAddBrush"),
+            DiffLineKind.Removed => GetBrush("AndurilDiffRemoveBrush"),
+            _ => GetBrush("AndurilDiffContextBrush")
+        } : GetBrush("AndurilDiffContextBrush");
 
     public object? ConvertBack(object? value, Type targetType, object? parameter, CultureInfo culture) =>
         throw new NotSupportedException();
-}
 
+    private static IBrush GetBrush(string resourceKey)
+    {
+        if (Application.Current?.TryGetResource(resourceKey, Application.Current.ActualThemeVariant, out var value) == true &&
+            value is IBrush brush)
+        {
+            return brush;
+        }
+
+        return Brushes.Transparent;
+    }
+}
