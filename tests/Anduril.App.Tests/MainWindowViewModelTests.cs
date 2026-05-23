@@ -303,6 +303,24 @@ public sealed class MainWindowViewModelTests
     }
 
     [Test]
+    public async Task NewConversation_UsesFallbackTitle_WhenServiceReturnsWhitespace()
+    {
+        var fake = new FakeChatService
+        {
+            Conversations = new Queue<ConversationInfo>(
+            [
+                new ConversationInfo { Id = "chat-1", Title = "   ", CreatedAt = DateTimeOffset.UtcNow },
+                new ConversationInfo { Id = "code-1", Title = "   ", CreatedAt = DateTimeOffset.UtcNow }
+            ])
+        };
+
+        var vm = new MainWindowViewModel(fake, new FakeUserPreferencesService());
+        await WaitForConversationCountAsync(vm, 1);
+
+        await Assert.That(vm.Conversations[0].Title).IsEqualTo("New conversation");
+    }
+
+    [Test]
     public async Task SelectedConversation_WhenChanged_SwitchesChatAndCodeConversationTargets()
     {
         var fake = new FakeChatService

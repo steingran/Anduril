@@ -326,7 +326,7 @@ public sealed class MainWindowViewModel : ViewModelBase
             {
                 ChatConversationId = conv.Id,
                 CodeConversationId = codeConv.Id,
-                Title = conv.Title ?? "New conversation",
+                Title = string.IsNullOrWhiteSpace(conv.Title) ? "New conversation" : conv.Title,
                 CreatedAt = conv.CreatedAt
             };
             Conversations.Insert(0, entry);

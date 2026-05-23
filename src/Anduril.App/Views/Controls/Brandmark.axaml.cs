@@ -49,30 +49,33 @@ public partial class Brandmark : UserControl
 
     private void UpdateVisualState()
     {
-        if (MarkBadge is null || MarkGlyph is null || WordmarkText is null)
+        if (MarkHost is null ||
+            MarkPrimaryStroke is null ||
+            MarkAccentStroke is null ||
+            WordmarkText is null)
             return;
 
-        var (markSize, glyphSize, wordmarkSize, spacing, padding) = Size switch
+        var (markSize, wordmarkSize, spacing, padding) = Size switch
         {
-            BrandmarkSize.Small => (20d, 11d, 18d, 8d, new Thickness(0, 1, 0, 0)),
-            BrandmarkSize.Large => (36d, 18d, 28d, 14d, new Thickness(0, 1, 0, 0)),
-            _ => (28d, 14d, 22d, 10d, new Thickness(0, 1, 0, 0))
+            BrandmarkSize.Small => (20d, 18d, 8d, new Thickness(0, 1, 0, 0)),
+            BrandmarkSize.Large => (36d, 28d, 14d, new Thickness(0, 1, 0, 0)),
+            _ => (28d, 22d, 10d, new Thickness(0, 1, 0, 0))
         };
 
-        MarkBadge.Width = markSize;
-        MarkBadge.Height = markSize;
+        MarkHost.Width = markSize;
+        MarkHost.Height = markSize;
         LayoutRoot.Spacing = spacing;
-        MarkGlyph.FontSize = glyphSize;
         WordmarkText.FontSize = wordmarkSize;
         WordmarkText.Padding = padding;
+        WordmarkText.FontFamily = FontFamily.Parse("avares://Avalonia.Fonts.Inter/Assets#Inter, $Default");
 
         var isDark = ActualThemeVariant == ThemeVariant.Dark;
-        MarkBadge.Background = isDark
+        var markBrush = isDark
             ? new SolidColorBrush(Color.Parse("#E7EEF8"))
             : new SolidColorBrush(Color.Parse("#0F172A"));
-        MarkGlyph.Foreground = isDark
-            ? new SolidColorBrush(Color.Parse("#0F172A"))
-            : new SolidColorBrush(Color.Parse("#F8FAFC"));
+
+        MarkPrimaryStroke.Stroke = markBrush;
+        MarkAccentStroke.Stroke = markBrush;
         WordmarkText.Foreground = isDark
             ? new SolidColorBrush(Color.Parse("#F8FAFC"))
             : new SolidColorBrush(Color.Parse("#0F172A"));

@@ -49,6 +49,7 @@ public partial class MainWindow : Window
             return;
 
         // Avalonia 11 fallback: keep the startup surface fully opaque.
+        Title = string.Empty;
         TransparencyLevelHint =
         [
             WindowTransparencyLevel.None
