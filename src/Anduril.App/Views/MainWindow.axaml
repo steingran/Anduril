@@ -46,6 +46,9 @@
             <Setter Property="FontSize" Value="{DynamicResource AndurilFontSizeUi}" />
             <Setter Property="FontWeight" Value="SemiBold" />
         </Style>
+        <Style Selector="Button.tools-toggle /template/ ContentPresenter">
+            <Setter Property="TextElement.Foreground" Value="{DynamicResource AndurilTextPrimaryBrush}" />
+        </Style>
         <Style Selector="Button.tools-toggle:pointerover /template/ ContentPresenter">
             <Setter Property="Background" Value="{DynamicResource AndurilSurfaceSubtleBrush}" />
             <Setter Property="TextElement.Foreground" Value="{DynamicResource AndurilTextPrimaryBrush}" />
@@ -64,6 +67,10 @@
             <Setter Property="Background" Value="Transparent" />
             <Setter Property="CornerRadius" Value="{DynamicResource AndurilRadiusM}" />
         </Style>
+        <Style Selector="ListBox.sidebar ListBoxItem">
+            <Setter Property="HorizontalContentAlignment" Value="Stretch" />
+            <Setter Property="VerticalContentAlignment" Value="Center" />
+        </Style>
         <Style Selector="ListBox.sidebar ListBoxItem Border.conversation-stripe">
             <Setter Property="Background" Value="Transparent" />
         </Style>
@@ -80,17 +87,25 @@
             <Setter Property="IsHitTestVisible" Value="True" />
         </Style>
 
-        <Style Selector="TextBlock.conversation-title">
+        <Style Selector="ListBox.sidebar ListBoxItem TextBlock.conversation-title">
             <Setter Property="Foreground" Value="{DynamicResource AndurilTextPrimaryBrush}" />
             <Setter Property="FontSize" Value="{DynamicResource AndurilFontSizeUi}" />
             <Setter Property="FontWeight" Value="SemiBold" />
             <Setter Property="TextTrimming" Value="CharacterEllipsis" />
         </Style>
 
-        <Style Selector="TextBlock.conversation-meta">
+        <Style Selector="ListBox.sidebar ListBoxItem TextBlock.conversation-meta">
             <Setter Property="Foreground" Value="{DynamicResource AndurilTextSecondaryBrush}" />
             <Setter Property="FontSize" Value="{DynamicResource AndurilFontSizeCaption}" />
             <Setter Property="TextTrimming" Value="CharacterEllipsis" />
+        </Style>
+        <Style Selector="ListBox.sidebar ListBoxItem:selected TextBlock.conversation-title,
+                         ListBox.sidebar ListBoxItem:selected:pointerover TextBlock.conversation-title">
+            <Setter Property="Foreground" Value="{DynamicResource AndurilTextPrimaryBrush}" />
+        </Style>
+        <Style Selector="ListBox.sidebar ListBoxItem:selected TextBlock.conversation-meta,
+                         ListBox.sidebar ListBoxItem:selected:pointerover TextBlock.conversation-meta">
+            <Setter Property="Foreground" Value="{DynamicResource AndurilTextSecondaryBrush}" />
         </Style>
 
         <Style Selector="Button.overlay-scrim">

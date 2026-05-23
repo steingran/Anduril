@@ -143,6 +143,39 @@ public sealed class MainWindowNavigationE2ETests : AvaloniaHeadlessTestBase
         });
     }
 
+    [Test]
+    public async Task ShellNavigationAndSidebarLabels_RenderWithMeasuredText()
+    {
+        await RunOnUIThread(async () =>
+        {
+            var (window, _) = MountMainWindow();
+            try
+            {
+                window.Show();
+                await FlushUntilStableAsync();
+
+                var chatLabel = window.FindDescendant<TextBlock>(text => text.Text == "Chat");
+                var codeLabel = window.FindDescendant<TextBlock>(text => text.Text == "Code");
+                var conversationTitle = window.FindDescendant<TextBlock>(text => text.Classes.Contains("conversation-title"));
+                var conversationMeta = window.FindDescendant<TextBlock>(text => text.Classes.Contains("conversation-meta"));
+
+                await Assert.That(chatLabel).IsNotNull();
+                await Assert.That(codeLabel).IsNotNull();
+                await Assert.That(conversationTitle).IsNotNull();
+                await Assert.That(conversationMeta).IsNotNull();
+
+                await Assert.That(chatLabel!.Bounds.Width).IsGreaterThan(0d);
+                await Assert.That(codeLabel!.Bounds.Width).IsGreaterThan(0d);
+                await Assert.That(conversationTitle!.Bounds.Width).IsGreaterThan(0d);
+                await Assert.That(conversationMeta!.Bounds.Width).IsGreaterThan(0d);
+            }
+            finally
+            {
+                window.Close();
+            }
+        });
+    }
+
     private static (MainWindow Window, MainWindowViewModel Vm) MountMainWindow()
     {
         var vm = new MainWindowViewModel(new FakeChatService(), new FakeUserPreferencesService());
