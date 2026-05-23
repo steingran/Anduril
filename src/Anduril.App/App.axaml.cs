@@ -4,6 +4,8 @@ using Anduril.App.Views;
 using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Controls.ApplicationLifetimes;
+using Avalonia.Layout;
+using Avalonia.Media;
 using Avalonia.Threading;
 using Avalonia.Markup.Xaml;
 using Serilog;
@@ -31,8 +33,17 @@ public class App : Application
         {
             Log.Information("Initializing classic desktop lifetime against host {BaseUrl}", HostService.BaseUrl);
 
-            var mainWindow = new MainWindow();
-            Log.Information("Constructed main window shell");
+            Window mainWindow;
+            try
+            {
+                mainWindow = new MainWindow();
+                Log.Information("Constructed main window shell");
+            }
+            catch (Exception ex)
+            {
+                Log.Fatal(ex, "MainWindow construction failed; falling back to diagnostic window");
+                mainWindow = CreateDiagnosticWindow(ex);
+            }
 
             desktop.ShutdownMode = ShutdownMode.OnMainWindowClose;
             desktop.Startup += (_, _) =>
@@ -111,5 +122,57 @@ public class App : Application
         }
 
         base.OnFrameworkInitializationCompleted();
+    }
+
+    private static Window CreateDiagnosticWindow(Exception ex)
+    {
+        return new Window
+        {
+            Title = "Anduril Startup Error",
+            Width = 960,
+            Height = 640,
+            MinWidth = 720,
+            MinHeight = 480,
+            ShowInTaskbar = true,
+            WindowStartupLocation = WindowStartupLocation.CenterScreen,
+            Background = Brushes.White,
+            Content = new Border
+            {
+                Padding = new Thickness(24),
+                Child = new ScrollViewer
+                {
+                    Content = new StackPanel
+                    {
+                        Spacing = 16,
+                        Children =
+                        {
+                            new TextBlock
+                            {
+                                Text = "Anduril failed to construct the main window.",
+                                FontSize = 22,
+                                FontWeight = FontWeight.SemiBold,
+                                Foreground = Brushes.Black
+                            },
+                            new TextBlock
+                            {
+                                Text = "This fallback window is shown so startup exceptions are visible on the desktop. Please copy the exception below back into the issue thread.",
+                                TextWrapping = TextWrapping.Wrap,
+                                Foreground = Brushes.Black
+                            },
+                            new TextBox
+                            {
+                                Text = ex.ToString(),
+                                IsReadOnly = true,
+                                AcceptsReturn = true,
+                                HorizontalAlignment = HorizontalAlignment.Stretch,
+                                VerticalAlignment = VerticalAlignment.Stretch,
+                                MinHeight = 420,
+                                TextWrapping = TextWrapping.Wrap
+                            }
+                        }
+                    }
+                }
+            }
+        };
     }
 }
