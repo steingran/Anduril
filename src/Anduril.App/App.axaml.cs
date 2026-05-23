@@ -31,10 +31,8 @@ public class App : Application
         {
             Log.Information("Initializing classic desktop lifetime against host {BaseUrl}", HostService.BaseUrl);
 
-            ChatService = new SignalRChatService(HostService.BaseUrl);
-            var prefsService = new UserPreferencesService();
-            var mainVm = new MainWindowViewModel(ChatService, prefsService);
-            var mainWindow = new MainWindow { DataContext = mainVm };
+            var mainWindow = new MainWindow();
+            Log.Information("Constructed main window shell");
 
             desktop.ShutdownMode = ShutdownMode.OnMainWindowClose;
             desktop.Startup += (_, _) =>
@@ -74,25 +72,41 @@ public class App : Application
 
             Dispatcher.UIThread.Post(() =>
             {
-                if (mainWindow.IsVisible)
+                try
                 {
-                    Log.Information(
-                        "Main window already visible after lifetime assignment. WindowState={WindowState}, ShowInTaskbar={ShowInTaskbar}",
-                        mainWindow.WindowState,
-                        mainWindow.ShowInTaskbar);
-                    return;
-                }
+                    if (!mainWindow.IsVisible)
+                    {
+                        Log.Information("Dispatcher startup show requested for main window");
+                        mainWindow.Show();
+                        mainWindow.WindowState = WindowState.Normal;
+                        mainWindow.Activate();
+                        mainWindow.Focus();
+                        Log.Information(
+                            "Main window dispatcher show completed. Visible={IsVisible}, WindowState={WindowState}, ShowInTaskbar={ShowInTaskbar}",
+                            mainWindow.IsVisible,
+                            mainWindow.WindowState,
+                            mainWindow.ShowInTaskbar);
+                    }
+                    else
+                    {
+                        Log.Information(
+                            "Main window already visible after lifetime assignment. WindowState={WindowState}, ShowInTaskbar={ShowInTaskbar}",
+                            mainWindow.WindowState,
+                            mainWindow.ShowInTaskbar);
+                    }
 
-                Log.Information("Dispatcher startup show requested for main window");
-                mainWindow.Show();
-                mainWindow.WindowState = WindowState.Normal;
-                mainWindow.Activate();
-                mainWindow.Focus();
-                Log.Information(
-                    "Main window dispatcher show completed. Visible={IsVisible}, WindowState={WindowState}, ShowInTaskbar={ShowInTaskbar}",
-                    mainWindow.IsVisible,
-                    mainWindow.WindowState,
-                    mainWindow.ShowInTaskbar);
+                    Log.Information("Creating desktop services and main window view model");
+                    ChatService = new SignalRChatService(HostService.BaseUrl);
+                    var prefsService = new UserPreferencesService();
+                    var mainVm = new MainWindowViewModel(ChatService, prefsService);
+                    mainWindow.DataContext = mainVm;
+                    Log.Information("Assigned main window data context");
+                }
+                catch (Exception ex)
+                {
+                    Log.Fatal(ex, "Failed while initializing the main window shell or data context");
+                    throw;
+                }
             }, DispatcherPriority.Loaded);
         }
 
