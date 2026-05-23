@@ -15,6 +15,7 @@
         MinWidth="{DynamicResource AndurilWindowMinWidth}"
         MinHeight="{DynamicResource AndurilWindowMinHeight}"
         Background="{DynamicResource AndurilSurfaceBrush}"
+        ShowInTaskbar="True"
         WindowStartupLocation="CenterScreen"
         KeyDown="OnWindowKeyDown">
 

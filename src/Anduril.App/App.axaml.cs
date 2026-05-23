@@ -4,6 +4,7 @@ using Anduril.App.Views;
 using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Controls.ApplicationLifetimes;
+using Avalonia.Threading;
 using Avalonia.Markup.Xaml;
 using Serilog;
 
@@ -38,15 +39,7 @@ public class App : Application
             desktop.ShutdownMode = ShutdownMode.OnMainWindowClose;
             desktop.Startup += (_, _) =>
             {
-                Log.Information("Desktop startup event received; showing main window");
-                mainWindow.Show();
-                mainWindow.Activate();
-                mainWindow.Focus();
-                Log.Information(
-                    "Main window show requested. Visible={IsVisible}, WindowState={WindowState}, ShowInTaskbar={ShowInTaskbar}",
-                    mainWindow.IsVisible,
-                    mainWindow.WindowState,
-                    mainWindow.ShowInTaskbar);
+                Log.Information("Desktop startup event received");
             };
             desktop.Exit += (_, _) =>
             {
@@ -78,6 +71,29 @@ public class App : Application
 
             desktop.MainWindow = mainWindow;
             Log.Information("Assigned main window to desktop lifetime");
+
+            Dispatcher.UIThread.Post(() =>
+            {
+                if (mainWindow.IsVisible)
+                {
+                    Log.Information(
+                        "Main window already visible after lifetime assignment. WindowState={WindowState}, ShowInTaskbar={ShowInTaskbar}",
+                        mainWindow.WindowState,
+                        mainWindow.ShowInTaskbar);
+                    return;
+                }
+
+                Log.Information("Dispatcher startup show requested for main window");
+                mainWindow.Show();
+                mainWindow.WindowState = WindowState.Normal;
+                mainWindow.Activate();
+                mainWindow.Focus();
+                Log.Information(
+                    "Main window dispatcher show completed. Visible={IsVisible}, WindowState={WindowState}, ShowInTaskbar={ShowInTaskbar}",
+                    mainWindow.IsVisible,
+                    mainWindow.WindowState,
+                    mainWindow.ShowInTaskbar);
+            }, DispatcherPriority.Loaded);
         }
 
         base.OnFrameworkInitializationCompleted();
