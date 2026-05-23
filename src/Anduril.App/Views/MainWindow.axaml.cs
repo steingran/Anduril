@@ -1,4 +1,5 @@
 using Anduril.App.ViewModels;
+using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Input;
 
@@ -9,6 +10,7 @@ public partial class MainWindow : Window
     public MainWindow()
     {
         InitializeComponent();
+        ConfigureWindowChrome();
     }
 
     private void OnWindowKeyDown(object? sender, KeyEventArgs e)
@@ -39,5 +41,68 @@ public partial class MainWindow : Window
             return;
 
         viewModel.DeleteConversationCommand.Execute(conversation).Subscribe();
+    }
+
+    private void ConfigureWindowChrome()
+    {
+        if (TryConfigureAvalonia12Chrome())
+            return;
+
+        // Avalonia 11 fallback: keep the startup surface fully opaque.
+        TransparencyLevelHint =
+        [
+            WindowTransparencyLevel.None
+        ];
+        ExtendClientAreaToDecorationsHint = false;
+        SetEnumPropertyIfPresent("SystemDecorations", "Full");
+    }
+
+    private bool TryConfigureAvalonia12Chrome()
+    {
+        var windowDecorationsProperty = typeof(Window).GetProperty("WindowDecorations");
+        if (windowDecorationsProperty is null || TopBar is null)
+            return false;
+
+        TransparencyLevelHint =
+        [
+            WindowTransparencyLevel.Mica,
+            WindowTransparencyLevel.AcrylicBlur,
+            WindowTransparencyLevel.Blur
+        ];
+        ExtendClientAreaToDecorationsHint = true;
+
+        var decorationsValue = Enum.Parse(windowDecorationsProperty.PropertyType, "Full", ignoreCase: false);
+        windowDecorationsProperty.SetValue(this, decorationsValue);
+
+        var decorationPropertiesType = Type.GetType("Avalonia.Controls.Chrome.WindowDecorationProperties, Avalonia.Controls");
+        var elementRoleType = Type.GetType("Avalonia.Input.WindowDecorationsElementRole, Avalonia.Base");
+        var setElementRole = decorationPropertiesType?
+            .GetMethods()
+            .FirstOrDefault(method =>
+            {
+                if (method.Name != "SetElementRole")
+                    return false;
+
+                var parameters = method.GetParameters();
+                return parameters.Length == 2 && parameters[1].ParameterType == elementRoleType;
+            });
+
+        if (elementRoleType is not null && setElementRole is not null)
+        {
+            var titleBarRole = Enum.Parse(elementRoleType, "TitleBar", ignoreCase: false);
+            setElementRole.Invoke(null, [TopBar, titleBarRole]);
+        }
+
+        return true;
+    }
+
+    private void SetEnumPropertyIfPresent(string propertyName, string enumValue)
+    {
+        var property = typeof(Window).GetProperty(propertyName);
+        if (property is null || !property.PropertyType.IsEnum)
+            return;
+
+        var parsed = Enum.Parse(property.PropertyType, enumValue, ignoreCase: false);
+        property.SetValue(this, parsed);
     }
 }
