@@ -202,6 +202,32 @@ public sealed class MainWindowNavigationE2ETests : AvaloniaHeadlessTestBase
         });
     }
 
+    [Test]
+    public async Task Shell_ShowsSettingsAndModelPicker()
+    {
+        await RunOnUIThread(async () =>
+        {
+            var (window, _) = MountMainWindow();
+            try
+            {
+                window.Show();
+                await FlushUntilStableAsync();
+
+                var settingsButton = window.FindDescendant<Button>(button => button.Name == "SettingsButton");
+                var modelPicker = window.FindDescendant<Anduril.App.Views.Controls.ModelPicker>(picker => picker.Name == "TopBarModelPicker");
+
+                await Assert.That(settingsButton).IsNotNull();
+                await Assert.That(settingsButton!.IsVisible).IsTrue();
+                await Assert.That(modelPicker).IsNotNull();
+                await Assert.That(modelPicker!.IsVisible).IsTrue();
+            }
+            finally
+            {
+                window.Close();
+            }
+        });
+    }
+
     private static (MainWindow Window, MainWindowViewModel Vm) MountMainWindow()
     {
         var vm = new MainWindowViewModel(new FakeChatService(), new FakeUserPreferencesService());

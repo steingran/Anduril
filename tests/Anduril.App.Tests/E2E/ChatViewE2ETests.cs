@@ -63,6 +63,7 @@ public sealed class ChatViewE2ETests : AvaloniaHeadlessTestBase
 
                 var sendButton = FindSendButton(view);
 
+                await Assert.That(sendButton.IsVisible).IsTrue();
                 await Assert.That(sendButton.IsEffectivelyEnabled).IsFalse();
             }
             finally

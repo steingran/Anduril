@@ -121,6 +121,17 @@
             <Setter Property="Padding" Value="0" />
         </Style>
 
+        <Style Selector="Button.send">
+            <Setter Property="Width" Value="88" />
+            <Setter Property="MinWidth" Value="88" />
+        </Style>
+
+        <Style Selector="Button.send:disabled /template/ ContentPresenter">
+            <Setter Property="Background" Value="{DynamicResource AndurilSurfaceSubtleBrush}" />
+            <Setter Property="BorderBrush" Value="{DynamicResource AndurilStrokeBrush}" />
+            <Setter Property="TextElement.Foreground" Value="{DynamicResource AndurilTextSecondaryBrush}" />
+        </Style>
+
         <Style Selector="Border.slash-popup">
             <Setter Property="Background" Value="{DynamicResource AndurilSurfaceBrush}" />
             <Setter Property="BorderBrush" Value="{DynamicResource AndurilStrokeBrush}" />
