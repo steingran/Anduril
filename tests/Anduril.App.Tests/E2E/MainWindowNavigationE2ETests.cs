@@ -176,6 +176,32 @@ public sealed class MainWindowNavigationE2ETests : AvaloniaHeadlessTestBase
         });
     }
 
+    [Test]
+    public async Task Shell_HasSingleNewConversationButton()
+    {
+        await RunOnUIThread(async () =>
+        {
+            var (window, _) = MountMainWindow();
+            try
+            {
+                window.Show();
+                await FlushUntilStableAsync();
+
+                var newConversationButtons = window
+                    .GetVisualDescendants()
+                    .OfType<Button>()
+                    .Where(button => button.GetVisualDescendants().OfType<TextBlock>().Any(text => text.Text == "New conversation"))
+                    .ToList();
+
+                await Assert.That(newConversationButtons.Count).IsEqualTo(1);
+            }
+            finally
+            {
+                window.Close();
+            }
+        });
+    }
+
     private static (MainWindow Window, MainWindowViewModel Vm) MountMainWindow()
     {
         var vm = new MainWindowViewModel(new FakeChatService(), new FakeUserPreferencesService());

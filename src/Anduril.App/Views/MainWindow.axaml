@@ -270,8 +270,8 @@
                 <Border x:Name="TopBar"
                         Grid.Row="0"
                         Classes="topbar-surface"
-                        Padding="16,14,16,12">
-                    <Grid ColumnDefinitions="Auto,*,Auto,Auto,Auto"
+                        Padding="16,14,160,12">
+                    <Grid ColumnDefinitions="Auto,*,Auto,Auto"
                           ColumnSpacing="12">
                         <controls:SegmentedControl x:Name="NavigationSegments"
                                                    Grid.Column="0"
@@ -307,19 +307,6 @@
                                               SelectedModel="{Binding SelectedModel}"
                                               ConfigureCommand="{Binding OpenSettingsCommand}"
                                               ConfigureLabel="Provider settings" />
-
-                        <Button x:Name="TopBarNewConversationButton"
-                                Grid.Column="4"
-                                Classes="accent"
-                                Command="{Binding NewConversationCommand}">
-                            <StackPanel Orientation="Horizontal"
-                                        Spacing="8">
-                                <PathIcon Width="{DynamicResource AndurilIconSizeS}"
-                                          Height="{DynamicResource AndurilIconSizeS}"
-                                          Data="{StaticResource FluentAdd16Geometry}" />
-                                <TextBlock Text="New conversation" />
-                            </StackPanel>
-                        </Button>
                     </Grid>
                 </Border>
 
