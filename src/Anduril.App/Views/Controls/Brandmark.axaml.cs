@@ -1,5 +1,6 @@
 using Avalonia;
 using Avalonia.Controls;
+using Avalonia.Media;
 using Avalonia.Styling;
 
 namespace Anduril.App.Views.Controls;
@@ -48,24 +49,32 @@ public partial class Brandmark : UserControl
 
     private void UpdateVisualState()
     {
-        if (MarkImage is null)
+        if (MarkBadge is null || MarkGlyph is null || WordmarkText is null)
             return;
 
-        var (markSize, wordmarkWidth, wordmarkHeight, spacing) = Size switch
+        var (markSize, glyphSize, wordmarkSize, spacing, padding) = Size switch
         {
-            BrandmarkSize.Small => (20d, 88d, 14d, 8d),
-            BrandmarkSize.Large => (36d, 156d, 24d, 14d),
-            _ => (28d, 122d, 19d, 10d)
+            BrandmarkSize.Small => (20d, 11d, 18d, 8d, new Thickness(0, 1, 0, 0)),
+            BrandmarkSize.Large => (36d, 18d, 28d, 14d, new Thickness(0, 1, 0, 0)),
+            _ => (28d, 14d, 22d, 10d, new Thickness(0, 1, 0, 0))
         };
 
-        MarkImage.Width = markSize;
-        MarkImage.Height = markSize;
-        WordmarkHost.Width = wordmarkWidth;
-        WordmarkHost.Height = wordmarkHeight;
+        MarkBadge.Width = markSize;
+        MarkBadge.Height = markSize;
         LayoutRoot.Spacing = spacing;
+        MarkGlyph.FontSize = glyphSize;
+        WordmarkText.FontSize = wordmarkSize;
+        WordmarkText.Padding = padding;
 
         var isDark = ActualThemeVariant == ThemeVariant.Dark;
-        LightWordmarkImage.IsVisible = !isDark;
-        DarkWordmarkImage.IsVisible = isDark;
+        MarkBadge.Background = isDark
+            ? new SolidColorBrush(Color.Parse("#E7EEF8"))
+            : new SolidColorBrush(Color.Parse("#0F172A"));
+        MarkGlyph.Foreground = isDark
+            ? new SolidColorBrush(Color.Parse("#0F172A"))
+            : new SolidColorBrush(Color.Parse("#F8FAFC"));
+        WordmarkText.Foreground = isDark
+            ? new SolidColorBrush(Color.Parse("#F8FAFC"))
+            : new SolidColorBrush(Color.Parse("#0F172A"));
     }
 }

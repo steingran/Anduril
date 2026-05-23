@@ -159,15 +159,18 @@ public class App : Application
                                 TextWrapping = TextWrapping.Wrap,
                                 Foreground = Brushes.Black
                             },
-                            new TextBox
+                            new Border
                             {
-                                Text = ex.ToString(),
-                                IsReadOnly = true,
-                                AcceptsReturn = true,
-                                HorizontalAlignment = HorizontalAlignment.Stretch,
-                                VerticalAlignment = VerticalAlignment.Stretch,
+                                Background = Brushes.WhiteSmoke,
+                                Padding = new Thickness(12),
                                 MinHeight = 420,
-                                TextWrapping = TextWrapping.Wrap
+                                Child = new TextBlock
+                                {
+                                    Text = ex.ToString(),
+                                    FontFamily = FontFamily.Parse("Consolas, Courier New, monospace"),
+                                    TextWrapping = TextWrapping.Wrap,
+                                    Foreground = Brushes.Black
+                                }
                             }
                         }
                     }

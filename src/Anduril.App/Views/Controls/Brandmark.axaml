@@ -6,17 +6,18 @@
     <StackPanel x:Name="LayoutRoot"
                 Orientation="Horizontal"
                 VerticalAlignment="Center">
-        <Image x:Name="MarkImage"
-               Source="/Assets/anduril-mark.svg"
-               Stretch="Uniform" />
-        <Grid x:Name="WordmarkHost">
-            <Image x:Name="LightWordmarkImage"
-                   Source="/Assets/anduril-wordmark-light.svg"
-                   Stretch="Uniform" />
-            <Image x:Name="DarkWordmarkImage"
-                   Source="/Assets/anduril-wordmark-dark.svg"
-                   Stretch="Uniform" />
-        </Grid>
+        <Border x:Name="MarkBadge"
+                CornerRadius="999">
+            <TextBlock x:Name="MarkGlyph"
+                       Text="A"
+                       FontWeight="Bold"
+                       HorizontalAlignment="Center"
+                       VerticalAlignment="Center" />
+        </Border>
+        <TextBlock x:Name="WordmarkText"
+                   Text="Anduril"
+                   FontWeight="SemiBold"
+                   VerticalAlignment="Center" />
     </StackPanel>
 
 </UserControl>
