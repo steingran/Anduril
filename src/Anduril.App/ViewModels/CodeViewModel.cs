@@ -303,29 +303,23 @@ public sealed class CodeViewModel : ViewModelBase
     private void AcceptAll()
     {
         StagedActions.Clear();
-        RefreshStagedActionState();
     }
 
     private void RejectAll()
     {
         StagedActions.Clear();
-        RefreshStagedActionState();
     }
 
     private void AcceptAction(StagedActionModel action)
     {
         if (!StagedActions.Remove(action))
             return;
-
-        RefreshStagedActionState();
     }
 
     private void RejectAction(StagedActionModel action)
     {
         if (!StagedActions.Remove(action))
             return;
-
-        RefreshStagedActionState();
     }
 
     private void InsertSlashCommand(string slashCommand)
@@ -411,7 +405,6 @@ public sealed class CodeViewModel : ViewModelBase
         Dispatcher.UIThread.Post(() =>
         {
             StagedActions.Add(action);
-            RefreshStagedActionState();
         });
     }
 }

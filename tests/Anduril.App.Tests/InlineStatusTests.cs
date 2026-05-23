@@ -67,6 +67,39 @@ public sealed class InlineStatusTests : AvaloniaHeadlessTestBase
         });
     }
 
+    [Test]
+    public async Task ActionButton_Hides_WhenCommandIsRemoved()
+    {
+        await RunOnUIThread(async () =>
+        {
+            var control = new InlineStatus
+            {
+                Text = "Failed",
+                Variant = InlineStatusVariant.Failed,
+                ActionLabel = "Retry",
+                ActionCommand = new NoOpCommand()
+            };
+
+            var window = new Window { Content = control, Width = 240, Height = 80 };
+
+            try
+            {
+                window.Show();
+
+                var button = control.FindDescendant<Button>(b => b.Name == "ActionButton");
+                await Assert.That(button.IsVisible).IsTrue();
+
+                control.ActionCommand = null;
+
+                await Assert.That(button.IsVisible).IsFalse();
+            }
+            finally
+            {
+                window.Close();
+            }
+        });
+    }
+
     private sealed class NoOpCommand : ICommand
     {
         public event EventHandler? CanExecuteChanged

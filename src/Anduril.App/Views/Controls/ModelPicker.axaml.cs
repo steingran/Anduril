@@ -115,7 +115,10 @@ public partial class ModelPicker : UserControl
             UpdateVisualState();
 
         if (change.Property == ConfigureCommandProperty)
-            RaisePropertyChanged(HasConfigureActionProperty, false, HasConfigureAction);
+            RaisePropertyChanged(
+                HasConfigureActionProperty,
+                change.GetOldValue<ICommand?>() is not null,
+                change.GetNewValue<ICommand?>() is not null);
     }
 
     private void OnTogglePopup(object? sender, Avalonia.Interactivity.RoutedEventArgs e)

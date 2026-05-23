@@ -4,6 +4,7 @@ using Anduril.App.Views.Controls;
 using Avalonia.Controls;
 using Avalonia.Controls.Primitives;
 using Avalonia.Threading;
+using System.Windows.Input;
 using System.Linq;
 using Avalonia.VisualTree;
 
@@ -75,5 +76,38 @@ public sealed class ModelPickerTests : AvaloniaHeadlessTestBase
                 window.Close();
             }
         });
+    }
+
+    [Test]
+    public async Task ConfigureButton_Hides_WhenConfigureCommandIsRemoved()
+    {
+        await RunOnUIThread(async () =>
+        {
+            var control = new ModelPicker
+            {
+                ConfigureLabel = "Manage providers",
+                ConfigureCommand = new NoOpCommand()
+            };
+
+            await Assert.That(control.HasConfigureAction).IsTrue();
+
+            control.ConfigureCommand = null;
+            await Dispatcher.UIThread.InvokeAsync(() => { });
+
+            await Assert.That(control.HasConfigureAction).IsFalse();
+        });
+    }
+
+    private sealed class NoOpCommand : ICommand
+    {
+        public event EventHandler? CanExecuteChanged
+        {
+            add { }
+            remove { }
+        }
+
+        public bool CanExecute(object? parameter) => true;
+
+        public void Execute(object? parameter) { }
     }
 }

@@ -40,6 +40,40 @@ public sealed class AndurilAlertTests : AvaloniaHeadlessTestBase
         });
     }
 
+    [Test]
+    public async Task PrimaryAction_Hides_WhenCommandIsRemoved()
+    {
+        await RunOnUIThread(async () =>
+        {
+            var control = new AndurilAlert
+            {
+                Title = "Provider missing",
+                Body = "Configure one to continue.",
+                Variant = AndurilAlertVariant.Warning,
+                PrimaryActionLabel = "Configure",
+                PrimaryActionCommand = new NoOpCommand()
+            };
+
+            var window = new Window { Content = control, Width = 360, Height = 160 };
+
+            try
+            {
+                window.Show();
+
+                var actionButton = control.FindDescendant<Button>(button => button.Name == "PrimaryActionButton");
+                await Assert.That(actionButton.IsVisible).IsTrue();
+
+                control.PrimaryActionCommand = null;
+
+                await Assert.That(actionButton.IsVisible).IsFalse();
+            }
+            finally
+            {
+                window.Close();
+            }
+        });
+    }
+
     private sealed class NoOpCommand : ICommand
     {
         public event EventHandler? CanExecuteChanged

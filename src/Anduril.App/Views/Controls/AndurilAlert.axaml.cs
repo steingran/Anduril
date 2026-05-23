@@ -90,6 +90,22 @@ public partial class AndurilAlert : UserControl
     {
         base.OnPropertyChanged(change);
 
+        if (change.Property == PrimaryActionLabelProperty || change.Property == PrimaryActionCommandProperty)
+        {
+            RaisePropertyChanged(
+                HasPrimaryActionProperty,
+                GetHasPrimaryAction(change, oldValue: true),
+                GetHasPrimaryAction(change, oldValue: false));
+        }
+
+        if (change.Property == VariantProperty)
+        {
+            RaisePropertyChanged(
+                IconGlyphProperty,
+                GetIconGlyph(change.GetOldValue<AndurilAlertVariant>()),
+                IconGlyph);
+        }
+
         if (change.Property == VariantProperty ||
             change.Property == PrimaryActionLabelProperty ||
             change.Property == PrimaryActionCommandProperty ||
@@ -109,10 +125,27 @@ public partial class AndurilAlert : UserControl
         ApplyVariantClass(IconRoot.Classes, variantClass);
         BodyBlock.IsVisible = !string.IsNullOrWhiteSpace(Body);
         PrimaryActionButton.IsVisible = HasPrimaryAction;
-
-        RaisePropertyChanged(HasPrimaryActionProperty, false, HasPrimaryAction);
-        RaisePropertyChanged(IconGlyphProperty, string.Empty, IconGlyph);
     }
+
+    private bool GetHasPrimaryAction(AvaloniaPropertyChangedEventArgs change, bool oldValue)
+    {
+        var actionLabel = change.Property == PrimaryActionLabelProperty
+            ? oldValue ? change.GetOldValue<string?>() : change.GetNewValue<string?>()
+            : PrimaryActionLabel;
+        var actionCommand = change.Property == PrimaryActionCommandProperty
+            ? oldValue ? change.GetOldValue<ICommand?>() : change.GetNewValue<ICommand?>()
+            : PrimaryActionCommand;
+
+        return !string.IsNullOrWhiteSpace(actionLabel) && actionCommand is not null;
+    }
+
+    private static string GetIconGlyph(AndurilAlertVariant variant) => variant switch
+    {
+        AndurilAlertVariant.Success => "✓",
+        AndurilAlertVariant.Warning => "!",
+        AndurilAlertVariant.Danger => "×",
+        _ => "i"
+    };
 
     private static void ApplyVariantClass(Classes classes, string variantClass)
     {

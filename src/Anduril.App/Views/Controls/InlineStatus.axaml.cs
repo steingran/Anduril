@@ -69,13 +69,25 @@ public partial class InlineStatus : UserControl
             UpdateVariantClasses();
 
         if (change.Property == ActionLabelProperty || change.Property == ActionCommandProperty)
-            RaisePropertyChanged(HasActionProperty, false, HasAction);
+            RaisePropertyChanged(HasActionProperty, GetHasAction(change, oldValue: true), GetHasAction(change, oldValue: false));
     }
 
     private static readonly DirectProperty<InlineStatus, bool> HasActionProperty =
         AvaloniaProperty.RegisterDirect<InlineStatus, bool>(
             nameof(HasAction),
             inlineStatus => inlineStatus.HasAction);
+
+    private bool GetHasAction(AvaloniaPropertyChangedEventArgs change, bool oldValue)
+    {
+        var actionLabel = change.Property == ActionLabelProperty
+            ? oldValue ? change.GetOldValue<string?>() : change.GetNewValue<string?>()
+            : ActionLabel;
+        var actionCommand = change.Property == ActionCommandProperty
+            ? oldValue ? change.GetOldValue<ICommand?>() : change.GetNewValue<ICommand?>()
+            : ActionCommand;
+
+        return !string.IsNullOrWhiteSpace(actionLabel) && actionCommand is not null;
+    }
 
     private void UpdateVariantClasses()
     {
