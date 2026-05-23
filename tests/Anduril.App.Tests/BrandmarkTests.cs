@@ -2,6 +2,7 @@ using Anduril.App.Tests.Infrastructure;
 using Anduril.App.Views.Controls;
 using Avalonia.Controls;
 using Avalonia.Styling;
+using Path = Avalonia.Controls.Shapes.Path;
 
 namespace Anduril.App.Tests;
 
@@ -25,15 +26,14 @@ public sealed class BrandmarkTests : AvaloniaHeadlessTestBase
             {
                 window.Show();
 
-                var mark = control.FindDescendant<Image>(image => image.Name == "MarkImage");
-                var lightWordmark = control.FindDescendant<Image>(image => image.Name == "LightWordmarkImage");
-                var darkWordmark = control.FindDescendant<Image>(image => image.Name == "DarkWordmarkImage");
+                var mark = control.FindDescendant<Viewbox>(viewbox => viewbox.Name == "MarkHost");
+                var primaryStroke = control.FindDescendant<Path>(path => path.Name == "MarkPrimaryStroke");
+                var wordmark = control.FindDescendant<TextBlock>(text => text.Name == "WordmarkText");
 
                 await Assert.That(mark.Width).IsEqualTo(36d);
-                await Assert.That(lightWordmark).IsNotNull();
-                await Assert.That(lightWordmark.IsVisible).IsFalse();
-                await Assert.That(darkWordmark).IsNotNull();
-                await Assert.That(darkWordmark.IsVisible).IsTrue();
+                await Assert.That(primaryStroke).IsNotNull();
+                await Assert.That(wordmark.Text).IsEqualTo("Andúril");
+                await Assert.That(wordmark.FontSize).IsEqualTo(28d);
             }
             finally
             {
