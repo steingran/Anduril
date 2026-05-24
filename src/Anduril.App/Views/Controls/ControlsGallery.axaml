@@ -68,6 +68,10 @@
                                                Variant="Failed"
                                                ActionLabel="Retry"
                                                ActionCommand="{Binding NoOpCommand, ElementName=Root}" />
+                        <StackPanel Orientation="Horizontal" Spacing="{DynamicResource AndurilSpacingS}">
+                            <controls:StreamingCaret IsStreaming="True" />
+                            <controls:StreamingDotIndicator IsStreaming="True" />
+                        </StackPanel>
                         <controls:AndurilAlert Title="Connection lost"
                                                Body="The desktop client will retry the assistant stream automatically."
                                                Variant="Danger"
