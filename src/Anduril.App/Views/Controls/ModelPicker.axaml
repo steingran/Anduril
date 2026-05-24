@@ -88,12 +88,18 @@
                             Classes="model-picker-trigger"
                             Click="OnTogglePopup"
                             HorizontalAlignment="Stretch">
-                <Grid ColumnDefinitions="*,Auto" ColumnSpacing="8">
+                <Grid ColumnDefinitions="*,8,Auto" ColumnSpacing="0"
+                      ClipToBounds="True">
                     <TextBlock x:Name="SelectedModelText"
+                               Grid.Column="0"
                                Text="{Binding PlaceholderText, ElementName=Root}"
                                Classes="model-picker-placeholder"
-                               Foreground="{DynamicResource AndurilTextPrimaryBrush}" />
-                    <TextBlock Text="▾"
+                               Foreground="{DynamicResource AndurilTextPrimaryBrush}"
+                               VerticalAlignment="Center"
+                               ClipToBounds="True" />
+                    <TextBlock x:Name="ChevronGlyph"
+                               Grid.Column="2"
+                               Text="▾"
                                Classes="model-picker-selected"
                                Foreground="{DynamicResource AndurilTextPrimaryBrush}"
                                HorizontalAlignment="Right"

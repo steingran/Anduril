@@ -167,6 +167,46 @@ public sealed class ModelPickerTests : AvaloniaHeadlessTestBase
         });
     }
 
+    [Test]
+    public async Task CompactHeader_LongSelectedModel_DoesNotOverlapChevron()
+    {
+        await RunOnUIThread(async () =>
+        {
+            var selected = new ModelOption
+            {
+                ProviderId = "anthropic::claude-opus-4-7",
+                DisplayName = "Anthropic: Claude Opus 4.7",
+                ModelName = "claude-opus-4-7",
+                IsAvailable = true
+            };
+
+            var control = new ModelPicker
+            {
+                ItemsSource = new[] { selected },
+                SelectedModel = selected,
+                Compact = true,
+                Width = 176
+            };
+
+            var window = new Window { Content = control, Width = 320, Height = 120 };
+
+            try
+            {
+                window.Show();
+                Dispatcher.UIThread.RunJobs();
+
+                var selectedModelText = control.FindDescendant<TextBlock>(text => text.Name == "SelectedModelText");
+                var chevron = control.FindDescendant<TextBlock>(text => text.Name == "ChevronGlyph");
+
+                await Assert.That(selectedModelText.Bounds.Right).IsLessThan(chevron.Bounds.Left + 1d);
+            }
+            finally
+            {
+                window.Close();
+            }
+        });
+    }
+
     private sealed class NoOpCommand : ICommand
     {
         public event EventHandler? CanExecuteChanged
