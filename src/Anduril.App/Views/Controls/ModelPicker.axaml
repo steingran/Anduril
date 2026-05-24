@@ -29,7 +29,7 @@
         <Style Selector="Border.model-picker-popup">
             <Setter Property="MinWidth" Value="280" />
             <Setter Property="MaxHeight" Value="300" />
-            <Setter Property="Background" Value="{DynamicResource AndurilSurfaceBrush}" />
+            <Setter Property="Background" Value="{DynamicResource AndurilOverlaySurfaceBrush}" />
             <Setter Property="BorderBrush" Value="{DynamicResource AndurilStrokeBrush}" />
             <Setter Property="BorderThickness" Value="{DynamicResource AndurilStrokeThickness}" />
             <Setter Property="CornerRadius" Value="{DynamicResource AndurilRadiusL}" />

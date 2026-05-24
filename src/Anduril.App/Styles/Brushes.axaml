@@ -27,6 +27,7 @@
             <SolidColorBrush x:Key="AndurilSurfaceElevatedBrush" Color="{DynamicResource CardBackgroundFillColorDefault}" />
             <SolidColorBrush x:Key="AndurilSurfaceSubtleBrush"   Color="{DynamicResource SubtleFillColorSecondary}" />
             <SolidColorBrush x:Key="AndurilSidebarBrush"         Color="{DynamicResource LayerOnAcrylicFillColorDefault}" />
+            <SolidColorBrush x:Key="AndurilOverlaySurfaceBrush"  Color="#F6F8FC" />
             <SolidColorBrush x:Key="AndurilCodeSurfaceBrush"     Color="#F4F6FB" />
 
             <!-- Stroke — Fluent-aliased -->
@@ -78,6 +79,7 @@
             <SolidColorBrush x:Key="AndurilSurfaceElevatedBrush" Color="{DynamicResource CardBackgroundFillColorDefault}" />
             <SolidColorBrush x:Key="AndurilSurfaceSubtleBrush"   Color="{DynamicResource SubtleFillColorSecondary}" />
             <SolidColorBrush x:Key="AndurilSidebarBrush"         Color="{DynamicResource LayerOnAcrylicFillColorDefault}" />
+            <SolidColorBrush x:Key="AndurilOverlaySurfaceBrush"  Color="#171B24" />
             <SolidColorBrush x:Key="AndurilCodeSurfaceBrush"     Color="#0F1424" />
 
             <!-- Stroke -->

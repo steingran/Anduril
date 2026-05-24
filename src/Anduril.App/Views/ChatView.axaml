@@ -133,7 +133,7 @@
         </Style>
 
         <Style Selector="Border.slash-popup">
-            <Setter Property="Background" Value="{DynamicResource AndurilSurfaceBrush}" />
+            <Setter Property="Background" Value="{DynamicResource AndurilOverlaySurfaceBrush}" />
             <Setter Property="BorderBrush" Value="{DynamicResource AndurilStrokeBrush}" />
             <Setter Property="BorderThickness" Value="{DynamicResource AndurilStrokeThickness}" />
             <Setter Property="CornerRadius" Value="{DynamicResource AndurilRadiusL}" />

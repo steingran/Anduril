@@ -17,15 +17,15 @@
     <Application.Styles>
         <FluentTheme />
         <Style Selector="PopupRoot">
-            <Setter Property="Background" Value="{DynamicResource AndurilSurfaceBrush}" />
+            <Setter Property="Background" Value="{DynamicResource AndurilOverlaySurfaceBrush}" />
         </Style>
         <Style Selector="FlyoutPresenter">
-            <Setter Property="Background" Value="{DynamicResource AndurilSurfaceBrush}" />
+            <Setter Property="Background" Value="{DynamicResource AndurilOverlaySurfaceBrush}" />
             <Setter Property="BorderBrush" Value="{DynamicResource AndurilStrokeBrush}" />
             <Setter Property="BorderThickness" Value="{DynamicResource AndurilStrokeThickness}" />
         </Style>
         <Style Selector="MenuFlyoutPresenter">
-            <Setter Property="Background" Value="{DynamicResource AndurilSurfaceBrush}" />
+            <Setter Property="Background" Value="{DynamicResource AndurilOverlaySurfaceBrush}" />
             <Setter Property="BorderBrush" Value="{DynamicResource AndurilStrokeBrush}" />
             <Setter Property="BorderThickness" Value="{DynamicResource AndurilStrokeThickness}" />
         </Style>
