@@ -1,9 +1,9 @@
 using Anduril.App.ViewModels;
 using Anduril.App.Views.Controls;
 using Avalonia;
+using Avalonia.Animation;
 using Avalonia.Controls;
 using Avalonia.Input;
-using Avalonia.Animation;
 using System.ComponentModel;
 
 namespace Anduril.App.Views;
@@ -71,10 +71,12 @@ public partial class MainWindow : Window
     private bool TryConfigureAvalonia12Chrome()
     {
         var windowDecorationsProperty = typeof(Window).GetProperty("WindowDecorations");
-        if (windowDecorationsProperty is null || TopBar is null)
+        if (windowDecorationsProperty is null || TitleBarDragRegion is null)
             return false;
 
-        var decorationsValue = Enum.Parse(windowDecorationsProperty.PropertyType, "Full", ignoreCase: false);
+        if (!TryParseEnumValue(windowDecorationsProperty.PropertyType, "Full", out var decorationsValue))
+            return false;
+
         windowDecorationsProperty.SetValue(this, decorationsValue);
 
         var decorationPropertiesType = Type.GetType("Avalonia.Controls.Chrome.WindowDecorationProperties, Avalonia.Controls");
@@ -90,10 +92,11 @@ public partial class MainWindow : Window
                 return parameters.Length == 2 && parameters[1].ParameterType == elementRoleType;
             });
 
-        if (elementRoleType is not null && setElementRole is not null)
+        if (elementRoleType is not null &&
+            setElementRole is not null &&
+            TryParseEnumValue(elementRoleType, "TitleBar", out var titleBarRole))
         {
-            var titleBarRole = Enum.Parse(elementRoleType, "TitleBar", ignoreCase: false);
-            setElementRole.Invoke(null, [TopBar, titleBarRole]);
+            setElementRole.Invoke(null, [TitleBarDragRegion, titleBarRole]);
         }
 
         return true;
@@ -105,7 +108,9 @@ public partial class MainWindow : Window
         if (property is null || !property.PropertyType.IsEnum)
             return;
 
-        var parsed = Enum.Parse(property.PropertyType, enumValue, ignoreCase: false);
+        if (!TryParseEnumValue(property.PropertyType, enumValue, out var parsed))
+            return;
+
         property.SetValue(this, parsed);
     }
 
@@ -163,5 +168,29 @@ public partial class MainWindow : Window
         var compactTopBar = Bounds.Width > 0 && Bounds.Width <= 1120;
         NavigationSegments.Width = compactTopBar ? 160 : 172;
         TopBarModelPicker.Width = compactTopBar ? 160 : 220;
+
+        if (TopBar is not null)
+        {
+            var verticalPadding = compactTopBar ? 10d : 12d;
+            var rightInset = OperatingSystem.IsWindows() ? 160d : 16d;
+            TopBar.Padding = new Thickness(16, verticalPadding, rightInset, verticalPadding);
+        }
+    }
+
+    private static bool TryParseEnumValue(Type enumType, string enumValue, out object? parsedValue)
+    {
+        parsedValue = null;
+        if (!enumType.IsEnum)
+            return false;
+
+        try
+        {
+            parsedValue = Enum.Parse(enumType, enumValue, ignoreCase: false);
+            return true;
+        }
+        catch (ArgumentException)
+        {
+            return false;
+        }
     }
 }

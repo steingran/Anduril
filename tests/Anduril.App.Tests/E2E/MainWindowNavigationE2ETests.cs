@@ -215,11 +215,14 @@ public sealed class MainWindowNavigationE2ETests : AvaloniaHeadlessTestBase
 
                 var settingsButton = window.FindDescendant<Button>(button => button.Name == "SettingsButton");
                 var modelPicker = window.FindDescendant<Anduril.App.Views.Controls.ModelPicker>(picker => picker.Name == "TopBarModelPicker");
+                var dragRegion = window.FindDescendant<Border>(border => border.Name == "TitleBarDragRegion");
 
                 await Assert.That(settingsButton).IsNotNull();
                 await Assert.That(settingsButton!.IsVisible).IsTrue();
                 await Assert.That(modelPicker).IsNotNull();
                 await Assert.That(modelPicker!.IsVisible).IsTrue();
+                await Assert.That(dragRegion).IsNotNull();
+                await Assert.That(dragRegion!.IsVisible).IsTrue();
             }
             finally
             {

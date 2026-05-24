@@ -321,6 +321,11 @@
                                                    ItemsSource="{Binding NavigationItems}"
                                                    SelectedIndex="{Binding SelectedNavigationIndex, Mode=TwoWay}" />
 
+                        <Border x:Name="TitleBarDragRegion"
+                                Grid.Column="1"
+                                Background="Transparent"
+                                MinHeight="32" />
+
                         <StackPanel Grid.Column="2"
                                     Orientation="Horizontal"
                                     Spacing="12"
