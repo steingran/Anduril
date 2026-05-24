@@ -2,6 +2,7 @@ using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
+using System.Collections.Specialized;
 using System.Linq;
 using System.Windows.Input;
 using Anduril.App.Models;
@@ -49,6 +50,7 @@ public partial class ModelPicker : UserControl
             picker => picker.HasConfigureAction);
 
     private readonly ObservableCollection<ModelPickerItem> _pickerItems = [];
+    private INotifyCollectionChanged? _itemsSourceSubscription;
 
     public ModelPicker()
     {
@@ -104,6 +106,7 @@ public partial class ModelPicker : UserControl
 
         if (change.Property == ItemsSourceProperty)
         {
+            UpdateItemsSourceSubscription(change.GetOldValue<IEnumerable?>(), change.GetNewValue<IEnumerable?>());
             RebuildPickerItems();
             UpdateHeaderFromSelection();
         }
@@ -168,6 +171,26 @@ public partial class ModelPicker : UserControl
                 });
             }
         }
+    }
+
+    private void UpdateItemsSourceSubscription(IEnumerable? previousSource, IEnumerable? currentSource)
+    {
+        if (ReferenceEquals(previousSource, currentSource))
+            return;
+
+        if (_itemsSourceSubscription is not null)
+            _itemsSourceSubscription.CollectionChanged -= OnItemsSourceCollectionChanged;
+
+        _itemsSourceSubscription = currentSource as INotifyCollectionChanged;
+
+        if (_itemsSourceSubscription is not null)
+            _itemsSourceSubscription.CollectionChanged += OnItemsSourceCollectionChanged;
+    }
+
+    private void OnItemsSourceCollectionChanged(object? sender, NotifyCollectionChangedEventArgs e)
+    {
+        RebuildPickerItems();
+        UpdateHeaderFromSelection();
     }
 
     private void UpdateHeaderFromSelection()

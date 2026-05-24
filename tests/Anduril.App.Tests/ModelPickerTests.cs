@@ -4,6 +4,7 @@ using Anduril.App.Views.Controls;
 using Avalonia.Controls;
 using Avalonia.Controls.Primitives;
 using Avalonia.Threading;
+using System.Collections.ObjectModel;
 using System.Windows.Input;
 using System.Linq;
 using Avalonia.VisualTree;
@@ -95,6 +96,74 @@ public sealed class ModelPickerTests : AvaloniaHeadlessTestBase
             await Dispatcher.UIThread.InvokeAsync(() => { });
 
             await Assert.That(control.HasConfigureAction).IsFalse();
+        });
+    }
+
+    [Test]
+    public async Task Click_OpenPopup_AfterItemsLoad_ShowsOptionsAndAllowsSelection()
+    {
+        await RunOnUIThread(async () =>
+        {
+            var models = new ObservableCollection<ModelOption>();
+            var first = new ModelOption
+            {
+                ProviderId = "openai::gpt-4o",
+                DisplayName = "OpenAI: GPT-4o",
+                ModelName = "gpt-4o",
+                IsAvailable = true
+            };
+            var second = new ModelOption
+            {
+                ProviderId = "anthropic::claude-sonnet",
+                DisplayName = "Anthropic: Claude Sonnet",
+                ModelName = "claude-sonnet",
+                IsAvailable = true
+            };
+
+            var control = new ModelPicker
+            {
+                ItemsSource = models,
+                Width = 360
+            };
+
+            var window = new Window { Content = control, Width = 480, Height = 320 };
+
+            try
+            {
+                window.Show();
+                Dispatcher.UIThread.RunJobs();
+
+                models.Add(first);
+                models.Add(second);
+                Dispatcher.UIThread.RunJobs();
+
+                await Assert.That(control.PickerItems.Count(item => item.IsModelOption)).IsEqualTo(2);
+
+                var openButton = control.FindDescendant<Button>(button => button.Name == "OpenButton");
+                window.ClickCenterOf(openButton);
+                await Dispatcher.UIThread.InvokeAsync(() => { });
+
+                var popup = control.FindDescendant<Popup>(element => element.Name == "ModelPopup");
+                await Assert.That(popup.IsOpen).IsTrue();
+
+                var optionButtons = popup.Child!
+                    .GetVisualDescendants()
+                    .OfType<Button>()
+                    .Where(button => button.Name == "ModelButton")
+                    .ToList();
+
+                await Assert.That(optionButtons.Count).IsEqualTo(2);
+
+                window.ClickCenterOf(optionButtons[1]);
+                await Dispatcher.UIThread.InvokeAsync(() => { });
+
+                await Assert.That(control.SelectedModel?.ProviderId).IsEqualTo(second.ProviderId);
+                await Assert.That(popup.IsOpen).IsFalse();
+            }
+            finally
+            {
+                window.Close();
+            }
         });
     }
 
