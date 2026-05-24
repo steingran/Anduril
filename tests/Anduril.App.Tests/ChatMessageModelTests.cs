@@ -93,10 +93,10 @@ public sealed class ChatMessageModelTests
     }
 
     [Test]
-    public async Task ContentMaxHeight_WhenCollapsibleAndNotExpanded_Returns200()
+    public async Task ContentMaxHeight_WhenCollapsibleAndNotExpanded_Returns320()
     {
         var msg = new ChatMessageModel { Role = "assistant", Content = new string('x', 501) };
-        await Assert.That(msg.ContentMaxHeight).IsEqualTo(200.0);
+        await Assert.That(msg.ContentMaxHeight).IsEqualTo(320.0);
     }
 
     [Test]
@@ -147,5 +147,55 @@ public sealed class ChatMessageModelTests
         msg.ToggleExpandCommand.Execute(null);
         msg.ToggleExpandCommand.Execute(null);
         await Assert.That(msg.IsExpanded).IsFalse();
+    }
+
+    [Test]
+    public async Task ToolCalls_WhenSet_ReportsHasToolCalls()
+    {
+        var msg = new ChatMessageModel
+        {
+            Role = "assistant",
+            Content = "done",
+            ToolCalls =
+            [
+                new ToolCallSummary
+                {
+                    ToolId = "search",
+                    ToolName = "search",
+                    Detail = "inspected repo"
+                }
+            ]
+        };
+
+        await Assert.That(msg.HasToolCalls).IsTrue();
+        await Assert.That(msg.ToolCalls.Count).IsEqualTo(1);
+    }
+
+    [Test]
+    public async Task ContentBlocks_WhenContentContainsCodeFence_ParsesCodeBlock()
+    {
+        var msg = new ChatMessageModel
+        {
+            Role = "assistant",
+            Content = "Intro\n```csharp\nConsole.WriteLine(\"hi\");\n```\nDone"
+        };
+
+        await Assert.That(msg.ContentBlocks.Count).IsEqualTo(3);
+        await Assert.That(msg.ContentBlocks[1]).IsTypeOf<CodeChatContentBlock>();
+    }
+
+    [Test]
+    public async Task TokenCountLabel_UsesEstimatedTokenCount()
+    {
+        var msg = new ChatMessageModel { Role = "assistant", Content = "12345678" };
+        await Assert.That(msg.TokenCountLabel).IsEqualTo("2 tok");
+    }
+
+    [Test]
+    public async Task EstimatedTokenCount_WhenContentIsEmpty_ReturnsZero()
+    {
+        var msg = new ChatMessageModel { Role = "assistant", Content = string.Empty };
+        await Assert.That(msg.EstimatedTokenCount).IsEqualTo(0);
+        await Assert.That(msg.TokenCountLabel).IsEqualTo("0 tok");
     }
 }

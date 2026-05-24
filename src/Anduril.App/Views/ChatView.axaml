@@ -4,203 +4,556 @@
              xmlns:models="using:Anduril.App.Models"
              xmlns:controls="using:Anduril.App.Views.Controls"
              x:Class="Anduril.App.Views.ChatView"
-             x:DataType="vm:ChatViewModel"
-             Background="#0F1525">
+             x:Name="Root"
+             x:DataType="vm:ChatViewModel">
 
     <UserControl.Styles>
-        <!-- Rounded input -->
-        <Style Selector="TextBox.chat-input">
-            <Setter Property="CornerRadius" Value="20" />
-            <Setter Property="Padding" Value="16,10" />
-            <Setter Property="Background" Value="#0D1328" />
-            <Setter Property="BorderBrush" Value="#1E2E50" />
-            <Setter Property="BorderThickness" Value="1" />
-            <Setter Property="Foreground" Value="#D0DCFF" />
-            <Setter Property="FontSize" Value="14" />
-            <Setter Property="CaretBrush" Value="#6090D0" />
+        <Style Selector="Border.chat-root">
+            <Setter Property="Background" Value="{DynamicResource AndurilSurfaceBrush}" />
         </Style>
-        <Style Selector="TextBox.chat-input:focus">
-            <Setter Property="BorderBrush" Value="#3A5898" />
-        </Style>
-        <!-- Send button -->
-        <Style Selector="Button.send">
-            <Setter Property="CornerRadius" Value="20" />
-            <Setter Property="Padding" Value="20,10" />
-            <Setter Property="Background" Value="#1E3A6E" />
-            <Setter Property="Foreground" Value="#CCDEFF" />
-            <Setter Property="BorderThickness" Value="0" />
-            <Setter Property="FontSize" Value="13" />
-            <Setter Property="FontWeight" Value="Medium" />
-            <Setter Property="Cursor" Value="Hand" />
-        </Style>
-        <Style Selector="Button.send:pointerover /template/ ContentPresenter">
-            <Setter Property="Background" Value="#264A8A" />
-        </Style>
-        <Style Selector="Button.send:disabled /template/ ContentPresenter">
-            <Setter Property="Background" Value="#111A2E" />
-            <Setter Property="Opacity" Value="0.5" />
-        </Style>
-        <!-- Stop button -->
-        <Style Selector="Button.stop">
-            <Setter Property="CornerRadius" Value="8" />
+
+        <Style Selector="ScrollViewer.chat-scroll">
             <Setter Property="Padding" Value="0" />
+        </Style>
+
+        <Style Selector="StackPanel.chat-column">
+            <Setter Property="MaxWidth" Value="{DynamicResource AndurilContentMaxWidth}" />
+            <Setter Property="Margin" Value="24,24,24,16" />
+            <Setter Property="HorizontalAlignment" Value="Center" />
+        </Style>
+
+        <Style Selector="Border.empty-state-card">
+            <Setter Property="Background" Value="{DynamicResource AndurilSurfaceElevatedBrush}" />
+            <Setter Property="BorderBrush" Value="{DynamicResource AndurilStrokeBrush}" />
+            <Setter Property="BorderThickness" Value="{DynamicResource AndurilStrokeThickness}" />
+            <Setter Property="CornerRadius" Value="{DynamicResource AndurilRadiusXl}" />
+            <Setter Property="Padding" Value="28" />
+        </Style>
+
+        <Style Selector="Button.starter-chip">
+            <Setter Property="Background" Value="{DynamicResource AndurilSurfaceSubtleBrush}" />
+            <Setter Property="BorderBrush" Value="{DynamicResource AndurilStrokeBrush}" />
+            <Setter Property="BorderThickness" Value="{DynamicResource AndurilStrokeThickness}" />
+            <Setter Property="CornerRadius" Value="{DynamicResource AndurilRadiusPill}" />
+            <Setter Property="Padding" Value="14,10" />
+            <Setter Property="HorizontalContentAlignment" Value="Left" />
+        </Style>
+
+        <Style Selector="Button.starter-chip:pointerover /template/ ContentPresenter">
+            <Setter Property="Background" Value="{DynamicResource AndurilSurfaceAltBrush}" />
+        </Style>
+
+        <Style Selector="Grid.message-row">
+            <Setter Property="Margin" Value="0,0,0,18" />
+        </Style>
+
+        <Style Selector="StackPanel.assistant-stack">
+            <Setter Property="Spacing" Value="{DynamicResource AndurilSpacingS}" />
+            <Setter Property="HorizontalAlignment" Value="Stretch" />
+        </Style>
+
+        <Style Selector="Border.assistant-shell">
             <Setter Property="Background" Value="Transparent" />
-            <Setter Property="Foreground" Value="#5A6A8A" />
+            <Setter Property="BorderBrush" Value="Transparent" />
             <Setter Property="BorderThickness" Value="0" />
+            <Setter Property="Padding" Value="0" />
+        </Style>
+
+        <Style Selector="Border.assistant-shell.streaming">
+            <Setter Property="BorderBrush" Value="{DynamicResource AndurilAccentBrush}" />
+            <Setter Property="BorderThickness" Value="{DynamicResource AndurilStrokeThicknessStrong}" />
+            <Setter Property="CornerRadius" Value="{DynamicResource AndurilRadiusL}" />
+            <Setter Property="Padding" Value="12" />
+        </Style>
+
+        <Style Selector="Border.user-shell">
+            <Setter Property="Background" Value="{DynamicResource AndurilAccentSubtleBrush}" />
+            <Setter Property="BorderBrush" Value="{DynamicResource AndurilAccentBorderBrush}" />
+            <Setter Property="BorderThickness" Value="{DynamicResource AndurilStrokeThickness}" />
+            <Setter Property="CornerRadius" Value="{DynamicResource AndurilRadiusL}" />
+            <Setter Property="Padding" Value="14,12" />
+            <Setter Property="MaxWidth" Value="560" />
+            <Setter Property="HorizontalAlignment" Value="Right" />
+        </Style>
+
+        <Style Selector="TextBlock.message-body">
+            <Setter Property="Foreground" Value="{DynamicResource AndurilTextPrimaryBrush}" />
+            <Setter Property="FontSize" Value="{DynamicResource AndurilFontSizeBody}" />
+            <Setter Property="TextWrapping" Value="Wrap" />
+            <Setter Property="LineHeight" Value="22" />
+        </Style>
+
+        <Style Selector="TextBlock.message-meta">
+            <Setter Property="Foreground" Value="{DynamicResource AndurilTextTertiaryBrush}" />
+            <Setter Property="FontSize" Value="11" />
+        </Style>
+
+        <Style Selector="StackPanel.assistant-footer">
+            <Setter Property="Orientation" Value="Horizontal" />
+            <Setter Property="Spacing" Value="{DynamicResource AndurilSpacingS}" />
+        </Style>
+
+        <Style Selector="Button.chat-footer-button">
+            <Setter Property="Padding" Value="6,2" />
+            <Setter Property="MinHeight" Value="0" />
+            <Setter Property="FontSize" Value="11" />
+        </Style>
+
+        <Style Selector="StackPanel.tool-chip-row">
+            <Setter Property="Orientation" Value="Horizontal" />
+            <Setter Property="Spacing" Value="{DynamicResource AndurilSpacingS}" />
+        </Style>
+
+        <Style Selector="Border.composer-shell">
+            <Setter Property="Background" Value="{DynamicResource AndurilSurfaceElevatedBrush}" />
+            <Setter Property="BorderBrush" Value="{DynamicResource AndurilStrokeBrush}" />
+            <Setter Property="BorderThickness" Value="{DynamicResource AndurilStrokeThickness}" />
+            <Setter Property="CornerRadius" Value="{DynamicResource AndurilRadiusXl}" />
+            <Setter Property="Padding" Value="14,12" />
+            <Setter Property="Margin" Value="24,0,24,24" />
+        </Style>
+
+        <Style Selector="Button.composer-icon">
             <Setter Property="Width" Value="36" />
             <Setter Property="Height" Value="36" />
-            <Setter Property="Cursor" Value="Hand" />
+            <Setter Property="MinWidth" Value="36" />
+            <Setter Property="MinHeight" Value="36" />
+            <Setter Property="Padding" Value="0" />
         </Style>
-        <Style Selector="Button.stop:pointerover /template/ ContentPresenter">
-            <Setter Property="Background" Value="#1A2845" />
+
+        <Style Selector="Button.send">
+            <Setter Property="Width" Value="88" />
+            <Setter Property="MinWidth" Value="88" />
         </Style>
-        <Style Selector="Button.stop:pointerover">
-            <Setter Property="Foreground" Value="#C8A8A8" />
+
+        <Style Selector="Button.send:disabled /template/ ContentPresenter">
+            <Setter Property="Background" Value="{DynamicResource AndurilSurfaceSubtleBrush}" />
+            <Setter Property="BorderBrush" Value="{DynamicResource AndurilStrokeBrush}" />
+            <Setter Property="TextElement.Foreground" Value="{DynamicResource AndurilTextSecondaryBrush}" />
         </Style>
-        <Style Selector="TextBlock.markdown-fallback">
-            <Setter Property="Foreground" Value="#C8D8F4" />
-            <Setter Property="FontSize" Value="14" />
+
+        <Style Selector="Border.slash-popup">
+            <Setter Property="Background" Value="{DynamicResource AndurilOverlaySurfaceBrush}" />
+            <Setter Property="BorderBrush" Value="{DynamicResource AndurilStrokeBrush}" />
+            <Setter Property="BorderThickness" Value="{DynamicResource AndurilStrokeThickness}" />
+            <Setter Property="CornerRadius" Value="{DynamicResource AndurilRadiusL}" />
+            <Setter Property="Padding" Value="6" />
+            <Setter Property="MinWidth" Value="320" />
+            <Setter Property="MaxWidth" Value="420" />
+            <Setter Property="BoxShadow" Value="0 6 24 0 #00000022" />
         </Style>
-        <!-- Show more / Show less link -->
-        <Style Selector="Button.show-more">
+
+        <Style Selector="ListBox.slash-list">
             <Setter Property="Background" Value="Transparent" />
             <Setter Property="BorderThickness" Value="0" />
-            <Setter Property="Padding" Value="0,6,0,0" />
-            <Setter Property="Foreground" Value="#5A7AAA" />
-            <Setter Property="FontSize" Value="13" />
-            <Setter Property="Cursor" Value="Hand" />
-            <Setter Property="HorizontalAlignment" Value="Left" />
         </Style>
-        <Style Selector="Button.show-more:pointerover /template/ ContentPresenter">
-            <Setter Property="Background" Value="Transparent" />
+
+        <Style Selector="ListBox.slash-list ListBoxItem">
+            <Setter Property="Padding" Value="10,8" />
+            <Setter Property="Margin" Value="0,0,0,4" />
+            <Setter Property="CornerRadius" Value="{DynamicResource AndurilRadiusM}" />
         </Style>
-        <Style Selector="Button.show-more:pointerover">
-            <Setter Property="Foreground" Value="#7A9FCC" />
+
+        <Style Selector="ListBox.slash-list ListBoxItem:selected">
+            <Setter Property="Background" Value="{DynamicResource AndurilAccentSubtleBrush}" />
+        </Style>
+
+        <Style Selector="TextBlock.slash-command">
+            <Setter Property="Foreground" Value="{DynamicResource AndurilAccentBrush}" />
+            <Setter Property="FontWeight" Value="SemiBold" />
+            <Setter Property="FontSize" Value="12" />
+        </Style>
+
+        <Style Selector="TextBlock.slash-description">
+            <Setter Property="Foreground" Value="{DynamicResource AndurilTextSecondaryBrush}" />
+            <Setter Property="FontSize" Value="11" />
+            <Setter Property="TextWrapping" Value="Wrap" />
+        </Style>
+
+        <Style Selector="Border.message-table">
+            <Setter Property="Background" Value="{DynamicResource AndurilSurfaceElevatedBrush}" />
+            <Setter Property="BorderBrush" Value="{DynamicResource AndurilStrokeBrush}" />
+            <Setter Property="BorderThickness" Value="{DynamicResource AndurilStrokeThickness}" />
+            <Setter Property="CornerRadius" Value="{DynamicResource AndurilRadiusM}" />
+            <Setter Property="Padding" Value="0" />
+        </Style>
+
+        <Style Selector="Border.message-table-header">
+            <Setter Property="Background" Value="{DynamicResource AndurilSurfaceSubtleBrush}" />
+            <Setter Property="Padding" Value="12,8" />
+        </Style>
+
+        <Style Selector="TextBlock.message-table-header-cell">
+            <Setter Property="Foreground" Value="{DynamicResource AndurilTextPrimaryBrush}" />
+            <Setter Property="FontWeight" Value="SemiBold" />
+            <Setter Property="TextWrapping" Value="Wrap" />
+        </Style>
+
+        <Style Selector="Border.message-table-row">
+            <Setter Property="Padding" Value="12,8" />
+            <Setter Property="BorderBrush" Value="{DynamicResource AndurilDividerBrush}" />
+            <Setter Property="BorderThickness" Value="0,1,0,0" />
+        </Style>
+
+        <Style Selector="TextBlock.message-table-cell">
+            <Setter Property="Foreground" Value="{DynamicResource AndurilTextSecondaryBrush}" />
+            <Setter Property="TextWrapping" Value="Wrap" />
+        </Style>
+
+        <Style Selector="TextBox.chat-input">
+            <Setter Property="MinHeight" Value="72" />
+            <Setter Property="MaxHeight" Value="180" />
+            <Setter Property="VerticalContentAlignment" Value="Top" />
         </Style>
     </UserControl.Styles>
 
-    <DockPanel>
-        <!-- Input bar at bottom -->
-        <Border DockPanel.Dock="Bottom"
-                Background="#0B0F1E"
-                BorderBrush="#161E35"
-                BorderThickness="0,1,0,0"
-                Padding="20,12,20,16">
-            <Grid ColumnDefinitions="*,Auto">
-                <TextBox Grid.Row="0" Grid.Column="0"
-                         Classes="chat-input"
-                         Text="{Binding InputText}"
-                         Watermark="Message Anduril..."
-                         AcceptsReturn="True"
-                         MaxHeight="160"
-                         VerticalContentAlignment="Top"
-                         TextWrapping="Wrap">
-                    <TextBox.KeyBindings>
-                        <KeyBinding Gesture="Ctrl+Return" Command="{Binding SendCommand}" />
-                    </TextBox.KeyBindings>
-                </TextBox>
-                <Button Grid.Row="0" Grid.Column="1"
-                        Classes="send"
-                        Content="Send"
-                        Command="{Binding SendCommand}"
-                        IsVisible="{Binding !IsStreaming}"
-                        Margin="10,0,0,0"
-                        MinWidth="80" />
-                <Button Grid.Row="0" Grid.Column="1"
-                        Classes="stop"
-                        Command="{Binding StopCommand}"
-                        IsVisible="{Binding IsStreaming}"
-                        Margin="10,0,0,0"
-                        ToolTip.Tip="Stop generation">
-                    <Rectangle Width="11" Height="11" RadiusX="2" RadiusY="2"
-                               Fill="{Binding $parent[Button].Foreground}" />
-                </Button>
-            </Grid>
-        </Border>
+    <Border Classes="chat-root">
+        <DockPanel LastChildFill="True">
+            <Border DockPanel.Dock="Bottom"
+                    Classes="composer-shell">
+                <StackPanel Spacing="{DynamicResource AndurilSpacingM}">
+                    <Grid ColumnDefinitions="Auto,Auto,*,Auto"
+                          ColumnSpacing="{DynamicResource AndurilSpacingS}">
+                        <Button Grid.Column="0"
+                                Classes="ghost composer-icon"
+                                Command="{Binding AttachCommand}"
+                                ToolTip.Tip="Attach context">
+                            <Path Width="{DynamicResource AndurilIconSizeS}"
+                                  Height="{DynamicResource AndurilIconSizeS}"
+                                  Fill="{DynamicResource AndurilTextSecondaryBrush}"
+                                  Data="{StaticResource FluentFolderOpen16Geometry}" />
+                        </Button>
 
-        <!-- Messages scroll area -->
-        <ScrollViewer VerticalScrollBarVisibility="Auto"
-                      HorizontalScrollBarVisibility="Disabled"
-                      Padding="0,0,4,0">
-            <ItemsControl ItemsSource="{Binding Messages}"
-                          Margin="20,16,20,8">
-                <ItemsControl.ItemTemplate>
-                    <DataTemplate x:DataType="models:ChatMessageModel">
-                        <!-- User: right-aligned; Assistant: left-aligned -->
-                        <Grid Margin="0,4">
-                            <Grid.ColumnDefinitions>
-                                <ColumnDefinition Width="*" />
-                                <ColumnDefinition Width="Auto" MaxWidth="640" />
-                                <ColumnDefinition Width="*" />
-                            </Grid.ColumnDefinitions>
+                        <Button Grid.Column="1"
+                                Classes="ghost composer-icon"
+                                Command="{Binding ApplySlashCommandCommand}"
+                                CommandParameter="{Binding SelectedSlashCommandSuggestion}"
+                                ToolTip.Tip="Insert slash command">
+                            <TextBlock Text="/"
+                                       FontWeight="SemiBold"
+                                       Foreground="{DynamicResource AndurilTextSecondaryBrush}" />
+                        </Button>
 
-                            <!-- Assistant bubble (left) — spans all columns so it fills the full width -->
-                            <Border Grid.Column="0" Grid.ColumnSpan="3"
-                                    IsVisible="{Binding IsAssistant}"
-                                    Background="#111A2E"
-                                    CornerRadius="4,18,18,18"
-                                    Padding="14,10"
-                                    HorizontalAlignment="Stretch">
-                                <StackPanel>
-                                    <Panel>
-                                        <controls:StreamingDotIndicator IsStreaming="{Binding IsLoading}" />
-                                        <Border MaxHeight="{Binding ContentMaxHeight}"
-                                                ClipToBounds="True"
-                                                IsVisible="{Binding !IsLoading}">
-                                            <TextBlock Text="{Binding Content}"
-                                                       Classes="markdown-fallback"
-                                                       TextWrapping="Wrap"
-                                                       LineHeight="21" />
-                                        </Border>
-                                    </Panel>
-                                    <Button Classes="show-more"
-                                            IsVisible="{Binding IsCollapsible}"
-                                            Command="{Binding ToggleExpandCommand}"
-                                            Content="{Binding ShowMoreLabel}" />
-                                </StackPanel>
-                            </Border>
+                        <TextBox x:Name="ComposerInput"
+                                 Grid.Column="2"
+                                 Classes="composer chat-input"
+                                 Text="{Binding InputText}"
+                                 AcceptsReturn="True"
+                                 TextWrapping="Wrap"
+                                 PlaceholderText="Message Anduril..."
+                                 KeyDown="OnComposerKeyDown">
+                            <TextBox.KeyBindings>
+                                <KeyBinding Gesture="Ctrl+Return" Command="{Binding SendCommand}" />
+                            </TextBox.KeyBindings>
+                        </TextBox>
 
-                            <!-- User bubble (right) -->
-                            <Border Grid.Column="1" Grid.ColumnSpan="2"
-                                    IsVisible="{Binding IsUser}"
-                                    Background="#1A3360"
-                                    CornerRadius="18,4,18,18"
-                                    Padding="14,10"
-                                    MaxWidth="560"
-                                    HorizontalAlignment="Right">
-                                <StackPanel>
-                                    <Border MaxHeight="{Binding ContentMaxHeight}"
-                                            ClipToBounds="True">
-                                        <TextBlock Text="{Binding Content}"
-                                                   TextWrapping="Wrap"
-                                                   FontSize="14"
-                                                   Foreground="#DCE8FF"
-                                                   LineHeight="21" />
-                                    </Border>
-                                    <Button Classes="show-more"
-                                            IsVisible="{Binding IsCollapsible}"
-                                            Command="{Binding ToggleExpandCommand}"
-                                            Content="{Binding ShowMoreLabel}" />
-                                </StackPanel>
-                            </Border>
-
-                            <!-- Stopped indicator (left) -->
-                            <StackPanel Grid.Column="0" Grid.ColumnSpan="3"
-                                        IsVisible="{Binding IsStopped}"
-                                        Orientation="Horizontal"
-                                        Spacing="7"
-                                        HorizontalAlignment="Left">
-                                <Rectangle Width="10" Height="10" RadiusX="1.5" RadiusY="1.5"
-                                           Fill="#3A4A62" VerticalAlignment="Center" />
-                                <TextBlock Text="Stopped"
-                                           FontSize="12"
-                                           Foreground="#3A4A62"
-                                           VerticalAlignment="Center" />
-                            </StackPanel>
+                        <Grid Grid.Column="3"
+                              Width="88"
+                              HorizontalAlignment="Right">
+                            <Button Classes="accent send"
+                                    Content="Send"
+                                    Command="{Binding SendCommand}"
+                                    IsVisible="{Binding !IsStreaming}"
+                                    HorizontalAlignment="Stretch" />
+                            <Button Classes="ghost stop"
+                                    Width="88"
+                                    Command="{Binding StopCommand}"
+                                    IsVisible="{Binding IsStreaming}"
+                                    ToolTip.Tip="Stop generation">
+                                <Grid ColumnDefinitions="Auto,*"
+                                      ColumnSpacing="8"
+                                      HorizontalAlignment="Center">
+                                    <Rectangle Width="10"
+                                               Height="10"
+                                               RadiusX="2"
+                                               RadiusY="2"
+                                               Fill="{DynamicResource AndurilDangerBrush}" />
+                                    <TextBlock Grid.Column="1"
+                                               Text="Stop"
+                                               Foreground="{DynamicResource AndurilTextPrimaryBrush}" />
+                                </Grid>
+                            </Button>
                         </Grid>
-                    </DataTemplate>
-                </ItemsControl.ItemTemplate>
-            </ItemsControl>
-        </ScrollViewer>
-    </DockPanel>
+                    </Grid>
+
+                    <Grid ColumnDefinitions="*,Auto"
+                          ColumnSpacing="{DynamicResource AndurilSpacingM}">
+                        <TextBlock Text="Ctrl+Enter to send. / for commands."
+                                   Classes="message-meta"
+                                   VerticalAlignment="Center" />
+
+                        <controls:ModelPicker Grid.Column="1"
+                                              Compact="True"
+                                              PlaceholderText="Model"
+                                              ItemsSource="{Binding AvailableModels}"
+                                              SelectedModel="{Binding SelectedModel, Mode=TwoWay}"
+                                              ConfigureCommand="{Binding ConfigureProviderCommand}" />
+                    </Grid>
+                </StackPanel>
+            </Border>
+
+            <Popup x:Name="SlashSuggestionsPopup"
+                   PlacementTarget="{Binding #ComposerInput}"
+                   Placement="Top"
+                   IsOpen="{Binding IsSlashCommandMenuOpen}"
+                   IsLightDismissEnabled="True">
+                <Border Classes="slash-popup">
+                    <ListBox x:Name="SlashSuggestionsList"
+                             Classes="slash-list"
+                             ItemsSource="{Binding VisibleSlashCommandSuggestions}"
+                             SelectedItem="{Binding SelectedSlashCommandSuggestion, Mode=TwoWay}">
+                        <ListBox.ItemTemplate>
+                            <DataTemplate x:DataType="models:SlashCommandSuggestion">
+                                <Grid ColumnDefinitions="Auto,*"
+                                      ColumnSpacing="{DynamicResource AndurilSpacingM}">
+                                    <TextBlock Text="{Binding Command}"
+                                               Classes="slash-command" />
+                                    <StackPanel Grid.Column="1"
+                                                Spacing="2">
+                                        <TextBlock Text="{Binding Title}"
+                                                   Foreground="{DynamicResource AndurilTextPrimaryBrush}"
+                                                   FontWeight="SemiBold" />
+                                        <TextBlock Text="{Binding Description}"
+                                                   Classes="slash-description" />
+                                    </StackPanel>
+                                </Grid>
+                            </DataTemplate>
+                        </ListBox.ItemTemplate>
+                    </ListBox>
+                </Border>
+            </Popup>
+
+            <ScrollViewer Classes="chat-scroll"
+                          VerticalScrollBarVisibility="Auto"
+                          HorizontalScrollBarVisibility="Disabled">
+                <StackPanel Classes="chat-column"
+                            Spacing="{DynamicResource AndurilSpacingL}">
+                    <StackPanel IsVisible="{Binding !HasMessages}"
+                                Spacing="{DynamicResource AndurilSpacingL}">
+                        <Border Classes="empty-state-card">
+                            <StackPanel Spacing="{DynamicResource AndurilSpacingL}">
+                                <controls:Brandmark Size="Large"
+                                                    HorizontalAlignment="Center" />
+                                <StackPanel Spacing="{DynamicResource AndurilSpacingS}">
+                                    <TextBlock Text="Ask Anduril to inspect,&#x0a;plan, or implement."
+                                               HorizontalAlignment="Center"
+                                               TextAlignment="Center"
+                                               TextWrapping="Wrap"
+                                               MaxWidth="520"
+                                               FontSize="24"
+                                               FontWeight="SemiBold"
+                                               Foreground="{DynamicResource AndurilTextPrimaryBrush}" />
+                                    <TextBlock Text="The composer stays live while the chat view is empty so you can start from a prompt, slash command, or attached context."
+                                               HorizontalAlignment="Center"
+                                               TextAlignment="Center"
+                                               Classes="message-body"
+                                               Foreground="{DynamicResource AndurilTextSecondaryBrush}" />
+                                </StackPanel>
+                                <ItemsControl ItemsSource="{Binding StarterPrompts}">
+                                    <ItemsControl.ItemsPanel>
+                                        <ItemsPanelTemplate>
+                                            <StackPanel Spacing="{DynamicResource AndurilSpacingS}" />
+                                        </ItemsPanelTemplate>
+                                    </ItemsControl.ItemsPanel>
+                                    <ItemsControl.ItemTemplate>
+                                        <DataTemplate x:DataType="models:StarterPrompt">
+                                            <Button Classes="starter-chip"
+                                                    Command="{Binding DataContext.UseStarterPromptCommand, ElementName=Root}"
+                                                    CommandParameter="{Binding}">
+                                                <StackPanel Spacing="2">
+                                                    <TextBlock Text="{Binding Title}"
+                                                               Foreground="{DynamicResource AndurilTextPrimaryBrush}"
+                                                               FontWeight="SemiBold" />
+                                                    <TextBlock Text="{Binding Description}"
+                                                               Classes="slash-description" />
+                                                </StackPanel>
+                                            </Button>
+                                        </DataTemplate>
+                                    </ItemsControl.ItemTemplate>
+                                </ItemsControl>
+                            </StackPanel>
+                        </Border>
+                    </StackPanel>
+
+                    <StackPanel IsVisible="{Binding HasError}"
+                                Spacing="{DynamicResource AndurilSpacingS}">
+                        <controls:AndurilAlert Title="{Binding LastError.Title}"
+                                               Body="{Binding LastError.DetailText}"
+                                               Variant="{Binding LastError.Variant}" />
+
+                        <StackPanel Orientation="Horizontal"
+                                    Spacing="{DynamicResource AndurilSpacingS}">
+                            <Button Classes="ghost"
+                                    IsVisible="{Binding LastError.HasRetryAction}"
+                                    Content="{Binding LastError.RetryLabel}"
+                                    Command="{Binding RetryCommand}" />
+                            <Button Classes="ghost"
+                                    IsVisible="{Binding LastError.HasConfigureAction}"
+                                    Content="{Binding LastError.ConfigureLabel}"
+                                    Command="{Binding ConfigureProviderCommand}" />
+                        </StackPanel>
+                    </StackPanel>
+
+                    <ItemsControl ItemsSource="{Binding Messages}"
+                                  IsVisible="{Binding HasMessages}">
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate x:DataType="models:ChatMessageModel">
+                                <Grid Classes="message-row">
+                                    <StackPanel Classes="assistant-stack"
+                                                IsVisible="{Binding IsAssistant}">
+                                                <ItemsControl ItemsSource="{Binding ToolCalls}"
+                                                              IsVisible="{Binding HasToolCalls}">
+                                                    <ItemsControl.ItemsPanel>
+                                                        <ItemsPanelTemplate>
+                                                            <StackPanel Classes="tool-chip-row" />
+                                                        </ItemsPanelTemplate>
+                                                    </ItemsControl.ItemsPanel>
+                                            <ItemsControl.ItemTemplate>
+                                                <DataTemplate x:DataType="models:ToolCallSummary">
+                                                    <controls:ToolCallChip Summary="{Binding}" />
+                                                </DataTemplate>
+                                            </ItemsControl.ItemTemplate>
+                                        </ItemsControl>
+
+                                        <Border Classes="assistant-shell"
+                                                Classes.streaming="{Binding IsStreamingMessage}">
+                                            <StackPanel Spacing="{DynamicResource AndurilSpacingS}">
+                                                <Border MaxHeight="{Binding ContentMaxHeight}"
+                                                        ClipToBounds="True">
+                                                    <StackPanel Spacing="{DynamicResource AndurilSpacingM}">
+                                                        <ItemsControl ItemsSource="{Binding ContentBlocks}">
+                                                            <ItemsControl.ItemTemplate>
+                                                                <DataTemplate>
+                                                                    <ContentControl Content="{Binding}">
+                                                                        <ContentControl.DataTemplates>
+                                                                            <DataTemplate DataType="models:TextChatContentBlock">
+                                                                                <TextBlock Text="{Binding Text}"
+                                                                                           Classes="message-body" />
+                                                                            </DataTemplate>
+                                                                            <DataTemplate DataType="models:CodeChatContentBlock">
+                                                                                <Border Classes="MarkdownCodeBlock">
+                                                                                    <StackPanel>
+                                                                                        <Border Classes="MarkdownCodeHeader">
+                                                                                            <Grid ColumnDefinitions="*,Auto"
+                                                                                                  ColumnSpacing="{DynamicResource AndurilSpacingS}">
+                                                                                                <TextBlock Text="{Binding Language}"
+                                                                                                           Classes="MarkdownCodeLanguage" />
+                                                                                                <Button Grid.Column="1"
+                                                                                                        Classes="ghost chat-footer-button"
+                                                                                                        Content="Copy"
+                                                                                                        Command="{Binding DataContext.CopyCommand, ElementName=Root}"
+                                                                                                        CommandParameter="{Binding Code}" />
+                                                                                            </Grid>
+                                                                                        </Border>
+                                                                                        <TextBlock Text="{Binding Code}"
+                                                                                                   Classes="MarkdownCodeText"
+                                                                                                   TextWrapping="Wrap" />
+                                                                                    </StackPanel>
+                                                                                </Border>
+                                                                            </DataTemplate>
+                                                                            <DataTemplate DataType="models:TableChatContentBlock">
+                                                                                <Border Classes="message-table">
+                                                                                    <StackPanel Spacing="0">
+                                                                                        <Border Classes="message-table-header">
+                                                                                            <ItemsControl ItemsSource="{Binding Headers}">
+                                                                                                <ItemsControl.ItemsPanel>
+                                                                                                    <ItemsPanelTemplate>
+                                                                                                        <StackPanel Orientation="Horizontal"
+                                                                                                                    Spacing="{DynamicResource AndurilSpacingM}" />
+                                                                                                    </ItemsPanelTemplate>
+                                                                                                </ItemsControl.ItemsPanel>
+                                                                                                <ItemsControl.ItemTemplate>
+                                                                                                    <DataTemplate>
+                                                                                                        <TextBlock Text="{Binding}"
+                                                                                                                   Classes="message-table-header-cell" />
+                                                                                                    </DataTemplate>
+                                                                                                </ItemsControl.ItemTemplate>
+                                                                                            </ItemsControl>
+                                                                                        </Border>
+                                                                                        <ItemsControl ItemsSource="{Binding Rows}">
+                                                                                            <ItemsControl.ItemTemplate>
+                                                                                                <DataTemplate>
+                                                                                                    <Border Classes="message-table-row">
+                                                                                                        <ItemsControl ItemsSource="{Binding}">
+                                                                                                            <ItemsControl.ItemsPanel>
+                                                                                                                <ItemsPanelTemplate>
+                                                                                                                    <StackPanel Orientation="Horizontal"
+                                                                                                                                Spacing="{DynamicResource AndurilSpacingM}" />
+                                                                                                                </ItemsPanelTemplate>
+                                                                                                            </ItemsControl.ItemsPanel>
+                                                                                                            <ItemsControl.ItemTemplate>
+                                                                                                                <DataTemplate>
+                                                                                                                    <TextBlock Text="{Binding}"
+                                                                                                                               Classes="message-table-cell" />
+                                                                                                                </DataTemplate>
+                                                                                                            </ItemsControl.ItemTemplate>
+                                                                                                        </ItemsControl>
+                                                                                                    </Border>
+                                                                                                </DataTemplate>
+                                                                                            </ItemsControl.ItemTemplate>
+                                                                                        </ItemsControl>
+                                                                                    </StackPanel>
+                                                                                </Border>
+                                                                            </DataTemplate>
+                                                                        </ContentControl.DataTemplates>
+                                                                    </ContentControl>
+                                                                </DataTemplate>
+                                                            </ItemsControl.ItemTemplate>
+                                                        </ItemsControl>
+
+                                                        <Grid ColumnDefinitions="*,Auto"
+                                                              IsVisible="{Binding IsStreamingMessage}">
+                                                            <TextBlock Text="Streaming response"
+                                                                       Classes="message-meta" />
+                                                            <controls:StreamingCaret Grid.Column="1"
+                                                                                     IsStreaming="{Binding IsStreamingMessage}" />
+                                                        </Grid>
+                                                    </StackPanel>
+                                                </Border>
+
+                                                <Button Classes="ghost chat-footer-button"
+                                                        IsVisible="{Binding IsCollapsible}"
+                                                        HorizontalAlignment="Left"
+                                                        Command="{Binding ToggleExpandCommand}"
+                                                        Content="{Binding ShowMoreLabel}" />
+
+                                                <StackPanel Classes="assistant-footer">
+                                                    <Button Classes="ghost chat-footer-button"
+                                                            Content="Copy"
+                                                            Command="{Binding DataContext.CopyCommand, ElementName=Root}"
+                                                            CommandParameter="{Binding Content}" />
+                                                    <Button Classes="ghost chat-footer-button"
+                                                            Content="Regenerate"
+                                                            Command="{Binding DataContext.RegenerateCommand, ElementName=Root}" />
+                                                    <TextBlock Text="{Binding TokenCountLabel}"
+                                                               Classes="message-meta"
+                                                               VerticalAlignment="Center" />
+                                                </StackPanel>
+                                            </StackPanel>
+                                        </Border>
+                                    </StackPanel>
+
+                                    <Border Classes="user-shell"
+                                            IsVisible="{Binding IsUser}">
+                                        <StackPanel Spacing="{DynamicResource AndurilSpacingS}">
+                                            <TextBlock Text="{Binding Content}"
+                                                       Classes="message-body" />
+                                            <TextBlock Text="{Binding Timestamp.LocalDateTime, StringFormat='{}{0:t}'}"
+                                                       Classes="message-meta"
+                                                       HorizontalAlignment="Right" />
+                                        </StackPanel>
+                                    </Border>
+
+                                    <controls:InlineStatus IsVisible="{Binding IsStopped}"
+                                                           Text="Stopped"
+                                                           Variant="Stopped"
+                                                           HorizontalAlignment="Left" />
+                                </Grid>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                </StackPanel>
+            </ScrollViewer>
+        </DockPanel>
+    </Border>
 </UserControl>

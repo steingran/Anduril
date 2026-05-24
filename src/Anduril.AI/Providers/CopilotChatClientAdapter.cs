@@ -353,7 +353,7 @@ internal sealed class CopilotChatClientAdapter : IChatClient
     private static Task<PermissionRequestResult> ApproveAllPermissions(
         PermissionRequest request, PermissionInvocation invocation)
     {
-        return Task.FromResult(new PermissionRequestResult { Kind = "allow" });
+        return Task.FromResult(new PermissionRequestResult { Kind = PermissionRequestResultKind.Approved });
     }
 
     /// <summary>

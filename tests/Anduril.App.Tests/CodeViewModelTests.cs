@@ -57,7 +57,6 @@ public sealed class CodeViewModelTests
     {
         var vm = new CodeViewModel();
         vm.StagedActions.Add(new StagedActionModel { Kind = StagedActionKind.Create, FilePath = "test.cs" });
-        vm.HasStagedActions = true;
 
         await vm.AcceptAllCommand.Execute().ToTask();
 
@@ -70,7 +69,6 @@ public sealed class CodeViewModelTests
     {
         var vm = new CodeViewModel();
         vm.StagedActions.Add(new StagedActionModel { Kind = StagedActionKind.Edit, FilePath = "test.cs" });
-        vm.HasStagedActions = true;
 
         await vm.RejectAllCommand.Execute().ToTask();
 
@@ -102,13 +100,54 @@ public sealed class CodeViewModelTests
         // Seed non-empty state so the clearing logic is actually exercised
         vm.Messages.Add(new CodeMessageModel { Role = "user", Content = "hello" });
         vm.StagedActions.Add(new StagedActionModel { Kind = StagedActionKind.Create, FilePath = "test.cs" });
-        vm.HasStagedActions = true;
 
         vm.SetConversation("conv-2", fake);
 
         await Assert.That(vm.Messages).IsEmpty();
         await Assert.That(vm.StagedActions).IsEmpty();
         await Assert.That(vm.HasStagedActions).IsFalse();
+    }
+
+    [Test]
+    public async Task AcceptCommand_RemovesOnlyTargetedStagedAction()
+    {
+        var vm = new CodeViewModel();
+        var first = new StagedActionModel { Kind = StagedActionKind.Create, FilePath = "first.cs" };
+        var second = new StagedActionModel { Kind = StagedActionKind.Edit, FilePath = "second.cs" };
+        vm.StagedActions.Add(first);
+        vm.StagedActions.Add(second);
+
+        await vm.AcceptCommand.Execute(first).ToTask();
+
+        await Assert.That(vm.StagedActions.Count).IsEqualTo(1);
+        await Assert.That(vm.StagedActions[0].FilePath).IsEqualTo("second.cs");
+        await Assert.That(vm.HasStagedActions).IsTrue();
+    }
+
+    [Test]
+    public async Task RejectCommand_LastItem_ClearsPanelState()
+    {
+        var vm = new CodeViewModel();
+        var only = new StagedActionModel { Kind = StagedActionKind.Delete, FilePath = "obsolete.cs" };
+        vm.StagedActions.Add(only);
+
+        await vm.RejectCommand.Execute(only).ToTask();
+
+        await Assert.That(vm.StagedActions).IsEmpty();
+        await Assert.That(vm.HasStagedActions).IsFalse();
+    }
+
+    [Test]
+    public async Task InsertSlashCommand_AppendsShortcutToken()
+    {
+        var vm = new CodeViewModel
+        {
+            InputText = "Review auth flow"
+        };
+
+        await vm.InsertSlashCommandCommand.Execute("/tests").ToTask();
+
+        await Assert.That(vm.InputText).IsEqualTo("Review auth flow /tests ");
     }
 
     [Test]
@@ -124,5 +163,25 @@ public sealed class CodeViewModelTests
 
         await Assert.That(vm.AvailableBranches).IsEmpty();
         await Assert.That(vm.SelectedBranch).IsNull();
+    }
+
+    [Test]
+    public async Task StagedActionsOverlayLabel_UpdatesWhenCountChangesWithoutClearingAllActions()
+    {
+        var vm = new CodeViewModel
+        {
+            ViewportWidth = 900
+        };
+
+        var first = new StagedActionModel { Kind = StagedActionKind.Create, FilePath = "first.cs" };
+        var second = new StagedActionModel { Kind = StagedActionKind.Edit, FilePath = "second.cs" };
+        vm.StagedActions.Add(first);
+        vm.StagedActions.Add(second);
+
+        await Assert.That(vm.StagedActionsOverlayLabel).IsEqualTo("Show staged changes (2)");
+
+        await vm.AcceptCommand.Execute(first).ToTask();
+
+        await Assert.That(vm.StagedActionsOverlayLabel).IsEqualTo("Show staged changes (1)");
     }
 }

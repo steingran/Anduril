@@ -1,0 +1,112 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             x:Class="Anduril.App.Views.Controls.SegmentedControl"
+             x:Name="Root">
+
+    <UserControl.Styles>
+        <Style Selector="Border.segmented-root">
+            <Setter Property="Background" Value="{DynamicResource AndurilSurfaceSubtleBrush}" />
+            <Setter Property="BorderBrush" Value="{DynamicResource AndurilStrokeBrush}" />
+            <Setter Property="BorderThickness" Value="{DynamicResource AndurilStrokeThickness}" />
+            <Setter Property="CornerRadius" Value="{DynamicResource AndurilRadiusPill}" />
+        </Style>
+
+        <Style Selector="Border.segmented-thumb">
+            <Setter Property="Background" Value="{DynamicResource AndurilAccentBrush}" />
+            <Setter Property="CornerRadius" Value="{DynamicResource AndurilRadiusPill}" />
+            <Setter Property="Height" Value="{DynamicResource AndurilTopBarHeight}" />
+            <Setter Property="HorizontalAlignment" Value="Left" />
+            <Setter Property="VerticalAlignment" Value="Stretch" />
+            <Setter Property="Margin" Value="0" />
+        </Style>
+
+        <Style Selector="Border.segmented-thumb.animate">
+            <Setter Property="Transitions">
+                <Transitions>
+                    <ThicknessTransition Property="Margin" Duration="{DynamicResource AndurilMotionDurationDefault}" />
+                    <DoubleTransition Property="Width" Duration="{DynamicResource AndurilMotionDurationDefault}" />
+                </Transitions>
+            </Setter>
+        </Style>
+
+        <Style Selector="ListBox.segmented-list">
+            <Setter Property="Background" Value="Transparent" />
+            <Setter Property="BorderThickness" Value="0" />
+            <Setter Property="Padding" Value="2" />
+            <Setter Property="SelectionMode" Value="Single" />
+            <Setter Property="HorizontalAlignment" Value="Stretch" />
+            <Setter Property="VerticalAlignment" Value="Stretch" />
+            <Setter Property="ScrollViewer.HorizontalScrollBarVisibility" Value="Disabled" />
+            <Setter Property="ScrollViewer.VerticalScrollBarVisibility" Value="Disabled" />
+            <Setter Property="ItemsPanel">
+                <Setter.Value>
+                    <ItemsPanelTemplate>
+                        <StackPanel Orientation="Horizontal" />
+                    </ItemsPanelTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <Style Selector="ListBox.segmented-list ListBoxItem">
+            <Setter Property="Padding" Value="14,8" />
+            <Setter Property="MinWidth" Value="68" />
+            <Setter Property="MinHeight" Value="32" />
+            <Setter Property="Margin" Value="0" />
+            <Setter Property="CornerRadius" Value="{DynamicResource AndurilRadiusPill}" />
+            <Setter Property="Background" Value="Transparent" />
+            <Setter Property="HorizontalContentAlignment" Value="Center" />
+            <Setter Property="VerticalContentAlignment" Value="Center" />
+            <Setter Property="FontSize" Value="{DynamicResource AndurilFontSizeUi}" />
+            <Setter Property="FontWeight" Value="SemiBold" />
+            <Setter Property="Foreground" Value="{DynamicResource AndurilTextSecondaryBrush}" />
+        </Style>
+
+        <Style Selector="TextBlock.segment-label">
+            <Setter Property="Foreground" Value="{DynamicResource AndurilTextPrimaryBrush}" />
+            <Setter Property="FontSize" Value="{DynamicResource AndurilFontSizeUi}" />
+            <Setter Property="FontWeight" Value="SemiBold" />
+            <Setter Property="TextAlignment" Value="Center" />
+            <Setter Property="TextWrapping" Value="NoWrap" />
+            <Setter Property="VerticalAlignment" Value="Center" />
+        </Style>
+
+        <Style Selector="ListBox.segmented-list ListBoxItem:selected /template/ ContentPresenter">
+            <Setter Property="Background" Value="Transparent" />
+        </Style>
+
+        <Style Selector="ListBox.segmented-list ListBoxItem:selected TextBlock.segment-label">
+            <Setter Property="Foreground" Value="{DynamicResource AndurilOnAccentBrush}" />
+        </Style>
+
+        <Style Selector="ListBox.segmented-list:focus-visible">
+            <Setter Property="BorderBrush" Value="{DynamicResource AndurilAccentBrush}" />
+            <Setter Property="BorderThickness" Value="{DynamicResource AndurilFocusVisibleThickness}" />
+        </Style>
+    </UserControl.Styles>
+
+    <Border x:Name="SegmentRoot"
+            Classes="segmented-root"
+            Padding="2">
+        <Grid>
+            <Border x:Name="SelectionThumb"
+                    Classes="segmented-thumb animate"
+                    IsHitTestVisible="False" />
+
+            <ListBox x:Name="Segments"
+                     Classes="segmented-list"
+                     ItemsSource="{Binding ItemsSource, ElementName=Root}"
+                     SelectedItem="{Binding SelectedItem, ElementName=Root, Mode=TwoWay}"
+                     SelectedIndex="{Binding SelectedIndex, ElementName=Root, Mode=TwoWay}"
+                     SelectionChanged="OnSelectionChanged">
+                <ListBox.ItemTemplate>
+                    <DataTemplate>
+                        <TextBlock Text="{Binding}"
+                                   Classes="segment-label"
+                                   Foreground="{DynamicResource AndurilTextSecondaryBrush}" />
+                    </DataTemplate>
+                </ListBox.ItemTemplate>
+            </ListBox>
+        </Grid>
+    </Border>
+
+</UserControl>

@@ -12,8 +12,12 @@
             <Setter Property="VerticalAlignment" Value="Center" />
         </Style>
 
+        <Style Selector="Ellipse.dot.animate">
+            <Setter Property="Opacity" Value="0.3" />
+        </Style>
+
         <!-- Staggered pulse: each dot peaks 200 ms after the previous one -->
-        <Style Selector="Ellipse.dot1">
+        <Style Selector="Ellipse.dot1.animate">
             <Style.Animations>
                 <Animation Duration="0:0:1.2" IterationCount="INFINITE">
                     <KeyFrame Cue="0%">  <Setter Property="Opacity" Value="0.3" /></KeyFrame>
@@ -24,7 +28,7 @@
             </Style.Animations>
         </Style>
 
-        <Style Selector="Ellipse.dot2">
+        <Style Selector="Ellipse.dot2.animate">
             <Style.Animations>
                 <Animation Duration="0:0:1.2" IterationCount="INFINITE" Delay="0:0:0.2">
                     <KeyFrame Cue="0%">  <Setter Property="Opacity" Value="0.3" /></KeyFrame>
@@ -35,7 +39,7 @@
             </Style.Animations>
         </Style>
 
-        <Style Selector="Ellipse.dot3">
+        <Style Selector="Ellipse.dot3.animate">
             <Style.Animations>
                 <Animation Duration="0:0:1.2" IterationCount="INFINITE" Delay="0:0:0.4">
                     <KeyFrame Cue="0%">  <Setter Property="Opacity" Value="0.3" /></KeyFrame>
@@ -53,10 +57,9 @@
                 Orientation="Horizontal"
                 Spacing="6"
                 VerticalAlignment="Center">
-        <Ellipse Classes="dot dot1" />
-        <Ellipse Classes="dot dot2" />
-        <Ellipse Classes="dot dot3" />
+        <Ellipse x:Name="Dot1" Classes="dot dot1" />
+        <Ellipse x:Name="Dot2" Classes="dot dot2" />
+        <Ellipse x:Name="Dot3" Classes="dot dot3" />
     </StackPanel>
 
 </UserControl>
-

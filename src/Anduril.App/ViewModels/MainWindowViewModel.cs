@@ -1,6 +1,7 @@
 using System.Collections.ObjectModel;
 using System.Net.Http.Json;
 using System.Reactive;
+using System.Reactive.Linq;
 using System.Text.Json;
 using Anduril.App.Models;
 using Anduril.App.Services;
@@ -18,7 +19,11 @@ public sealed class MainWindowViewModel : ViewModelBase
     private readonly UserPreferences _prefs;
     private ViewModelBase _currentView;
     private ModelOption? _selectedModel;
+    private ConversationEntry? _selectedConversation;
     private bool _isToolInspectorOpen;
+    private bool _isSettingsOpen;
+    private int _selectedNavigationIndex;
+    private bool _isSwitchingConversation;
 
     public MainWindowViewModel(
         IChatService chatService,
@@ -29,11 +34,42 @@ public sealed class MainWindowViewModel : ViewModelBase
         _prefs = prefsService.Load();
         _currentView = ChatVm;
 
+        NavigationItems =
+        [
+            "Chat",
+            "Code"
+        ];
+
         NewConversationCommand = ReactiveCommand.CreateFromTask(CreateNewConversationAsync);
-        SwitchToChatCommand = ReactiveCommand.Create(() => CurrentView = ChatVm);
-        SwitchToCodeCommand = ReactiveCommand.Create(() => CurrentView = CodeVm);
+        SwitchToChatCommand = ReactiveCommand.Create(() =>
+        {
+            SelectedNavigationIndex = 0;
+            return CurrentView;
+        });
+        SwitchToCodeCommand = ReactiveCommand.Create(() =>
+        {
+            SelectedNavigationIndex = 1;
+            return CurrentView;
+        });
         LoadModelsCommand = ReactiveCommand.CreateFromTask(LoadModelsAsync);
         ToggleToolInspectorCommand = ReactiveCommand.CreateFromTask(ToggleToolInspectorAsync);
+        OpenSettingsCommand = ReactiveCommand.Create(OpenSettings);
+        CloseSettingsCommand = ReactiveCommand.Create(CloseSettings);
+        CloseTransientPanelsCommand = ReactiveCommand.Create(CloseTransientPanels);
+        RenameConversationCommand = ReactiveCommand.Create<ConversationEntry>(RenameConversation);
+        DeleteConversationCommand = ReactiveCommand.Create<ConversationEntry>(DeleteConversation);
+        ChatVm.AvailableModels = AvailableModels;
+        ChatVm.ConfigureProviderCommand = OpenSettingsCommand;
+        ChatVm.WhenAnyValue(vm => vm.SelectedModel)
+            .Where(model => model is not null)
+            .Subscribe(model =>
+            {
+                if (!Equals(_selectedModel, model))
+                    SelectedModel = model;
+            });
+        this.WhenAnyValue(vm => vm.SelectedConversation)
+            .Where(conversation => conversation is not null)
+            .Subscribe(conversation => _ = SwitchConversationAsync(conversation!));
 
         // Load models, then create independent conversations for Chat and Code views
         LoadModelsCommand.Execute().Subscribe(
@@ -45,7 +81,9 @@ public sealed class MainWindowViewModel : ViewModelBase
     public CodeViewModel CodeVm { get; } = new();
 
     public ObservableCollection<ModelOption> AvailableModels { get; } = [];
+    public ObservableCollection<string> NavigationItems { get; }
     public ObservableCollection<ConversationEntry> Conversations { get; } = [];
+    public ObservableCollection<ConversationGroup> GroupedConversations { get; } = [];
     public ObservableCollection<ToolInspectorItem> ToolInspectorProviders { get; } = [];
     public ObservableCollection<ToolInspectorItem> ToolInspectorIntegrations { get; } = [];
 
@@ -55,6 +93,13 @@ public sealed class MainWindowViewModel : ViewModelBase
         set
         {
             this.RaiseAndSetIfChanged(ref _currentView, value);
+            var desiredIndex = value == CodeVm ? 1 : 0;
+            if (_selectedNavigationIndex != desiredIndex)
+            {
+                _selectedNavigationIndex = desiredIndex;
+                this.RaisePropertyChanged(nameof(SelectedNavigationIndex));
+            }
+
             this.RaisePropertyChanged(nameof(IsChatActive));
             this.RaisePropertyChanged(nameof(IsCodeActive));
         }
@@ -66,7 +111,42 @@ public sealed class MainWindowViewModel : ViewModelBase
     public bool IsToolInspectorOpen
     {
         get => _isToolInspectorOpen;
-        set => this.RaiseAndSetIfChanged(ref _isToolInspectorOpen, value);
+        set
+        {
+            this.RaiseAndSetIfChanged(ref _isToolInspectorOpen, value);
+            this.RaisePropertyChanged(nameof(IsOverlayOpen));
+        }
+    }
+
+    public bool IsSettingsOpen
+    {
+        get => _isSettingsOpen;
+        set
+        {
+            this.RaiseAndSetIfChanged(ref _isSettingsOpen, value);
+            this.RaisePropertyChanged(nameof(IsOverlayOpen));
+        }
+    }
+
+    public bool IsOverlayOpen => IsToolInspectorOpen || IsSettingsOpen;
+
+    public ConversationEntry? SelectedConversation
+    {
+        get => _selectedConversation;
+        set => this.RaiseAndSetIfChanged(ref _selectedConversation, value);
+    }
+
+    public int SelectedNavigationIndex
+    {
+        get => _selectedNavigationIndex;
+        set
+        {
+            if (_selectedNavigationIndex == value)
+                return;
+
+            this.RaiseAndSetIfChanged(ref _selectedNavigationIndex, value);
+            CurrentView = value == 1 ? CodeVm : ChatVm;
+        }
     }
 
     public ModelOption? SelectedModel
@@ -75,6 +155,8 @@ public sealed class MainWindowViewModel : ViewModelBase
         set
         {
             this.RaiseAndSetIfChanged(ref _selectedModel, value);
+            if (!Equals(ChatVm.SelectedModel, value))
+                ChatVm.SelectedModel = value;
             if (value is not null)
             {
                 _ = _chatService.SelectModelAsync(value.ProviderId).ContinueWith(
@@ -93,6 +175,11 @@ public sealed class MainWindowViewModel : ViewModelBase
     public ReactiveCommand<Unit, ViewModelBase> SwitchToCodeCommand { get; }
     public ReactiveCommand<Unit, Unit> LoadModelsCommand { get; }
     public ReactiveCommand<Unit, Unit> ToggleToolInspectorCommand { get; }
+    public ReactiveCommand<Unit, Unit> OpenSettingsCommand { get; }
+    public ReactiveCommand<Unit, Unit> CloseSettingsCommand { get; }
+    public ReactiveCommand<Unit, Unit> CloseTransientPanelsCommand { get; }
+    public ReactiveCommand<ConversationEntry, Unit> RenameConversationCommand { get; }
+    public ReactiveCommand<ConversationEntry, Unit> DeleteConversationCommand { get; }
 
     private async Task LoadModelsAsync()
     {
@@ -137,8 +224,23 @@ public sealed class MainWindowViewModel : ViewModelBase
             return;
         }
 
+        IsSettingsOpen = false;
         IsToolInspectorOpen = true;
         await LoadToolsAsync();
+    }
+
+    private void OpenSettings()
+    {
+        IsToolInspectorOpen = false;
+        IsSettingsOpen = true;
+    }
+
+    private void CloseSettings() => IsSettingsOpen = false;
+
+    private void CloseTransientPanels()
+    {
+        IsToolInspectorOpen = false;
+        IsSettingsOpen = false;
     }
 
     private async Task LoadToolsAsync()
@@ -220,24 +322,126 @@ public sealed class MainWindowViewModel : ViewModelBase
             var conv = await _chatService.CreateConversationAsync();
             var codeConv = await _chatService.CreateConversationAsync();
 
-            var entry = new ConversationEntry { Id = conv.Id, Title = conv.Title ?? "New conversation" };
+            var entry = new ConversationEntry
+            {
+                ChatConversationId = conv.Id,
+                CodeConversationId = codeConv.Id,
+                Title = string.IsNullOrWhiteSpace(conv.Title) ? "New conversation" : conv.Title,
+                CreatedAt = conv.CreatedAt
+            };
             Conversations.Insert(0, entry);
-            ChatVm.SetConversation(conv.Id, _chatService);
-            CodeVm.SetConversation(codeConv.Id, _chatService);
-            CurrentView = ChatVm;
+            SelectedConversation = entry;
+            RebuildConversationGroups();
+            SelectedNavigationIndex = 0;
         }
         catch
         {
             // Will retry on next attempt
         }
     }
+
+    private async Task SwitchConversationAsync(ConversationEntry conversation)
+    {
+        if (_isSwitchingConversation)
+            return;
+
+        _isSwitchingConversation = true;
+        try
+        {
+            var chatHistoryTask = _chatService.GetConversationHistoryAsync(conversation.ChatConversationId);
+            var codeHistoryTask = _chatService.GetConversationHistoryAsync(conversation.CodeConversationId);
+            await Task.WhenAll(chatHistoryTask, codeHistoryTask);
+
+            ChatVm.SetConversation(conversation.ChatConversationId, _chatService, chatHistoryTask.Result);
+            CodeVm.SetConversation(conversation.CodeConversationId, _chatService, codeHistoryTask.Result);
+        }
+        catch
+        {
+            // Keep the current conversation if history loading fails.
+        }
+        finally
+        {
+            _isSwitchingConversation = false;
+        }
+    }
+
+    private void RenameConversation(ConversationEntry conversation)
+    {
+        if (conversation.Title.StartsWith("Renamed:", StringComparison.Ordinal))
+            return;
+
+        conversation.Title = $"Renamed: {conversation.Title}";
+        RebuildConversationGroups();
+    }
+
+    private void DeleteConversation(ConversationEntry conversation)
+    {
+        if (!Conversations.Remove(conversation))
+            return;
+
+        if (ReferenceEquals(SelectedConversation, conversation))
+            SelectedConversation = Conversations.FirstOrDefault();
+
+        RebuildConversationGroups();
+    }
+
+    private void RebuildConversationGroups()
+    {
+        var today = DateTimeOffset.Now.Date;
+        var grouped = Conversations
+            .GroupBy(conversation => GetGroupLabel(conversation.CreatedAt, today))
+            .OrderBy(group => GetGroupOrder(group.Key))
+            .Select(group => new ConversationGroup(
+                group.Key,
+                new ObservableCollection<ConversationEntry>(
+                    group.OrderByDescending(conversation => conversation.CreatedAt))));
+
+        GroupedConversations.Clear();
+        foreach (var group in grouped)
+            GroupedConversations.Add(group);
+    }
+
+    private static string GetGroupLabel(DateTimeOffset createdAt, DateTime today)
+    {
+        var createdDate = createdAt.LocalDateTime.Date;
+        if (createdDate == today)
+            return "Today";
+
+        if (createdDate == today.AddDays(-1))
+            return "Yesterday";
+
+        if (createdDate >= today.AddDays(-7))
+            return "Last 7 days";
+
+        return "Earlier";
+    }
+
+    private static int GetGroupOrder(string label) => label switch
+    {
+        "Today" => 0,
+        "Yesterday" => 1,
+        "Last 7 days" => 2,
+        _ => 3
+    };
 }
 
-public sealed class ConversationEntry
+public sealed class ConversationEntry : ReactiveObject
 {
-    public required string Id { get; init; }
-    public required string Title { get; init; }
+    private string _title = string.Empty;
+
+    public string Id => ChatConversationId;
+    public required string ChatConversationId { get; init; }
+    public required string CodeConversationId { get; init; }
+    public required DateTimeOffset CreatedAt { get; init; }
+
+    public required string Title
+    {
+        get => _title;
+        set => this.RaiseAndSetIfChanged(ref _title, value);
+    }
 }
+
+public sealed record ConversationGroup(string Header, ObservableCollection<ConversationEntry> Conversations);
 
 // DTOs for /api/tools response
 file sealed record ToolsResponse(List<ToolProviderDto> Providers, List<ToolIntegrationDto> Integrations);

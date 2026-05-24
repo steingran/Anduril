@@ -1,6 +1,7 @@
 using Anduril.App.Tests.Infrastructure;
 using Anduril.App.ViewModels;
 using Anduril.App.Views;
+using Anduril.App.Views.Controls;
 using Avalonia.Controls;
 using Avalonia.Threading;
 using Avalonia.VisualTree;
@@ -62,6 +63,7 @@ public sealed class ChatViewE2ETests : AvaloniaHeadlessTestBase
 
                 var sendButton = FindSendButton(view);
 
+                await Assert.That(sendButton.IsVisible).IsTrue();
                 await Assert.That(sendButton.IsEffectivelyEnabled).IsFalse();
             }
             finally
@@ -115,6 +117,66 @@ public sealed class ChatViewE2ETests : AvaloniaHeadlessTestBase
                 await Assert.That(fake.SentMessages.Count).IsEqualTo(1);
                 await Assert.That(fake.SentMessages[0].Text).IsEqualTo("Hello agent");
                 await Assert.That(fake.SentMessages[0].ConversationId).IsEqualTo("conv-1");
+            }
+            finally
+            {
+                window.Close();
+            }
+        });
+    }
+
+    [Test]
+    public async Task EmptyState_RendersStarterPromptButtons()
+    {
+        await RunOnUIThread(async () =>
+        {
+            var vm = new ChatViewModel();
+            vm.SetConversation("conv-empty", new FakeChatService());
+
+            var view = new ChatView { DataContext = vm };
+            var window = new Window { Width = 1200, Height = 800, Content = view };
+            try
+            {
+                window.Show();
+
+                var starterButtons = view.GetVisualDescendants()
+                    .OfType<Button>()
+                    .Where(button => button.Classes.Contains("starter-chip"))
+                    .ToList();
+
+                await Assert.That(starterButtons.Count).IsEqualTo(3);
+            }
+            finally
+            {
+                window.Close();
+            }
+        });
+    }
+
+    [Test]
+    public async Task ErrorState_RendersAndurilAlert()
+    {
+        await RunOnUIThread(async () =>
+        {
+            var vm = new ChatViewModel();
+            vm.SetConversation("conv-error", new FakeChatService());
+            vm.LastError = new Anduril.App.Models.ChatErrorState
+            {
+                Kind = Anduril.App.Models.ChatErrorKind.Network,
+                Message = "Network timeout"
+            };
+
+            var view = new ChatView { DataContext = vm };
+            var window = new Window { Width = 900, Height = 700, Content = view };
+            try
+            {
+                window.Show();
+                Dispatcher.UIThread.RunJobs();
+
+                var alert = view.GetVisualDescendants().OfType<AndurilAlert>().FirstOrDefault();
+
+                await Assert.That(alert).IsNotNull();
+                await Assert.That(alert!.IsVisible).IsTrue();
             }
             finally
             {

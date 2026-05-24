@@ -37,7 +37,7 @@ public sealed class CopilotProvider(IOptions<AiProviderOptions> options, ILogger
         {
             var clientOptions = new CopilotClientOptions();
             if (!string.IsNullOrWhiteSpace(_options.ApiKey))
-                clientOptions.GithubToken = _options.ApiKey;
+                clientOptions.GitHubToken = _options.ApiKey;
             _client = new CopilotClient(clientOptions);
             await _client.StartAsync(cancellationToken);
 

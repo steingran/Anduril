@@ -9,7 +9,8 @@
 
   <ItemGroup>
     <PackageReference Include="Avalonia.Headless" />
-    <PackageReference Include="Avalonia.ReactiveUI" />
+    <PackageReference Include="ReactiveUI" />
+    <PackageReference Include="ReactiveUI.Avalonia" />
     <PackageReference Include="TUnit" />
     <PackageReference Include="TUnit.Engine" />
   </ItemGroup>

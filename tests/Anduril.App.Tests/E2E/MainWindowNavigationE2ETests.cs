@@ -2,7 +2,9 @@ using Anduril.App.Tests.Infrastructure;
 using Anduril.App.ViewModels;
 using Anduril.App.Views;
 using Avalonia.Controls;
+using Avalonia.Input;
 using Avalonia.Threading;
+using Avalonia.VisualTree;
 
 namespace Anduril.App.Tests.E2E;
 
@@ -28,10 +30,8 @@ public sealed class MainWindowNavigationE2ETests : AvaloniaHeadlessTestBase
                 await Assert.That(vm.IsChatActive).IsTrue();
                 await Assert.That(vm.IsCodeActive).IsFalse();
 
-                var chatTab = FindTabButton(window, "Chat");
-                var codeTab = FindTabButton(window, "Code");
-                await Assert.That(chatTab.Classes.Contains("active")).IsTrue();
-                await Assert.That(codeTab.Classes.Contains("active")).IsFalse();
+                var segmented = FindSegmentedList(window);
+                await Assert.That(segmented.SelectedIndex).IsEqualTo(0);
 
                 var chatView = window.FindDescendant<ChatView>(_ => true);
                 await Assert.That(chatView).IsNotNull();
@@ -54,8 +54,8 @@ public sealed class MainWindowNavigationE2ETests : AvaloniaHeadlessTestBase
                 window.Show();
                 await FlushUntilStableAsync();
 
-                var codeTab = FindTabButton(window, "Code");
-                window.ClickCenterOf(codeTab);
+                var codeSegment = FindSegmentItem(window, "Code");
+                window.ClickCenterOf(codeSegment);
 
                 await HeadlessInputHelpers.FlushUntilAsync(
                     () => vm.IsCodeActive,
@@ -65,12 +65,164 @@ public sealed class MainWindowNavigationE2ETests : AvaloniaHeadlessTestBase
                 await Assert.That(vm.IsChatActive).IsFalse();
                 await Assert.That(vm.IsCodeActive).IsTrue();
 
-                var chatTab = FindTabButton(window, "Chat");
-                await Assert.That(codeTab.Classes.Contains("active")).IsTrue();
-                await Assert.That(chatTab.Classes.Contains("active")).IsFalse();
+                var segmented = FindSegmentedList(window);
+                await Assert.That(segmented.SelectedIndex).IsEqualTo(1);
 
                 var codeView = window.FindDescendant<CodeView>(_ => true);
                 await Assert.That(codeView).IsNotNull();
+            }
+            finally
+            {
+                window.Close();
+            }
+        });
+    }
+
+    [Test]
+    public async Task ClickingSettingsButton_OpensPlaceholderDialog()
+    {
+        await RunOnUIThread(async () =>
+        {
+            var (window, vm) = MountMainWindow();
+            try
+            {
+                window.Show();
+                await FlushUntilStableAsync();
+
+                var settingsButton = window.FindDescendant<Button>(button => button.Name == "SettingsButton");
+                window.ClickCenterOf(settingsButton);
+
+                await HeadlessInputHelpers.FlushUntilAsync(
+                    () => vm.IsSettingsOpen,
+                    maxIterations: 20,
+                    timeoutMessage: "Clicking Settings did not open the placeholder dialog");
+
+                var settingsDialog = window.FindDescendant<Border>(border => border.Name == "SettingsDialog");
+                await Assert.That(settingsDialog.IsVisible).IsTrue();
+            }
+            finally
+            {
+                window.Close();
+            }
+        });
+    }
+
+    [Test]
+    public async Task Escape_ClosesToolInspectorOverlay()
+    {
+        await RunOnUIThread(async () =>
+        {
+            var (window, vm) = MountMainWindow();
+            try
+            {
+                window.Show();
+                await FlushUntilStableAsync();
+
+                var toolsButton = window.FindDescendant<Button>(button => button.Name == "ToolsToggleButton");
+                window.ClickCenterOf(toolsButton);
+
+                await HeadlessInputHelpers.FlushUntilAsync(
+                    () => vm.IsToolInspectorOpen,
+                    maxIterations: 20,
+                    timeoutMessage: "Clicking Tools did not open the inspector");
+
+                window.PressKey(PhysicalKey.Escape);
+
+                await HeadlessInputHelpers.FlushUntilAsync(
+                    () => !vm.IsToolInspectorOpen,
+                    maxIterations: 20,
+                    timeoutMessage: "Escape did not close the tool inspector");
+
+                var inspector = window.FindDescendant<Border>(border => border.Name == "ToolInspectorPanel");
+                await Assert.That(inspector.IsHitTestVisible).IsFalse();
+            }
+            finally
+            {
+                window.Close();
+            }
+        });
+    }
+
+    [Test]
+    public async Task ShellNavigationAndSidebarLabels_RenderWithMeasuredText()
+    {
+        await RunOnUIThread(async () =>
+        {
+            var (window, _) = MountMainWindow();
+            try
+            {
+                window.Show();
+                await FlushUntilStableAsync();
+
+                var chatLabel = window.FindDescendant<TextBlock>(text => text.Text == "Chat");
+                var codeLabel = window.FindDescendant<TextBlock>(text => text.Text == "Code");
+                var conversationTitle = window.FindDescendant<TextBlock>(text => text.Classes.Contains("conversation-title"));
+                var conversationMeta = window.FindDescendant<TextBlock>(text => text.Classes.Contains("conversation-meta"));
+
+                await Assert.That(chatLabel).IsNotNull();
+                await Assert.That(codeLabel).IsNotNull();
+                await Assert.That(conversationTitle).IsNotNull();
+                await Assert.That(conversationMeta).IsNotNull();
+
+                await Assert.That(chatLabel!.Bounds.Width).IsGreaterThan(0d);
+                await Assert.That(codeLabel!.Bounds.Width).IsGreaterThan(0d);
+                await Assert.That(conversationTitle!.Bounds.Width).IsGreaterThan(0d);
+                await Assert.That(conversationMeta!.Bounds.Width).IsGreaterThan(0d);
+            }
+            finally
+            {
+                window.Close();
+            }
+        });
+    }
+
+    [Test]
+    public async Task Shell_HasSingleNewConversationButton()
+    {
+        await RunOnUIThread(async () =>
+        {
+            var (window, _) = MountMainWindow();
+            try
+            {
+                window.Show();
+                await FlushUntilStableAsync();
+
+                var newConversationButtons = window
+                    .GetVisualDescendants()
+                    .OfType<Button>()
+                    .Where(button => button.GetVisualDescendants().OfType<TextBlock>().Any(text => text.Text == "New conversation"))
+                    .ToList();
+
+                await Assert.That(newConversationButtons.Count).IsEqualTo(1);
+            }
+            finally
+            {
+                window.Close();
+            }
+        });
+    }
+
+    [Test]
+    public async Task Shell_ShowsSettingsAndModelPicker()
+    {
+        await RunOnUIThread(async () =>
+        {
+            var (window, _) = MountMainWindow();
+            try
+            {
+                window.Show();
+                await FlushUntilStableAsync();
+
+                var settingsButton = window.FindDescendant<Button>(button => button.Name == "SettingsButton");
+                var modelPicker = window.FindDescendant<Anduril.App.Views.Controls.ModelPicker>(picker => picker.Name == "TopBarModelPicker");
+                var dragRegion = window.FindDescendant<Border>(border => border.Name == "TitleBarDragRegion");
+
+                await Assert.That(settingsButton).IsNotNull();
+                await Assert.That(settingsButton!.IsVisible).IsTrue();
+                await Assert.That(modelPicker).IsNotNull();
+                await Assert.That(modelPicker!.IsVisible).IsTrue();
+                await Assert.That(dragRegion).IsNotNull();
+                await Assert.That(dragRegion!.IsVisible).IsTrue();
             }
             finally
             {
@@ -103,7 +255,10 @@ public sealed class MainWindowNavigationE2ETests : AvaloniaHeadlessTestBase
         }
     }
 
-    private static Button FindTabButton(MainWindow window, string content) =>
-        window.FindDescendant<Button>(b =>
-            b.Classes.Contains("tab") && b.Content is string s && s == content);
+    private static ListBox FindSegmentedList(MainWindow window) =>
+        window.FindDescendant<ListBox>(listBox => listBox.Name == "Segments");
+
+    private static ListBoxItem FindSegmentItem(MainWindow window, string content) =>
+        window.FindDescendant<ListBoxItem>(item =>
+            item.GetVisualDescendants().OfType<TextBlock>().Any(text => text.Text == content));
 }

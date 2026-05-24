@@ -1,4 +1,5 @@
 using System.Collections.ObjectModel;
+using System.Collections.Specialized;
 using System.Diagnostics;
 using System.Reactive;
 using Anduril.App.Models;
@@ -21,6 +22,8 @@ public sealed class CodeViewModel : ViewModelBase
     private string _inputText = string.Empty;
     private bool _isStreaming;
     private bool _hasStagedActions;
+    private double _viewportWidth;
+    private bool _isStagedPanelOpen;
     private string? _selectedRepoPath;
     private string? _selectedBranch;
 
@@ -38,11 +41,24 @@ public sealed class CodeViewModel : ViewModelBase
         var hasStagedActions = this.WhenAnyValue(x => x.HasStagedActions);
         AcceptAllCommand = ReactiveCommand.Create(AcceptAll, hasStagedActions);
         RejectAllCommand = ReactiveCommand.Create(RejectAll, hasStagedActions);
+        AcceptCommand = ReactiveCommand.Create<StagedActionModel>(AcceptAction);
+        RejectCommand = ReactiveCommand.Create<StagedActionModel>(RejectAction);
+        ShowStagedActionsCommand = ReactiveCommand.Create(() => { IsStagedPanelOpen = true; }, hasStagedActions);
+        HideStagedActionsCommand = ReactiveCommand.Create(() => { IsStagedPanelOpen = false; });
+        InsertSlashCommandCommand = ReactiveCommand.Create<string>(InsertSlashCommand);
+
+        SlashCommands.Add("/fix");
+        SlashCommands.Add("/tests");
+        SlashCommands.Add("/explain");
+        SlashCommands.Add("/refactor");
+
+        StagedActions.CollectionChanged += OnStagedActionsCollectionChanged;
     }
 
     public ObservableCollection<CodeMessageModel> Messages { get; } = [];
     public ObservableCollection<StagedActionModel> StagedActions { get; } = [];
     public ObservableCollection<string> AvailableBranches { get; } = [];
+    public ObservableCollection<string> SlashCommands { get; } = [];
 
     public string InputText
     {
@@ -60,7 +76,13 @@ public sealed class CodeViewModel : ViewModelBase
     public bool HasStagedActions
     {
         get => _hasStagedActions;
-        set => this.RaiseAndSetIfChanged(ref _hasStagedActions, value);
+        private set
+        {
+            this.RaiseAndSetIfChanged(ref _hasStagedActions, value);
+            this.RaisePropertyChanged(nameof(IsStagedPanelVisible));
+            this.RaisePropertyChanged(nameof(ShowStagedActionsOverlay));
+            this.RaisePropertyChanged(nameof(StagedActionsOverlayLabel));
+        }
     }
 
     /// <summary>The local path of the repository selected by the user. Null until chosen.</summary>
@@ -93,18 +115,65 @@ public sealed class CodeViewModel : ViewModelBase
     /// <summary>True once a repo folder has been selected.</summary>
     public bool HasSelectedRepo => _selectedRepoPath is not null;
 
+    public double ViewportWidth
+    {
+        get => _viewportWidth;
+        set
+        {
+            if (Math.Abs(_viewportWidth - value) < 0.01)
+                return;
+
+            var wasCompact = IsCompactLayout;
+            this.RaiseAndSetIfChanged(ref _viewportWidth, value);
+            var isCompact = IsCompactLayout;
+
+            if (!wasCompact && isCompact && HasStagedActions)
+                IsStagedPanelOpen = false;
+            else if (!isCompact && HasStagedActions)
+                IsStagedPanelOpen = true;
+
+            this.RaisePropertyChanged(nameof(IsCompactLayout));
+            this.RaisePropertyChanged(nameof(IsStagedPanelVisible));
+            this.RaisePropertyChanged(nameof(ShowStagedActionsOverlay));
+        }
+    }
+
+    public bool IsCompactLayout => ViewportWidth > 0 && ViewportWidth < 1100;
+
+    public bool IsStagedPanelOpen
+    {
+        get => _isStagedPanelOpen;
+        set
+        {
+            this.RaiseAndSetIfChanged(ref _isStagedPanelOpen, value);
+            this.RaisePropertyChanged(nameof(IsStagedPanelVisible));
+            this.RaisePropertyChanged(nameof(ShowStagedActionsOverlay));
+        }
+    }
+
     /// <summary>The folder name shown in the repo bar (last path segment).</summary>
     public string RepoDisplayName => _selectedRepoPath is not null
         ? Path.GetFileName(_selectedRepoPath.TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar))
         : string.Empty;
 
+    public bool IsStagedPanelVisible => HasStagedActions && (!IsCompactLayout || IsStagedPanelOpen);
+
+    public bool ShowStagedActionsOverlay => HasStagedActions && IsCompactLayout && !IsStagedPanelOpen;
+
+    public string StagedActionsOverlayLabel => $"Show staged changes ({StagedActions.Count})";
+
     public ReactiveCommand<Unit, Unit> SendCommand { get; }
     public ReactiveCommand<Unit, Unit> StopCommand { get; }
     public ReactiveCommand<Unit, Unit> AcceptAllCommand { get; }
     public ReactiveCommand<Unit, Unit> RejectAllCommand { get; }
+    public ReactiveCommand<StagedActionModel, Unit> AcceptCommand { get; }
+    public ReactiveCommand<StagedActionModel, Unit> RejectCommand { get; }
+    public ReactiveCommand<Unit, Unit> ShowStagedActionsCommand { get; }
+    public ReactiveCommand<Unit, Unit> HideStagedActionsCommand { get; }
+    public ReactiveCommand<string, Unit> InsertSlashCommandCommand { get; }
 
     /// <summary>Wires the view-model to a conversation on the shared chat service.</summary>
-    public void SetConversation(string conversationId, IChatService chatService)
+    public void SetConversation(string conversationId, IChatService chatService, IReadOnlyList<SessionMessage>? history = null)
     {
         if (_chatService is not null)
         {
@@ -124,8 +193,19 @@ public sealed class CodeViewModel : ViewModelBase
             IsStreaming = false;
 
         Messages.Clear();
+        foreach (var message in history ?? [])
+        {
+            Messages.Add(new CodeMessageModel
+            {
+                Role = message.Role,
+                Content = message.Content,
+                Timestamp = message.Timestamp
+            });
+        }
+
         StagedActions.Clear();
-        HasStagedActions = false;
+        IsStagedPanelOpen = false;
+        RefreshStagedActionState();
     }
 
     private async Task StopStreamingAsync()
@@ -223,13 +303,51 @@ public sealed class CodeViewModel : ViewModelBase
     private void AcceptAll()
     {
         StagedActions.Clear();
-        HasStagedActions = false;
     }
 
     private void RejectAll()
     {
         StagedActions.Clear();
-        HasStagedActions = false;
+    }
+
+    private void AcceptAction(StagedActionModel action)
+    {
+        if (!StagedActions.Remove(action))
+            return;
+    }
+
+    private void RejectAction(StagedActionModel action)
+    {
+        if (!StagedActions.Remove(action))
+            return;
+    }
+
+    private void InsertSlashCommand(string slashCommand)
+    {
+        if (string.IsNullOrWhiteSpace(slashCommand))
+            return;
+
+        InputText = string.IsNullOrWhiteSpace(InputText)
+            ? $"{slashCommand} "
+            : $"{InputText.TrimEnd()} {slashCommand} ";
+    }
+
+    private void OnStagedActionsCollectionChanged(object? sender, NotifyCollectionChangedEventArgs e) =>
+        RefreshStagedActionState();
+
+    private void RefreshStagedActionState()
+    {
+        HasStagedActions = StagedActions.Count > 0;
+        this.RaisePropertyChanged(nameof(StagedActionsOverlayLabel));
+
+        if (!HasStagedActions)
+        {
+            IsStagedPanelOpen = false;
+            return;
+        }
+
+        if (!IsCompactLayout)
+            IsStagedPanelOpen = true;
     }
 
     private void OnTokenReceived(ChatStreamToken token)
@@ -287,7 +405,6 @@ public sealed class CodeViewModel : ViewModelBase
         Dispatcher.UIThread.Post(() =>
         {
             StagedActions.Add(action);
-            HasStagedActions = true;
         });
     }
 }

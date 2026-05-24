@@ -8,6 +8,7 @@
     <Project Path="src/Anduril.Skills/Anduril.Skills.csproj" />
     <Project Path="src/Anduril.Setup/Anduril.Setup.csproj" />
     <Project Path="src/Anduril.App/Anduril.App.csproj" />
+    <Project Path="src/Anduril.App.ScreenshotTool/Anduril.App.ScreenshotTool.csproj" />
   </Folder>
   <Folder Name="/tests/">
     <Project Path="tests/Anduril.AI.Tests/Anduril.AI.Tests.csproj" />

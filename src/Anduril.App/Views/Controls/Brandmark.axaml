@@ -1,0 +1,29 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             x:Class="Anduril.App.Views.Controls.Brandmark"
+             x:Name="Root">
+
+    <StackPanel x:Name="LayoutRoot"
+                Orientation="Horizontal"
+                VerticalAlignment="Center">
+        <Viewbox x:Name="MarkHost"
+                 Stretch="Uniform">
+            <Canvas Width="128"
+                    Height="128">
+                <Path x:Name="MarkPrimaryStroke"
+                      Data="M45 24 V68 C45 80.7 55.3 91 68 91 C76.4 91 84 86.5 88 79.2"
+                      StrokeThickness="12"
+                      StrokeLineCap="Round" />
+                <Path x:Name="MarkAccentStroke"
+                      Data="M80 20 L90 10"
+                      StrokeThickness="10"
+                      StrokeLineCap="Round" />
+            </Canvas>
+        </Viewbox>
+        <TextBlock x:Name="WordmarkText"
+                   Text="Andúril"
+                   FontWeight="Bold"
+                   VerticalAlignment="Center" />
+    </StackPanel>
+
+</UserControl>

@@ -18,30 +18,46 @@ public sealed class MainWindowViewModelTests
     private static ProviderInfo MakeProvider(string id, string name, string model, bool available = true, bool supportsChatCompletion = true) =>
         new() { Id = id, Name = name, Model = model, IsAvailable = available, SupportsChatCompletion = supportsChatCompletion };
 
+    private static async Task WaitForConversationCountAsync(MainWindowViewModel vm, int expectedCount)
+    {
+        var deadline = DateTime.UtcNow.AddSeconds(2);
+        while (vm.Conversations.Count < expectedCount && DateTime.UtcNow < deadline)
+            await Task.Delay(10);
+
+        if (vm.Conversations.Count < expectedCount)
+            throw new TimeoutException(
+                $"Expected at least {expectedCount} conversations, but only observed {vm.Conversations.Count} before timeout.");
+    }
+
     [Test]
     public async Task IsChatActive_Initially_ReturnsTrue()
     {
         var vm = new MainWindowViewModel(BuildFakeService(), new FakeUserPreferencesService());
+        await WaitForConversationCountAsync(vm, 1);
 
         await Assert.That(vm.IsChatActive).IsTrue();
         await Assert.That(vm.IsCodeActive).IsFalse();
+        await Assert.That(vm.SelectedNavigationIndex).IsEqualTo(0);
     }
 
     [Test]
     public async Task SwitchToCodeCommand_MakesIsCodeActiveTrue()
     {
         var vm = new MainWindowViewModel(BuildFakeService(), new FakeUserPreferencesService());
+        await WaitForConversationCountAsync(vm, 1);
 
         await vm.SwitchToCodeCommand.Execute().ToTask();
 
         await Assert.That(vm.IsCodeActive).IsTrue();
         await Assert.That(vm.IsChatActive).IsFalse();
+        await Assert.That(vm.SelectedNavigationIndex).IsEqualTo(1);
     }
 
     [Test]
     public async Task SwitchToChatCommand_MakesIsChatActiveTrue()
     {
         var vm = new MainWindowViewModel(BuildFakeService(), new FakeUserPreferencesService());
+        await WaitForConversationCountAsync(vm, 1);
         await vm.SwitchToCodeCommand.Execute().ToTask();
 
         await vm.SwitchToChatCommand.Execute().ToTask();
@@ -186,20 +202,163 @@ public sealed class MainWindowViewModelTests
         // The LoadToolsAsync call will fail silently (no HTTP server), but IsToolInspectorOpen
         // is set to true before the HTTP call, so this is still testable.
         var vm = new MainWindowViewModel(BuildFakeService(), new FakeUserPreferencesService());
+        await WaitForConversationCountAsync(vm, 1);
 
         await vm.ToggleToolInspectorCommand.Execute().ToTask();
 
         await Assert.That(vm.IsToolInspectorOpen).IsTrue();
+        await Assert.That(vm.IsOverlayOpen).IsTrue();
     }
 
     [Test]
     public async Task ToggleToolInspectorCommand_WhenOpen_ClosesInspector()
     {
         var vm = new MainWindowViewModel(BuildFakeService(), new FakeUserPreferencesService());
+        await WaitForConversationCountAsync(vm, 1);
         await vm.ToggleToolInspectorCommand.Execute().ToTask();
 
         await vm.ToggleToolInspectorCommand.Execute().ToTask();
 
         await Assert.That(vm.IsToolInspectorOpen).IsFalse();
+        await Assert.That(vm.IsOverlayOpen).IsFalse();
+    }
+
+    [Test]
+    public async Task OpenSettingsCommand_OpensSettings_AndClosesToolInspector()
+    {
+        var vm = new MainWindowViewModel(BuildFakeService(), new FakeUserPreferencesService());
+        await WaitForConversationCountAsync(vm, 1);
+        await vm.ToggleToolInspectorCommand.Execute().ToTask();
+
+        await vm.OpenSettingsCommand.Execute().ToTask();
+
+        await Assert.That(vm.IsSettingsOpen).IsTrue();
+        await Assert.That(vm.IsToolInspectorOpen).IsFalse();
+        await Assert.That(vm.IsOverlayOpen).IsTrue();
+    }
+
+    [Test]
+    public async Task CloseTransientPanelsCommand_ClosesSettingsAndInspector()
+    {
+        var vm = new MainWindowViewModel(BuildFakeService(), new FakeUserPreferencesService());
+        await WaitForConversationCountAsync(vm, 1);
+        await vm.OpenSettingsCommand.Execute().ToTask();
+
+        await vm.CloseTransientPanelsCommand.Execute().ToTask();
+
+        await Assert.That(vm.IsSettingsOpen).IsFalse();
+        await Assert.That(vm.IsToolInspectorOpen).IsFalse();
+        await Assert.That(vm.IsOverlayOpen).IsFalse();
+    }
+
+    [Test]
+    public async Task GroupedConversations_GroupsEntriesByRelativeDate()
+    {
+        var now = DateTimeOffset.Now;
+        var fake = new FakeChatService
+        {
+            Conversations = new Queue<ConversationInfo>(
+            [
+                new ConversationInfo { Id = "today-chat", Title = "Today thread", CreatedAt = now },
+                new ConversationInfo { Id = "today-code", CreatedAt = now },
+                new ConversationInfo { Id = "yesterday-chat", Title = "Yesterday thread", CreatedAt = now.AddDays(-1) },
+                new ConversationInfo { Id = "yesterday-code", CreatedAt = now.AddDays(-1) },
+                new ConversationInfo { Id = "week-chat", Title = "Week thread", CreatedAt = now.AddDays(-3) },
+                new ConversationInfo { Id = "week-code", CreatedAt = now.AddDays(-3) },
+                new ConversationInfo { Id = "earlier-chat", Title = "Earlier thread", CreatedAt = now.AddDays(-20) },
+                new ConversationInfo { Id = "earlier-code", CreatedAt = now.AddDays(-20) }
+            ])
+        };
+
+        var vm = new MainWindowViewModel(fake, new FakeUserPreferencesService());
+        await WaitForConversationCountAsync(vm, 1);
+        await vm.NewConversationCommand.Execute().ToTask();
+        await vm.NewConversationCommand.Execute().ToTask();
+        await vm.NewConversationCommand.Execute().ToTask();
+
+        await Assert.That(vm.GroupedConversations.Count).IsEqualTo(4);
+        await Assert.That(vm.GroupedConversations[0].Header).IsEqualTo("Today");
+        await Assert.That(vm.GroupedConversations[1].Header).IsEqualTo("Yesterday");
+        await Assert.That(vm.GroupedConversations[2].Header).IsEqualTo("Last 7 days");
+        await Assert.That(vm.GroupedConversations[3].Header).IsEqualTo("Earlier");
+        await Assert.That(vm.GroupedConversations[1].Conversations[0].Title).IsEqualTo("Yesterday thread");
+    }
+
+    [Test]
+    public async Task RenameAndDeleteConversationCommands_UpdateConversationCollections()
+    {
+        var vm = new MainWindowViewModel(BuildFakeService(), new FakeUserPreferencesService());
+        await WaitForConversationCountAsync(vm, 1);
+
+        var conversation = vm.Conversations[0];
+
+        await vm.RenameConversationCommand.Execute(conversation).ToTask();
+
+        await Assert.That(conversation.Title).StartsWith("Renamed:");
+
+        await vm.DeleteConversationCommand.Execute(conversation).ToTask();
+
+        await Assert.That(vm.Conversations.Count).IsEqualTo(0);
+        await Assert.That(vm.GroupedConversations.Count).IsEqualTo(0);
+    }
+
+    [Test]
+    public async Task NewConversation_UsesFallbackTitle_WhenServiceReturnsWhitespace()
+    {
+        var fake = new FakeChatService
+        {
+            Conversations = new Queue<ConversationInfo>(
+            [
+                new ConversationInfo { Id = "chat-1", Title = "   ", CreatedAt = DateTimeOffset.UtcNow },
+                new ConversationInfo { Id = "code-1", Title = "   ", CreatedAt = DateTimeOffset.UtcNow }
+            ])
+        };
+
+        var vm = new MainWindowViewModel(fake, new FakeUserPreferencesService());
+        await WaitForConversationCountAsync(vm, 1);
+
+        await Assert.That(vm.Conversations[0].Title).IsEqualTo("New conversation");
+    }
+
+    [Test]
+    public async Task SelectedConversation_WhenChanged_SwitchesChatAndCodeConversationTargets()
+    {
+        var fake = new FakeChatService
+        {
+            Conversations = new Queue<ConversationInfo>(
+            [
+                new ConversationInfo { Id = "chat-1", CreatedAt = DateTimeOffset.UtcNow, Title = "First" },
+                new ConversationInfo { Id = "code-1", CreatedAt = DateTimeOffset.UtcNow, Title = "First" },
+                new ConversationInfo { Id = "chat-2", CreatedAt = DateTimeOffset.UtcNow.AddMinutes(1), Title = "Second" },
+                new ConversationInfo { Id = "code-2", CreatedAt = DateTimeOffset.UtcNow.AddMinutes(1), Title = "Second" }
+            ])
+        };
+
+        fake.ConversationHistory["chat-2"] = [new SessionMessage("assistant", "chat history", DateTimeOffset.UtcNow)];
+        fake.ConversationHistory["code-2"] = [new SessionMessage("assistant", "code history", DateTimeOffset.UtcNow)];
+
+        var vm = new MainWindowViewModel(fake, new FakeUserPreferencesService());
+        await WaitForConversationCountAsync(vm, 1);
+        await vm.NewConversationCommand.Execute().ToTask();
+        await WaitForConversationCountAsync(vm, 2);
+
+        var secondConversation = vm.Conversations.First(conversation => conversation.ChatConversationId == "chat-2");
+        vm.SelectedConversation = secondConversation;
+
+        var deadline = DateTime.UtcNow.AddSeconds(2);
+        while ((vm.ChatVm.Messages.LastOrDefault()?.Content != "chat history" ||
+                vm.CodeVm.Messages.LastOrDefault()?.Content != "code history") &&
+               DateTime.UtcNow < deadline)
+        {
+            await Task.Delay(10);
+        }
+
+        vm.ChatVm.InputText = "chat question";
+        await vm.ChatVm.SendCommand.Execute().ToTask();
+        vm.CodeVm.InputText = "code question";
+        await vm.CodeVm.SendCommand.Execute().ToTask();
+
+        await Assert.That(fake.SentMessages.Select(message => message.ConversationId)).Contains("chat-2");
+        await Assert.That(fake.SentMessages.Select(message => message.ConversationId)).Contains("code-2");
     }
 }

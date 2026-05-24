@@ -68,6 +68,14 @@ public sealed class DesignSystemResourceTests : AvaloniaHeadlessTestBase
     public async Task AllBrushKeys_ResolveUnderDark()
         => await AssertAllBrushKeysResolveUnder(ThemeVariant.Dark);
 
+    [Test]
+    public async Task TextBrushes_AreOpaqueUnderLight()
+        => await AssertTextBrushesAreOpaqueUnder(ThemeVariant.Light);
+
+    [Test]
+    public async Task TextBrushes_AreOpaqueUnderDark()
+        => await AssertTextBrushesAreOpaqueUnder(ThemeVariant.Dark);
+
     private static async Task AssertAllBrushKeysResolveUnder(ThemeVariant variant)
     {
         await RunOnUIThread(async () =>
@@ -87,6 +95,45 @@ public sealed class DesignSystemResourceTests : AvaloniaHeadlessTestBase
                     await Assert.That(resolved is IBrush)
                         .IsTrue()
                         .Because($"brush '{key}' must be an IBrush under {variant} (got {resolved?.GetType().Name})");
+                }
+            }
+            finally
+            {
+                window.Close();
+            }
+        });
+    }
+
+    private static async Task AssertTextBrushesAreOpaqueUnder(ThemeVariant variant)
+    {
+        await RunOnUIThread(async () =>
+        {
+            var window = new Window { RequestedThemeVariant = variant };
+            var textBrushKeys = new[]
+            {
+                "AndurilTextPrimaryBrush",
+                "AndurilTextSecondaryBrush",
+                "AndurilTextTertiaryBrush",
+                "AndurilTextDisabledBrush",
+                "AndurilTextOnAccentBrush",
+            };
+
+            try
+            {
+                window.Show();
+
+                foreach (var key in textBrushKeys)
+                {
+                    var resolved = window.FindResource(variant, key);
+                    if (resolved is not ISolidColorBrush brush)
+                    {
+                        Assert.Fail($"Expected text brush '{key}' to resolve as ISolidColorBrush under {variant}.");
+                        return;
+                    }
+
+                    await Assert.That(brush.Color.A)
+                        .IsGreaterThan((byte)0)
+                        .Because($"text brush '{key}' must not be fully transparent under {variant}");
                 }
             }
             finally

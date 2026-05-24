@@ -1,0 +1,88 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:controls="using:Anduril.App.Views.Controls"
+             xmlns:models="using:Anduril.App.Models"
+             xmlns:styling="using:Avalonia.Styling"
+             x:Class="Anduril.App.Views.Controls.ControlsGallery"
+             x:Name="Root">
+
+    <ScrollViewer>
+        <Border Padding="{DynamicResource AndurilPaddingPanel}">
+            <Grid ColumnDefinitions="*,*"
+                  ColumnSpacing="{DynamicResource AndurilSpacingL}">
+                <ThemeVariantScope RequestedThemeVariant="{x:Static styling:ThemeVariant.Light}">
+                <controls:AndurilCard Title="Light Theme"
+                                      Subtitle="Reusable Anduril controls preview"
+                                      IsEmphasis="True">
+                    <controls:AndurilCard.Body>
+                    <StackPanel Spacing="{DynamicResource AndurilSpacingM}">
+                        <controls:Brandmark Size="Medium" />
+                        <controls:PathBreadcrumb Path="{Binding SamplePath, ElementName=Root}" />
+                        <controls:ToolCallChip Summary="{Binding ToolCallSample, ElementName=Root}" IsExpanded="False" />
+                        <controls:SegmentedControl ItemsSource="{Binding SegmentItems, ElementName=Root}"
+                                                   SelectedIndex="0" />
+                        <controls:ModelPicker ItemsSource="{Binding Models, ElementName=Root}"
+                                              SelectedModel="{Binding SelectedModel, ElementName=Root, Mode=TwoWay}"
+                                              Width="240" />
+                        <controls:DiffCard FilePath="src/Anduril.App/Main.cs"
+                                           Kind="Edit"
+                                           DiffLines="{Binding DiffLines, ElementName=Root}" />
+                        <controls:Shimmer LineCount="4" MaxLineWidth="180" />
+                        <controls:InlineStatus Text="Run stopped"
+                                               Variant="Stopped"
+                                               ActionLabel="Resume"
+                                               ActionCommand="{Binding NoOpCommand, ElementName=Root}" />
+                        <StackPanel Orientation="Horizontal" Spacing="{DynamicResource AndurilSpacingS}">
+                            <controls:StreamingCaret IsStreaming="True" />
+                            <controls:StreamingDotIndicator IsStreaming="True" />
+                        </StackPanel>
+                        <controls:AndurilAlert Title="Provider not configured"
+                                               Body="Connect OpenAI or switch to a local model to continue."
+                                               Variant="Warning"
+                                               PrimaryActionLabel="Open settings"
+                                               PrimaryActionCommand="{Binding NoOpCommand, ElementName=Root}" />
+                    </StackPanel>
+                    </controls:AndurilCard.Body>
+                </controls:AndurilCard>
+                </ThemeVariantScope>
+
+                <ThemeVariantScope Grid.Column="1"
+                                   RequestedThemeVariant="{x:Static styling:ThemeVariant.Dark}">
+                <controls:AndurilCard Title="Dark Theme"
+                                      Subtitle="Same controls under the dark palette.">
+                    <controls:AndurilCard.Body>
+                    <StackPanel Spacing="{DynamicResource AndurilSpacingM}">
+                        <controls:Brandmark Size="Medium" />
+                        <controls:PathBreadcrumb Path="{Binding SamplePath, ElementName=Root}" />
+                        <controls:ToolCallChip Summary="{Binding ToolCallSample, ElementName=Root}" IsExpanded="True" />
+                        <controls:SegmentedControl ItemsSource="{Binding SegmentItems, ElementName=Root}"
+                                                   SelectedIndex="1" />
+                        <controls:ModelPicker ItemsSource="{Binding Models, ElementName=Root}"
+                                              SelectedModel="{Binding SelectedModel, ElementName=Root, Mode=TwoWay}"
+                                              Width="240" />
+                        <controls:DiffCard FilePath="src/Anduril.App/MainView.axaml"
+                                           Kind="Edit"
+                                           DiffLines="{Binding DiffLines, ElementName=Root}" />
+                        <controls:Shimmer LineCount="4" MaxLineWidth="180" />
+                        <controls:InlineStatus Text="Request failed"
+                                               Variant="Failed"
+                                               ActionLabel="Retry"
+                                               ActionCommand="{Binding NoOpCommand, ElementName=Root}" />
+                        <StackPanel Orientation="Horizontal" Spacing="{DynamicResource AndurilSpacingS}">
+                            <controls:StreamingCaret IsStreaming="True" />
+                            <controls:StreamingDotIndicator IsStreaming="True" />
+                        </StackPanel>
+                        <controls:AndurilAlert Title="Connection lost"
+                                               Body="The desktop client will retry the assistant stream automatically."
+                                               Variant="Danger"
+                                               PrimaryActionLabel="Dismiss"
+                                               PrimaryActionCommand="{Binding NoOpCommand, ElementName=Root}" />
+                    </StackPanel>
+                    </controls:AndurilCard.Body>
+                </controls:AndurilCard>
+                </ThemeVariantScope>
+            </Grid>
+        </Border>
+    </ScrollViewer>
+
+</UserControl>
