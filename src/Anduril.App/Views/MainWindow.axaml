@@ -12,8 +12,10 @@
         Icon="/Assets/anduril-icon.ico"
         Width="1280"
         Height="800"
-        MinWidth="{DynamicResource AndurilWindowMinWidth}"
-        MinHeight="{DynamicResource AndurilWindowMinHeight}"
+        MinWidth="1024"
+        MinHeight="720"
+        TransparencyLevelHint="Mica,AcrylicBlur,Blur"
+        ExtendClientAreaToDecorationsHint="True"
         Background="{DynamicResource AndurilSurfaceBrush}"
         ShowInTaskbar="True"
         WindowStartupLocation="CenterScreen"
@@ -110,7 +112,7 @@
 
         <Style Selector="Button.overlay-scrim">
             <Setter Property="Background" Value="{DynamicResource AndurilTextDisabledBrush}" />
-            <Setter Property="Opacity" Value="0.18" />
+            <Setter Property="Opacity" Value="0.22" />
             <Setter Property="BorderThickness" Value="0" />
             <Setter Property="Padding" Value="0" />
         </Style>
@@ -237,9 +239,11 @@
                                                             <StackPanel Grid.Column="1"
                                                                         Spacing="2">
                                                                 <TextBlock Text="{Binding Title}"
-                                                                           Classes="conversation-title" />
+                                                                           Classes="conversation-title"
+                                                                           Foreground="{DynamicResource AndurilTextPrimaryBrush}" />
                                                                 <TextBlock Text="{Binding CreatedAt.LocalDateTime, StringFormat='{}{0:ddd, MMM d · HH:mm}'}"
-                                                                           Classes="conversation-meta" />
+                                                                           Classes="conversation-meta"
+                                                                           Foreground="{DynamicResource AndurilTextSecondaryBrush}" />
                                                             </StackPanel>
 
                                                             <Button Grid.Column="2"
@@ -255,8 +259,14 @@
                                                                                   Click="OnDeleteConversationClick" />
                                                                     </MenuFlyout>
                                                                 </Button.Flyout>
-                                                                <TextBlock Text="..."
-                                                                           FontWeight="Bold" />
+                                                                <PathIcon Width="{DynamicResource AndurilIconSizeS}"
+                                                                          Height="{DynamicResource AndurilIconSizeS}"
+                                                                          Data="{StaticResource FluentDismiss16Geometry}"
+                                                                          RenderTransformOrigin="0.5,0.5">
+                                                                    <PathIcon.RenderTransform>
+                                                                        <RotateTransform Angle="45" />
+                                                                    </PathIcon.RenderTransform>
+                                                                </PathIcon>
                                                             </Button>
                                                         </Grid>
                                                     </Border>
@@ -275,13 +285,23 @@
                         <Separator Background="{DynamicResource AndurilDividerBrush}" />
                         <Button x:Name="SettingsButton"
                                 Grid.Row="1"
-                                Classes="ghost icon"
-                                HorizontalAlignment="Left"
+                                Classes="ghost"
+                                HorizontalAlignment="Stretch"
                                 ToolTip.Tip="Settings"
                                 Command="{Binding OpenSettingsCommand}">
-                            <PathIcon Width="{DynamicResource AndurilIconSizeM}"
-                                      Height="{DynamicResource AndurilIconSizeM}"
-                                      Data="{StaticResource FluentSettings20Geometry}" />
+                            <Grid ColumnDefinitions="Auto,*"
+                                  ColumnSpacing="10">
+                                <PathIcon Width="{DynamicResource AndurilIconSizeM}"
+                                          Height="{DynamicResource AndurilIconSizeM}"
+                                          VerticalAlignment="Center"
+                                          Data="{StaticResource FluentSettings20Geometry}" />
+                                <TextBlock Grid.Column="1"
+                                           VerticalAlignment="Center"
+                                           Text="Settings"
+                                           FontSize="{DynamicResource AndurilFontSizeUi}"
+                                           FontWeight="SemiBold"
+                                           Foreground="{DynamicResource AndurilTextPrimaryBrush}" />
+                            </Grid>
                         </Button>
                     </Grid>
                 </Grid>
@@ -292,8 +312,8 @@
                 <Border x:Name="TopBar"
                         Grid.Row="0"
                         Classes="topbar-surface"
-                        Padding="16,12,120,12">
-                    <Grid ColumnDefinitions="Auto,*"
+                        Padding="16,12,16,12">
+                    <Grid ColumnDefinitions="Auto,*,Auto"
                           ColumnSpacing="16">
                         <controls:SegmentedControl x:Name="NavigationSegments"
                                                    Grid.Column="0"
@@ -301,7 +321,7 @@
                                                    ItemsSource="{Binding NavigationItems}"
                                                    SelectedIndex="{Binding SelectedNavigationIndex, Mode=TwoWay}" />
 
-                        <StackPanel Grid.Column="1"
+                        <StackPanel Grid.Column="2"
                                     Orientation="Horizontal"
                                     Spacing="12"
                                     HorizontalAlignment="Right">
@@ -350,8 +370,6 @@
 
                     <Border x:Name="ToolInspectorPanel"
                             Classes="tool-inspector-panel"
-                            Classes.open="{Binding IsToolInspectorOpen}"
-                            IsHitTestVisible="{Binding IsToolInspectorOpen}"
                             HorizontalAlignment="Right"
                             ZIndex="20">
                         <DockPanel>

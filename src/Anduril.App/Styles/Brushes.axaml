@@ -34,12 +34,12 @@
             <SolidColorBrush x:Key="AndurilStrokeStrongBrush"    Color="{DynamicResource ControlStrongStrokeColorDefault}" />
             <SolidColorBrush x:Key="AndurilDividerBrush"         Color="{DynamicResource DividerStrokeColorDefault}" />
 
-            <!-- Text — Fluent-aliased -->
-            <SolidColorBrush x:Key="AndurilTextPrimaryBrush"     Color="{DynamicResource TextFillColorPrimary}" />
-            <SolidColorBrush x:Key="AndurilTextSecondaryBrush"   Color="{DynamicResource TextFillColorSecondary}" />
-            <SolidColorBrush x:Key="AndurilTextTertiaryBrush"    Color="{DynamicResource TextFillColorTertiary}" />
-            <SolidColorBrush x:Key="AndurilTextDisabledBrush"    Color="{DynamicResource TextFillColorDisabled}" />
-            <SolidColorBrush x:Key="AndurilTextOnAccentBrush"    Color="{DynamicResource TextOnAccentFillColorPrimary}" />
+            <!-- Text -->
+            <SolidColorBrush x:Key="AndurilTextPrimaryBrush"     Color="#E4000000" />
+            <SolidColorBrush x:Key="AndurilTextSecondaryBrush"   Color="#9E000000" />
+            <SolidColorBrush x:Key="AndurilTextTertiaryBrush"    Color="#72000000" />
+            <SolidColorBrush x:Key="AndurilTextDisabledBrush"    Color="#5C000000" />
+            <SolidColorBrush x:Key="AndurilTextOnAccentBrush"    Color="#FFFFFF" />
 
             <!-- Accent — Anduril brand blue (does NOT override OS accent) -->
             <SolidColorBrush x:Key="AndurilAccentBrush"          Color="#1F3FA0" />
@@ -56,7 +56,7 @@
             <SolidColorBrush x:Key="AndurilWarningSubtleBrush"   Color="#FFF4DC" />
             <SolidColorBrush x:Key="AndurilDangerBrush"          Color="#B0241F" />
             <SolidColorBrush x:Key="AndurilDangerSubtleBrush"    Color="#FCE9E8" />
-            <SolidColorBrush x:Key="AndurilNeutralBrush"         Color="{DynamicResource TextFillColorSecondary}" />
+            <SolidColorBrush x:Key="AndurilNeutralBrush"         Color="#9E000000" />
 
             <!-- Diff -->
             <SolidColorBrush x:Key="AndurilDiffAddBrush"         Color="#E6F5EC" />
@@ -86,11 +86,11 @@
             <SolidColorBrush x:Key="AndurilDividerBrush"         Color="{DynamicResource DividerStrokeColorDefault}" />
 
             <!-- Text -->
-            <SolidColorBrush x:Key="AndurilTextPrimaryBrush"     Color="{DynamicResource TextFillColorPrimary}" />
-            <SolidColorBrush x:Key="AndurilTextSecondaryBrush"   Color="{DynamicResource TextFillColorSecondary}" />
-            <SolidColorBrush x:Key="AndurilTextTertiaryBrush"    Color="{DynamicResource TextFillColorTertiary}" />
-            <SolidColorBrush x:Key="AndurilTextDisabledBrush"    Color="{DynamicResource TextFillColorDisabled}" />
-            <SolidColorBrush x:Key="AndurilTextOnAccentBrush"    Color="{DynamicResource TextOnAccentFillColorPrimary}" />
+            <SolidColorBrush x:Key="AndurilTextPrimaryBrush"     Color="#FFFFFF" />
+            <SolidColorBrush x:Key="AndurilTextSecondaryBrush"   Color="#C5FFFFFF" />
+            <SolidColorBrush x:Key="AndurilTextTertiaryBrush"    Color="#87FFFFFF" />
+            <SolidColorBrush x:Key="AndurilTextDisabledBrush"    Color="#5DFFFFFF" />
+            <SolidColorBrush x:Key="AndurilTextOnAccentBrush"    Color="#0B0F1E" />
 
             <!-- Accent -->
             <SolidColorBrush x:Key="AndurilAccentBrush"          Color="#5C84FF" />
@@ -107,7 +107,7 @@
             <SolidColorBrush x:Key="AndurilWarningSubtleBrush"   Color="#3A2E10" />
             <SolidColorBrush x:Key="AndurilDangerBrush"          Color="#E88080" />
             <SolidColorBrush x:Key="AndurilDangerSubtleBrush"    Color="#3A1616" />
-            <SolidColorBrush x:Key="AndurilNeutralBrush"         Color="{DynamicResource TextFillColorSecondary}" />
+            <SolidColorBrush x:Key="AndurilNeutralBrush"         Color="#C5FFFFFF" />
 
             <!-- Diff -->
             <SolidColorBrush x:Key="AndurilDiffAddBrush"         Color="#0F2A18" />

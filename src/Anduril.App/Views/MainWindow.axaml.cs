@@ -1,16 +1,25 @@
 using Anduril.App.ViewModels;
+using Anduril.App.Views.Controls;
 using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Input;
+using Avalonia.Animation;
+using System.ComponentModel;
 
 namespace Anduril.App.Views;
 
 public partial class MainWindow : Window
 {
+    private MainWindowViewModel? _viewModel;
+    private Transitions? _toolInspectorTransitions;
+
     public MainWindow()
     {
         InitializeComponent();
         ConfigureWindowChrome();
+        DataContextChanged += OnDataContextChanged;
+        MotionPolicy.ReducedMotionChanged += OnReducedMotionChanged;
+        Opened += (_, _) => ApplyOverlayState();
     }
 
     private void OnWindowKeyDown(object? sender, KeyEventArgs e)
@@ -45,25 +54,7 @@ public partial class MainWindow : Window
 
     private void ConfigureWindowChrome()
     {
-        if (TryConfigureAvalonia12Chrome())
-            return;
-
-        // Avalonia 11 fallback: keep the startup surface fully opaque.
         Title = string.Empty;
-        TransparencyLevelHint =
-        [
-            WindowTransparencyLevel.None
-        ];
-        ExtendClientAreaToDecorationsHint = false;
-        SetEnumPropertyIfPresent("SystemDecorations", "Full");
-    }
-
-    private bool TryConfigureAvalonia12Chrome()
-    {
-        var windowDecorationsProperty = typeof(Window).GetProperty("WindowDecorations");
-        if (windowDecorationsProperty is null || TopBar is null)
-            return false;
-
         TransparencyLevelHint =
         [
             WindowTransparencyLevel.Mica,
@@ -71,6 +62,15 @@ public partial class MainWindow : Window
             WindowTransparencyLevel.Blur
         ];
         ExtendClientAreaToDecorationsHint = true;
+        SetEnumPropertyIfPresent("SystemDecorations", "Full");
+        TryConfigureAvalonia12Chrome();
+    }
+
+    private bool TryConfigureAvalonia12Chrome()
+    {
+        var windowDecorationsProperty = typeof(Window).GetProperty("WindowDecorations");
+        if (windowDecorationsProperty is null || TopBar is null)
+            return false;
 
         var decorationsValue = Enum.Parse(windowDecorationsProperty.PropertyType, "Full", ignoreCase: false);
         windowDecorationsProperty.SetValue(this, decorationsValue);
@@ -105,5 +105,51 @@ public partial class MainWindow : Window
 
         var parsed = Enum.Parse(property.PropertyType, enumValue, ignoreCase: false);
         property.SetValue(this, parsed);
+    }
+
+    protected override void OnClosed(EventArgs e)
+    {
+        if (_viewModel is not null)
+            _viewModel.PropertyChanged -= OnViewModelPropertyChanged;
+
+        MotionPolicy.ReducedMotionChanged -= OnReducedMotionChanged;
+        DataContextChanged -= OnDataContextChanged;
+        base.OnClosed(e);
+    }
+
+    private void OnDataContextChanged(object? sender, EventArgs e)
+    {
+        if (_viewModel is not null)
+            _viewModel.PropertyChanged -= OnViewModelPropertyChanged;
+
+        _viewModel = DataContext as MainWindowViewModel;
+        if (_viewModel is not null)
+            _viewModel.PropertyChanged += OnViewModelPropertyChanged;
+
+        ApplyOverlayState();
+    }
+
+    private void OnViewModelPropertyChanged(object? sender, PropertyChangedEventArgs e)
+    {
+        if (e.PropertyName is nameof(MainWindowViewModel.IsToolInspectorOpen) or nameof(MainWindowViewModel.IsSettingsOpen))
+            ApplyOverlayState();
+    }
+
+    private void OnReducedMotionChanged(object? sender, bool isReducedMotion) =>
+        ApplyOverlayState();
+
+    private void ApplyOverlayState()
+    {
+        if (ToolInspectorPanel is null || ToolsToggleButton is null)
+            return;
+
+        _toolInspectorTransitions ??= ToolInspectorPanel.Transitions;
+        ToolInspectorPanel.Transitions = MotionPolicy.IsReducedMotion ? null : _toolInspectorTransitions;
+
+        var isToolInspectorOpen = _viewModel?.IsToolInspectorOpen == true;
+        ToolsToggleButton.Classes.Set("active", isToolInspectorOpen);
+        ToolInspectorPanel.Classes.Set("open", isToolInspectorOpen);
+        ToolInspectorPanel.IsVisible = isToolInspectorOpen;
+        ToolInspectorPanel.IsHitTestVisible = isToolInspectorOpen;
     }
 }

@@ -101,7 +101,8 @@
                 <ListBox.ItemTemplate>
                     <DataTemplate>
                         <TextBlock Text="{Binding}"
-                                   Classes="segment-label" />
+                                   Classes="segment-label"
+                                   Foreground="{DynamicResource AndurilTextSecondaryBrush}" />
                     </DataTemplate>
                 </ListBox.ItemTemplate>
             </ListBox>
