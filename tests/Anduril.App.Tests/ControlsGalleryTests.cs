@@ -27,10 +27,12 @@ public sealed class ControlsGalleryTests : AvaloniaHeadlessTestBase
                 var cards = control.FindDescendant<Grid>(_ => true);
                 var alerts = control.GetVisualDescendants().OfType<AndurilAlert>().ToArray();
                 var brandmarks = control.GetVisualDescendants().OfType<Brandmark>().ToArray();
+                var breadcrumbs = control.GetVisualDescendants().OfType<PathBreadcrumb>().ToArray();
 
                 await Assert.That(cards.Bounds.Width).IsGreaterThan(0);
                 await Assert.That(alerts.Length).IsEqualTo(2);
                 await Assert.That(brandmarks.Length).IsEqualTo(2);
+                await Assert.That(breadcrumbs.Length).IsEqualTo(2);
             }
             finally
             {

@@ -17,6 +17,7 @@
                     <controls:AndurilCard.Body>
                     <StackPanel Spacing="{DynamicResource AndurilSpacingM}">
                         <controls:Brandmark Size="Medium" />
+                        <controls:PathBreadcrumb Path="{Binding SamplePath, ElementName=Root}" />
                         <controls:ToolCallChip Summary="{Binding ToolCallSample, ElementName=Root}" IsExpanded="False" />
                         <controls:SegmentedControl ItemsSource="{Binding SegmentItems, ElementName=Root}"
                                                    SelectedIndex="0" />
@@ -52,6 +53,7 @@
                     <controls:AndurilCard.Body>
                     <StackPanel Spacing="{DynamicResource AndurilSpacingM}">
                         <controls:Brandmark Size="Medium" />
+                        <controls:PathBreadcrumb Path="{Binding SamplePath, ElementName=Root}" />
                         <controls:ToolCallChip Summary="{Binding ToolCallSample, ElementName=Root}" IsExpanded="True" />
                         <controls:SegmentedControl ItemsSource="{Binding SegmentItems, ElementName=Root}"
                                                    SelectedIndex="1" />

@@ -43,6 +43,7 @@ public partial class ControlsGallery : UserControl
             ToolIcon = "🔍",
             Detail = "Searching user workspace for markdown files."
         };
+        SamplePath = "src/Anduril.App/Views/Controls/SegmentedControl.axaml";
         SegmentItems = ["Chat", "Code", "Files"];
         NoOpCommand = new DelegateCommand(() => { });
         DataContext = this;
@@ -55,6 +56,8 @@ public partial class ControlsGallery : UserControl
     public ObservableCollection<DiffLine> DiffLines { get; }
 
     public ToolCallSummary ToolCallSample { get; }
+
+    public string SamplePath { get; }
 
     public ModelOption? SelectedModel { get; set; }
 

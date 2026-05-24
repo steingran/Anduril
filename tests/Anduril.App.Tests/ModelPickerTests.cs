@@ -149,12 +149,21 @@ public sealed class ModelPickerTests : AvaloniaHeadlessTestBase
                 var optionButtons = popup.Child!
                     .GetVisualDescendants()
                     .OfType<Button>()
-                    .Where(button => button.Name == "ModelButton")
+                    .Where(button => button.Name == "ModelButton" && button.IsVisible)
                     .ToList();
 
                 await Assert.That(optionButtons.Count).IsEqualTo(2);
 
-                window.ClickCenterOf(optionButtons[1]);
+                var secondOptionButton = optionButtons
+                    .FirstOrDefault(button => (button.DataContext as ModelPickerItem)?.Model?.ProviderId == second.ProviderId);
+
+                if (secondOptionButton is null)
+                {
+                    Assert.Fail("Expected to find a visible button for the second model option.");
+                    return;
+                }
+
+                window.ClickCenterOf(secondOptionButton);
                 await Dispatcher.UIThread.InvokeAsync(() => { });
 
                 await Assert.That(control.SelectedModel?.ProviderId).IsEqualTo(second.ProviderId);
