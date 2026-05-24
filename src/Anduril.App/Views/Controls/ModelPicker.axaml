@@ -47,6 +47,7 @@
             <Setter Property="Foreground" Value="{DynamicResource AndurilTextPrimaryBrush}" />
             <Setter Property="FontSize" Value="13" />
             <Setter Property="FontWeight" Value="SemiBold" />
+            <Setter Property="TextTrimming" Value="CharacterEllipsis" />
         </Style>
 
         <Style Selector="TextBlock.model-picker-provider">

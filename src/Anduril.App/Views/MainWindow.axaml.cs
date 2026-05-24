@@ -20,6 +20,8 @@ public partial class MainWindow : Window
         DataContextChanged += OnDataContextChanged;
         MotionPolicy.ReducedMotionChanged += OnReducedMotionChanged;
         Opened += (_, _) => ApplyOverlayState();
+        Opened += (_, _) => ApplyResponsiveLayout();
+        SizeChanged += (_, _) => ApplyResponsiveLayout();
     }
 
     private void OnWindowKeyDown(object? sender, KeyEventArgs e)
@@ -151,5 +153,15 @@ public partial class MainWindow : Window
         ToolInspectorPanel.Classes.Set("open", isToolInspectorOpen);
         ToolInspectorPanel.IsVisible = isToolInspectorOpen;
         ToolInspectorPanel.IsHitTestVisible = isToolInspectorOpen;
+    }
+
+    private void ApplyResponsiveLayout()
+    {
+        if (TopBarModelPicker is null || NavigationSegments is null)
+            return;
+
+        var compactTopBar = Bounds.Width > 0 && Bounds.Width <= 1120;
+        NavigationSegments.Width = compactTopBar ? 160 : 172;
+        TopBarModelPicker.Width = compactTopBar ? 160 : 220;
     }
 }

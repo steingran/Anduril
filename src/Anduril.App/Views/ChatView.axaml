@@ -335,9 +335,12 @@
                                 <controls:Brandmark Size="Large"
                                                     HorizontalAlignment="Center" />
                                 <StackPanel Spacing="{DynamicResource AndurilSpacingS}">
-                                    <TextBlock Text="Ask Anduril to inspect, plan, or implement."
+                                    <TextBlock Text="Ask Anduril to inspect,&#x0a;plan, or implement."
                                                HorizontalAlignment="Center"
-                                               FontSize="28"
+                                               TextAlignment="Center"
+                                               TextWrapping="Wrap"
+                                               MaxWidth="520"
+                                               FontSize="24"
                                                FontWeight="SemiBold"
                                                Foreground="{DynamicResource AndurilTextPrimaryBrush}" />
                                     <TextBlock Text="The composer stays live while the chat view is empty so you can start from a prompt, slash command, or attached context."

@@ -317,7 +317,7 @@
                           ColumnSpacing="16">
                         <controls:SegmentedControl x:Name="NavigationSegments"
                                                    Grid.Column="0"
-                                                   Width="172"
+                                                   Width="160"
                                                    ItemsSource="{Binding NavigationItems}"
                                                    SelectedIndex="{Binding SelectedNavigationIndex, Mode=TwoWay}" />
 
@@ -328,19 +328,19 @@
                             <Button x:Name="ToolsToggleButton"
                                     Classes="tools-toggle"
                                     Classes.active="{Binding IsToolInspectorOpen}"
+                                    Padding="10,8"
                                     Command="{Binding ToggleToolInspectorCommand}">
                                 <StackPanel Orientation="Horizontal"
                                             Spacing="8">
                                     <PathIcon Width="{DynamicResource AndurilIconSizeS}"
                                               Height="{DynamicResource AndurilIconSizeS}"
                                               Data="{StaticResource FluentWrench16Geometry}" />
-                                    <TextBlock Text="Tools" />
                                 </StackPanel>
                             </Button>
 
                             <controls:ModelPicker x:Name="TopBarModelPicker"
                                                   Compact="True"
-                                                  Width="220"
+                                                  Width="176"
                                                   ItemsSource="{Binding AvailableModels}"
                                                   SelectedModel="{Binding SelectedModel}"
                                                   ConfigureCommand="{Binding OpenSettingsCommand}"
