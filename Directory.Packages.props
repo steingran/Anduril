@@ -55,6 +55,6 @@
     <PackageVersion Include="Tmds.DBus.Protocol" Version="0.93.0" />
     <PackageVersion Include="TUnit" Version="1.45.0" />
     <PackageVersion Include="TUnit.Engine" Version="1.45.0" />
-    <PackageVersion Include="Velopack" Version="0.0.1298" />
+    <PackageVersion Include="Velopack" Version="1.1.1" />
   </ItemGroup>
 </Project>
