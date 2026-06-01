@@ -53,8 +53,8 @@
       the next fully-patched line is 0.92.0 which is incompatible with Avalonia 11.3.2.
     -->
     <PackageVersion Include="Tmds.DBus.Protocol" Version="0.94.1" />
-    <PackageVersion Include="TUnit" Version="1.45.0" />
-    <PackageVersion Include="TUnit.Engine" Version="1.45.0" />
+    <PackageVersion Include="TUnit" Version="1.48.6" />
+    <PackageVersion Include="TUnit.Engine" Version="1.48.6" />
     <PackageVersion Include="Velopack" Version="0.0.1298" />
   </ItemGroup>
 </Project>
