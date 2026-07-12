@@ -10,6 +10,11 @@
 
   <ItemGroup>
     <PackageReference Include="Microsoft.EntityFrameworkCore.Sqlite" />
+    <!--
+      Direct reference to override EF Core Sqlite's vulnerable 2.1.11 native bundle.
+      Versioning stays in Directory.Packages.props so restore uses the fixed SQLite bundle.
+    -->
+    <PackageReference Include="SQLitePCLRaw.bundle_e_sqlite3" />
     <PackageReference Include="Serilog.AspNetCore" />
     <PackageReference Include="Velopack" />
   </ItemGroup>

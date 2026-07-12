@@ -12,8 +12,14 @@
     <PackageReference Include="Microsoft.Extensions.AI.OpenAI" />
     <PackageReference Include="ModelContextProtocol" />
     <!--
+      Direct reference to override the transitive StreamJsonRpc chain that still restores
+      vulnerable MessagePack 2.5.198 on CI from the GitHub.Copilot.SDK dependency graph.
+    -->
+    <PackageReference Include="StreamJsonRpc" />
+    <!--
       Direct reference to override the transitive 1.0.2 brought in by ModelContextProtocol.
-      1.1.62 is the patched release for GHSA-2cwq-pwfr-wcw3. Pinned in Directory.Packages.props.
+      Versioning stays in Directory.Packages.props so we can pin the first release that clears
+      the active Nerdbank.MessagePack advisories.
     -->
     <PackageReference Include="Nerdbank.MessagePack" />
     <PackageReference Include="OllamaSharp" />
